@@ -51,6 +51,7 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
     'modules' | 'reports' | 'services' | 'roadmap' | 'about' | 'contact' | 'pricing'
   >('modules');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [newFeatureText, setNewFeatureText] = useState<{ [moduleId: string]: string }>({});
 
   // Module addition state
@@ -178,10 +179,34 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
   };
 
   const handleDeleteModule = (modId: string) => {
-    setContent((prev) => ({
-      ...prev,
-      modules: prev.modules.filter((m) => m.id !== modId),
-    }));
+    const modToDelete = content.modules.find((m) => m.id === modId);
+    if (!modToDelete) return;
+
+    const moduleName = (modToDelete.name || '').trim();
+    let updatedRoadmap = [...content.upcomingModules];
+
+    if (moduleName) {
+      const alreadyInRoadmap = content.upcomingModules.some(
+        (item) => item.trim().toLowerCase() === moduleName.toLowerCase()
+      );
+      if (!alreadyInRoadmap) {
+        updatedRoadmap = [...content.upcomingModules, moduleName];
+      }
+    }
+
+    const updatedContent: ProposalContentConfig = {
+      ...content,
+      modules: content.modules.filter((m) => m.id !== modId),
+      upcomingModules: updatedRoadmap,
+    };
+
+    setContent(updatedContent);
+    setActionFeedback(
+      moduleName
+        ? `"${moduleName}" removed from Live Modules and added to Upcoming Roadmap.`
+        : 'Module removed and added to Upcoming Roadmap.'
+    );
+    setTimeout(() => setActionFeedback(null), 4000);
   };
 
   const handleAddFeatureToModule = (modId: string) => {
@@ -301,6 +326,13 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
         <div className="bg-[#EAF7EF] border border-[#168A45] text-[#0B5D2A] text-xs font-bold px-4 py-3 rounded-xl flex items-center space-x-2 shadow-xs animate-fadeIn">
           <CheckCircle className="w-4 h-4 text-[#168A45]" />
           <span>Proposal content configuration saved successfully!</span>
+        </div>
+      )}
+
+      {actionFeedback && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold px-4 py-3 rounded-xl flex items-center space-x-2 shadow-xs animate-fadeIn">
+          <Sparkles className="w-4 h-4 text-[#168A45] shrink-0" />
+          <span>{actionFeedback}</span>
         </div>
       )}
 
@@ -517,7 +549,7 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
                           type="button"
                           onClick={() => handleDeleteModule(mod.id)}
                           className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Delete module"
+                          title="Delete module and move to Upcoming Roadmap"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -733,6 +765,99 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
                 <span className="text-[10px] text-slate-400 mt-0.5 block">
                   Use {'{{INSTITUTE_NAME}}'} for dynamic institution replacement.
                 </span>
+              </div>
+
+              {/* Dedicated Signatories & Acceptance Section Settings */}
+              <div className="pt-4 border-t border-gray-200 space-y-3">
+                <div>
+                  <h5 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-[#168A45] flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Acceptance & Signatories Section (Page 14 Footer)
+                  </h5>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Customize labels and designations rendered on the final PDF proposal signature block.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Section Title
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!canManage}
+                      value={content.signatoryTitle || 'Proposal Acceptance & Signatories'}
+                      onChange={(e) =>
+                        setContent({ ...content, signatoryTitle: e.target.value })
+                      }
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Client Signature Box Label
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!canManage}
+                      value={content.clientSignatoryLabel || 'Client Signature'}
+                      onChange={(e) =>
+                        setContent({ ...content, clientSignatoryLabel: e.target.value })
+                      }
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Signatory Agreement / Declaration Statement
+                    </label>
+                    <textarea
+                      rows={2}
+                      disabled={!canManage}
+                      value={
+                        content.signatoryAgreementText ||
+                        'By signing below, the authorized representatives of both parties acknowledge and accept the terms, scope of modules, implementation schedule, and commercial pricing presented in this proposal.'
+                      }
+                      onChange={(e) =>
+                        setContent({ ...content, signatoryAgreementText: e.target.value })
+                      }
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Client Default Signatory Designation
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!canManage}
+                      value={content.clientSignatoryDesignation || 'Principal / Chairman / Trustee'}
+                      onChange={(e) =>
+                        setContent({ ...content, clientSignatoryDesignation: e.target.value })
+                      }
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Company Signatory Designation
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!canManage}
+                      value={content.companySignatoryDesignation || 'Director & Authorized Signatory'}
+                      onChange={(e) =>
+                        setContent({ ...content, companySignatoryDesignation: e.target.value })
+                      }
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

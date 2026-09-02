@@ -294,17 +294,17 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
         </div>
       )}
 
-      {/* Off-screen document container for direct 1-click PDF download (using opacity to guarantee canvas geometry) */}
+      {/* Off-screen document container for direct 1-click PDF download */}
       {downloadingProposal && (
         <div
           id="mysar-proposal-direct-download-wrapper"
           style={{
             position: 'fixed',
             top: 0,
-            left: 0,
+            left: '-99999px',
             width: '880px',
             zIndex: -9999,
-            opacity: 0.01,
+            opacity: 1,
             pointerEvents: 'none',
           }}
         >

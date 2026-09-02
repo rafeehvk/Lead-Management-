@@ -397,6 +397,16 @@ export const DEFAULT_PROPOSAL_CONTENT: ProposalContentConfig = {
     'In addition, we are working towards launching a dedicated student application to further enhance student engagement and learning experiences.',
   finalCallToAction:
     'We look forward to collaborating with {{INSTITUTE_NAME}} in building a smarter, more connected, and future-ready learning environment.',
+
+  // Dedicated Signatories & Acceptance
+  signatoryTitle: 'Proposal Acceptance & Signatories',
+  signatoryAgreementText:
+    'By signing below, the authorized representatives acknowledge and accept the terms, scope of modules, implementation schedule, and commercial pricing presented in this document.',
+  clientSignatoryLabel: 'Client Signature',
+  clientSignatoryDesignation: 'Principal / Chairman / Authorized Trustee',
+  companySignatoryLabel: 'Authorized Signatory',
+  companySignatoryName: 'Sakeer Ali V',
+  companySignatoryDesignation: 'Director & Authorized Signatory',
 };
 
 export function getEffectiveProposalContent(settings?: Settings): ProposalContentConfig {

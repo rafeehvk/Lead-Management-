@@ -14,6 +14,7 @@ import {
   Bell,
   Mail,
   Video,
+  LogOut,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { hasPermission, ROLE_DEFINITIONS } from '../utils/rbac';
@@ -37,6 +38,7 @@ interface SidebarProps {
   proposalsPendingCount: number;
   currentUser: User;
   onOpenNotifications?: () => void;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -47,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   proposalsPendingCount,
   currentUser,
   onOpenNotifications,
+  onLogout,
 }) => {
   const canManageSettings = hasPermission.canManageSettings(currentUser);
   const roleDef = ROLE_DEFINITIONS[currentUser.role] || ROLE_DEFINITIONS.Salesperson;
@@ -174,6 +177,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Apps Script & Email Hub</span>
             <ArrowUpRight className="w-3 h-3 text-[#168A45]" />
           </button>
+        </div>
+
+        {/* User Card & Sign Out */}
+        <div className="bg-slate-50 border border-gray-200 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
+              {currentUser.name.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</div>
+              <div className="text-[10px] text-slate-400 font-mono truncate">
+                @{currentUser.userId || currentUser.id.toLowerCase()}
+              </div>
+            </div>
+          </div>
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Sign Out of CRM"
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="px-2 text-center text-[10px] uppercase font-semibold text-slate-400 tracking-wider">

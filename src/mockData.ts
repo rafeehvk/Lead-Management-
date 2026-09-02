@@ -179,6 +179,8 @@ Email: support@casbiro.com | https://mysar.in`,
 export const initialUsers: User[] = [
   {
     id: 'USR-001',
+    userId: 'rafeeh.vk',
+    password: 'Password@123',
     name: 'Rafeeh V K',
     email: 'rafeeh.vk@casbiro.com',
     mobile: '+91 98471 23456',
@@ -187,6 +189,8 @@ export const initialUsers: User[] = [
   },
   {
     id: 'USR-002',
+    userId: 'anand.k',
+    password: 'Password@123',
     name: 'Anand Kumar',
     email: 'anand.k@casbiro.com',
     mobile: '+91 98452 34567',
@@ -195,6 +199,8 @@ export const initialUsers: User[] = [
   },
   {
     id: 'USR-003',
+    userId: 'priya.s',
+    password: 'Password@123',
     name: 'Priya Sharma',
     email: 'priya.s@casbiro.com',
     mobile: '+91 98453 45678',
@@ -203,6 +209,8 @@ export const initialUsers: User[] = [
   },
   {
     id: 'USR-004',
+    userId: 'suhail.m',
+    password: 'Password@123',
     name: 'Mohammed Suhail',
     email: 'suhail.m@casbiro.com',
     mobile: '+91 98454 56789',

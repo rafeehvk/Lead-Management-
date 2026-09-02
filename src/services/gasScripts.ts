@@ -378,16 +378,16 @@ function initDatabase() {
   setupSheetHeaders(ss, SHEETS.FOLLOWUPS, followUpsHeaders);
 
   // 4. Users Sheet
-  var usersHeaders = ['User ID', 'Name', 'Email', 'Mobile', 'Role', 'Status'];
+  var usersHeaders = ['User ID', 'Login User ID', 'Password', 'Name', 'Email', 'Mobile', 'Role', 'Status'];
   var usersSheet = setupSheetHeaders(ss, SHEETS.USERS, usersHeaders);
   if (usersSheet.getLastRow() <= 1) {
     var defaultUsers = [
-      ['USR-001', 'Rafeeh V K', 'rafeeh.vk@casbiro.com', '+91 98471 23456', 'Admin', 'Active'],
-      ['USR-002', 'Anand Kumar', 'anand.k@casbiro.com', '+91 98452 34567', 'Manager', 'Active'],
-      ['USR-003', 'Priya Sharma', 'priya.s@casbiro.com', '+91 98453 45678', 'Salesperson', 'Active'],
-      ['USR-004', 'Mohammed Suhail', 'suhail.m@casbiro.com', '+91 98454 56789', 'Salesperson', 'Active']
+      ['USR-001', 'rafeeh.vk', 'Password@123', 'Rafeeh V K', 'rafeeh.vk@casbiro.com', '+91 98471 23456', 'Admin', 'Active'],
+      ['USR-002', 'anand.k', 'Password@123', 'Anand Kumar', 'anand.k@casbiro.com', '+91 98452 34567', 'Manager', 'Active'],
+      ['USR-003', 'priya.s', 'Password@123', 'Priya Sharma', 'priya.s@casbiro.com', '+91 98453 45678', 'Salesperson', 'Active'],
+      ['USR-004', 'suhail.m', 'Password@123', 'Mohammed Suhail', 'suhail.m@casbiro.com', '+91 98454 56789', 'Salesperson', 'Active']
     ];
-    usersSheet.getRange(2, 1, defaultUsers.length, 6).setValues(defaultUsers);
+    usersSheet.getRange(2, 1, defaultUsers.length, 8).setValues(defaultUsers);
   }
 
   // 5. Settings Sheet

@@ -1,43 +1,5 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-// Helper to convert any CSS color string (oklch, oklab, hsl, var, etc.) to standard rgba/hex
-function sanitizeElementColors(doc: Document) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const toSafeColor = (colorStr: string): string => {
-    if (!colorStr || colorStr === 'transparent' || colorStr === 'inherit' || colorStr === 'initial') {
-      return colorStr;
-    }
-    try {
-      ctx.fillStyle = '#000000';
-      ctx.fillStyle = colorStr;
-      return ctx.fillStyle;
-    } catch {
-      return '#000000';
-    }
-  };
-
-  const allElements = doc.querySelectorAll('*');
-  allElements.forEach((node) => {
-    const el = node as HTMLElement;
-    if (el.style) {
-      if (el.style.color && el.style.color.includes('oklch')) {
-        el.style.color = toSafeColor(el.style.color);
-      }
-      if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) {
-        el.style.backgroundColor = toSafeColor(el.style.backgroundColor);
-      }
-      if (el.style.borderColor && el.style.borderColor.includes('oklch')) {
-        el.style.borderColor = toSafeColor(el.style.borderColor);
-      }
-    }
-  });
-}
+import html2canvas from 'html2canvas-pro';
 
 export async function generatePdfFromElement(
   elementId: string,
@@ -66,58 +28,41 @@ export async function generatePdfFromElement(
     const total = pageElements.length;
     for (let i = 0; i < total; i++) {
       if (onProgress) {
-        onProgress(`Rendering page ${i + 1} of ${total}`, i + 1, total);
+        onProgress(`Rendering page ${i + 1} of ${total}...`, i + 1, total);
       }
       const pageEl = pageElements[i];
 
-      try {
-        const canvas = await html2canvas(pageEl, {
-          scale: 1.4, // Optimal balance of crisp typography and rendering speed
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          backgroundColor: '#FFFFFF',
-          imageTimeout: 5000,
-          onclone: (clonedDoc) => {
-            sanitizeElementColors(clonedDoc);
-          },
-        });
+      const canvas = await html2canvas(pageEl, {
+        scale: 1.5, // Crisp high-DPI rasterization
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#FFFFFF',
+        windowWidth: 900,
+      });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      } catch (pageErr) {
-        console.warn(`Warning: Error rendering page ${i + 1}`, pageErr);
-        // Fallback for single failed page: Add clean blank page with text notice
-        if (i > 0) {
-          pdf.addPage();
-        }
-        pdf.setFontSize(12);
-        pdf.setTextColor(30, 41, 59);
-        pdf.text(`MYSAR Proposal - Page ${i + 1}`, 20, 20);
+      if (i > 0) {
+        pdf.addPage();
       }
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     }
   } else {
     if (onProgress) {
       onProgress('Rendering proposal document...', 1, 1);
     }
     const canvas = await html2canvas(rootElement, {
-      scale: 1.4,
+      scale: 1.5,
       useCORS: true,
       allowTaint: true,
       logging: false,
       backgroundColor: '#FFFFFF',
-      imageTimeout: 5000,
-      onclone: (clonedDoc) => {
-        sanitizeElementColors(clonedDoc);
-      },
+      windowWidth: 900,
     });
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
     let heightLeft = imgHeight;
     let position = 0;
@@ -134,7 +79,7 @@ export async function generatePdfFromElement(
   }
 
   if (onProgress) {
-    onProgress('Finalizing and saving PDF...', pageElements.length || 1, pageElements.length || 1);
+    onProgress('Saving proposal PDF...', pageElements.length || 1, pageElements.length || 1);
   }
 
   // Multi-tier reliable download delivery

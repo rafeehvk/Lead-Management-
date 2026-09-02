@@ -14,6 +14,7 @@ import { CreateProposalModal } from './components/CreateProposalModal';
 import { ProposalPreviewModal } from './components/ProposalPreviewModal';
 import { GoogleAppsScriptModal } from './components/GoogleAppsScriptModal';
 import { FollowUpNotificationModal } from './components/FollowUpNotificationModal';
+import { LoginPage } from './components/LoginPage';
 import { storage } from './services/storageService';
 import { notificationService } from './services/notificationService';
 import {
@@ -43,18 +44,8 @@ export default function App() {
   const [metrics, setMetrics] = useState<DashboardMetrics>(storage.getDashboardMetrics());
 
   // Active Authenticated User (RBAC session)
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    const storedUserId = localStorage.getItem('mysar_active_user_id');
-    const allUsers = storage.getUsers();
-    const found = allUsers.find((u) => u.id === storedUserId);
-    return found || allUsers[0] || {
-      id: 'USR-001',
-      name: 'Rafeeh V K',
-      email: 'rafeeh@casbiro.com',
-      mobile: '+91 98460 00000',
-      role: 'Admin',
-      status: 'Active',
-    };
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    return storage.getSessionUser();
   });
 
   // Modal States
@@ -88,9 +79,11 @@ export default function App() {
     setMetrics(loadedMetrics);
 
     // Keep currentUser reference in sync
-    const refreshedCurrent = loadedUsers.find((u) => u.id === currentUser.id);
-    if (refreshedCurrent) {
-      setCurrentUser(refreshedCurrent);
+    if (currentUser) {
+      const refreshedCurrent = loadedUsers.find((u) => u.id === currentUser.id);
+      if (refreshedCurrent) {
+        setCurrentUser(refreshedCurrent);
+      }
     }
   };
 
@@ -99,8 +92,13 @@ export default function App() {
   }, []);
 
   const handleSwitchUser = (user: User) => {
+    storage.setSessionUser(user, true);
     setCurrentUser(user);
-    localStorage.setItem('mysar_active_user_id', user.id);
+  };
+
+  const handleLogout = () => {
+    storage.clearSession();
+    setCurrentUser(null);
   };
 
   // Calculate approaching follow-up notifications
@@ -110,6 +108,7 @@ export default function App() {
 
   // Notifications relevant for current user count
   const activeUserNotifications = useMemo(() => {
+    if (!currentUser) return [];
     if (currentUser.role === 'Salesperson') {
       return dueNotifications.filter((n) => n.salespersonName === currentUser.name);
     }
@@ -118,7 +117,7 @@ export default function App() {
 
   // --- Lead Operations ---
   const handleSaveLead = (leadData: Partial<Lead>) => {
-    storage.saveLead(leadData, currentUser.name);
+    storage.saveLead(leadData, currentUser?.name || 'System');
     refreshAllData();
   };
 
@@ -263,6 +262,20 @@ export default function App() {
     setActiveTab('leads');
   };
 
+  // If user is not authenticated, show the Login Page
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          refreshAllData();
+        }}
+        settings={settings}
+        availableUsers={users}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7FAF8] flex flex-col font-sans text-[#1F2937] selection:bg-[#EAF7EF] selection:text-[#0B5D2A]">
       {/* Header */}
@@ -283,6 +296,7 @@ export default function App() {
         currentUser={currentUser}
         users={users}
         onSwitchUser={handleSwitchUser}
+        onLogout={handleLogout}
         notificationsCount={activeUserNotifications.length}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         settings={settings}
@@ -304,6 +318,7 @@ export default function App() {
           proposalsPendingCount={metrics.proposalsPending}
           currentUser={currentUser}
           onOpenNotifications={() => setIsNotificationModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Dynamic Workspace Content */}

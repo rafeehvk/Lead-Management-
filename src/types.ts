@@ -143,6 +143,8 @@ export type UserRole = 'Admin' | 'Manager' | 'Salesperson';
 
 export interface User {
   id: string;
+  userId?: string;
+  password?: string;
   name: string;
   email: string;
   mobile: string;
@@ -240,6 +242,15 @@ export interface ProposalContentConfig {
   upcomingModules: string[];
   studentAppNote: string;
   finalCallToAction: string;
+
+  // Dedicated Signatory & Acceptance section (Page 14)
+  signatoryTitle?: string;
+  signatoryAgreementText?: string;
+  clientSignatoryLabel?: string;
+  clientSignatoryDesignation?: string;
+  companySignatoryLabel?: string;
+  companySignatoryName?: string;
+  companySignatoryDesignation?: string;
 }
 
 export interface Settings {

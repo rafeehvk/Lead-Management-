@@ -19,6 +19,11 @@ import {
   Sliders,
   AlertTriangle,
   Info,
+  Eye,
+  EyeOff,
+  Key,
+  Copy,
+  Sparkles,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import {
@@ -53,14 +58,32 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
   const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
 
+  // Password visibility & clipboard state
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
 
+  // Helper to generate secure password
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
+    let pwd = 'MYSAR@';
+    for (let i = 0; i < 4; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+  };
+
   // Form state for adding member
   const [newUser, setNewUser] = useState<Partial<User>>({
     name: '',
+    userId: '',
+    password: 'Password@123',
     email: '',
     mobile: '',
     role: 'Salesperson',
@@ -95,10 +118,26 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
     setUserList(users);
   }, [users]);
 
+  const togglePasswordVisibility = (id: string) => {
+    setShowPasswordMap((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const copyPassword = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedUserId(id);
+    setTimeout(() => {
+      setCopiedUserId(null);
+    }, 2000);
+  };
+
   // Filtered users
   const filteredUsers = userList.filter((u) => {
     const matchesSearch =
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.userId && u.userId.toLowerCase().includes(searchQuery.toLowerCase())) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.mobile.includes(searchQuery) ||
       u.id.toLowerCase().includes(searchQuery.toLowerCase());
@@ -128,8 +167,15 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
     }
 
     const nextId = `USR-${String(userList.length + 1).padStart(3, '0')}`;
+    const autoUserId = newUser.userId?.trim() || (
+      newUser.email?.trim()
+        ? newUser.email.split('@')[0].toLowerCase()
+        : newUser.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.')
+    );
     const userToSave: User = {
       id: nextId,
+      userId: autoUserId,
+      password: newUser.password?.trim() || 'Password@123',
       name: newUser.name.trim(),
       email: newUser.email?.trim() || '',
       mobile: newUser.mobile?.trim() || '',
@@ -142,12 +188,14 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
     setIsAddModalOpen(false);
     setNewUser({
       name: '',
+      userId: '',
+      password: 'Password@123',
       email: '',
       mobile: '',
       role: 'Salesperson',
       status: 'Active',
     });
-    showToast(`Team member "${userToSave.name}" (${userToSave.role}) created successfully!`);
+    showToast(`Team member "${userToSave.name}" (@${userToSave.userId}) created successfully!`);
   };
 
   const handleUpdateSubmit = (e: React.FormEvent) => {
@@ -574,24 +622,30 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-gray-200 text-slate-500 uppercase text-[10px] font-bold bg-slate-50">
-                <th className="py-2.5 px-3">User ID</th>
-                <th className="py-2.5 px-3">Member Name</th>
-                <th className="py-2.5 px-3">Email & Contact</th>
-                <th className="py-2.5 px-3">Role & Access Level</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
-                {canManage && <th className="py-2.5 px-3 text-right">Actions</th>}
+                <th className="py-2.5 px-3 whitespace-nowrap">User ID</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Login User ID</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Member Name</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Password</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Email & Contact</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Role & Access Level</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Status</th>
+                {canManage && <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-slate-700">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     No team members found matching your search and filter criteria.
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((u) => {
                   const isCurrent = u.id === currentUser.id;
+                  const displayUserId = u.userId || (u.email ? u.email.split('@')[0] : u.id.toLowerCase());
+                  const displayPassword = u.password || 'Password@123';
+                  const isPasswordVisible = !!showPasswordMap[u.id];
+
                   return (
                     <tr
                       key={u.id}
@@ -599,12 +653,23 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                         isCurrent ? 'bg-[#EAF7EF]/30 font-medium' : ''
                       }`}
                     >
-                      <td className="py-3 px-3">
+                      {/* System ID */}
+                      <td className="py-3 px-3 whitespace-nowrap">
                         <span className="font-mono font-bold text-[#0B5D2A] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                           {u.id}
                         </span>
                       </td>
 
+                      {/* Login User ID */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <div className="flex items-center space-x-1">
+                          <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-gray-200 text-[11px]">
+                            @{displayUserId}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Member Name */}
                       <td className="py-3 px-3">
                         <div className="flex items-center space-x-2">
                           <div className="w-7 h-7 rounded-full bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -626,6 +691,40 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                         </div>
                       </td>
 
+                      {/* Password */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-mono text-[11px] bg-slate-50 border border-gray-200 px-2 py-0.5 rounded text-slate-700 tracking-wider">
+                            {isPasswordVisible ? displayPassword : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(u.id)}
+                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                            title={isPasswordVisible ? 'Hide password' : 'Show password'}
+                          >
+                            {isPasswordVisible ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyPassword(u.id, displayPassword)}
+                            className="p-1 text-slate-400 hover:text-[#168A45] hover:bg-emerald-50 rounded transition-colors"
+                            title="Copy password"
+                          >
+                            {copiedUserId === u.id ? (
+                              <Check className="w-3.5 h-3.5 text-[#168A45]" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Email & Contact */}
                       <td className="py-3 px-3">
                         <div className="flex flex-col space-y-0.5">
                           <div className="flex items-center space-x-1 text-slate-600">
@@ -639,6 +738,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                         </div>
                       </td>
 
+                      {/* Role & Access Level */}
                       <td className="py-3 px-3">
                         {canManage ? (
                           <select
@@ -671,6 +771,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                         )}
                       </td>
 
+                      {/* Status */}
                       <td className="py-3 px-3 text-center">
                         {canManage ? (
                           <button
@@ -698,12 +799,20 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                         )}
                       </td>
 
+                      {/* Actions */}
                       {canManage && (
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
                             <button
                               type="button"
-                              onClick={() => setEditingUser({ ...u })}
+                              onClick={() => {
+                                setEditingUser({
+                                  ...u,
+                                  userId: u.userId || (u.email ? u.email.split('@')[0] : u.id.toLowerCase()),
+                                  password: u.password || 'Password@123',
+                                });
+                                setShowEditPassword(false);
+                              }}
                               className="p-1.5 text-slate-400 hover:text-[#168A45] hover:bg-emerald-50 rounded-md transition-colors"
                               title="Edit Member Details"
                             >
@@ -737,7 +846,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
       {/* MODAL 1: ADD NEW TEAM MEMBER */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in duration-150">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in duration-150">
             <div className="bg-slate-50 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <UserPlus className="w-4 h-4 text-[#168A45]" />
@@ -761,9 +870,66 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                   required
                   placeholder="e.g. Rahul Verma"
                   value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const autoUid = newUser.userId ? newUser.userId : val.toLowerCase().replace(/[^a-z0-9]/g, '.');
+                    setNewUser({ ...newUser, name: val, userId: newUser.userId || autoUid });
+                  }}
                   className="w-full bg-[#F7FAF8] border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
                 />
+              </div>
+
+              {/* Login User ID & Password in a 2-column grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Login User ID / Username <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">@</span>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. rahul.v"
+                      value={newUser.userId || ''}
+                      onChange={(e) => setNewUser({ ...newUser, userId: e.target.value.toLowerCase().replace(/\s+/g, '.') })}
+                      className="w-full bg-[#F7FAF8] border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-slate-800 font-mono text-xs focus:outline-none focus:bg-white focus:border-[#168A45]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, password: generateRandomPassword() })}
+                      className="text-[10px] text-[#168A45] hover:text-[#0B5D2A] flex items-center space-x-1 font-semibold"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>Generate</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Password@123"
+                      value={newUser.password || ''}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="w-full bg-[#F7FAF8] border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-slate-800 font-mono text-xs focus:outline-none focus:bg-white focus:border-[#168A45]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -851,7 +1017,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
       {/* MODAL 2: EDIT EXISTING MEMBER */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in duration-150">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in duration-150">
             <div className="bg-slate-50 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Edit2 className="w-4 h-4 text-[#168A45]" />
@@ -869,8 +1035,59 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
 
             <form onSubmit={handleUpdateSubmit} className="p-5 space-y-3.5 text-xs">
               <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-gray-200">
-                <span className="font-bold text-slate-600">User ID:</span>
+                <span className="font-bold text-slate-600">System User ID:</span>
                 <span className="font-mono font-bold text-[#0B5D2A]">{editingUser.id}</span>
+              </div>
+
+              {/* Login User ID & Password in a 2-column grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Login User ID <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">@</span>
+                    <input
+                      type="text"
+                      required
+                      value={editingUser.userId || ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, userId: e.target.value.toLowerCase().replace(/\s+/g, '.') })}
+                      className="w-full bg-[#F7FAF8] border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-slate-800 font-mono text-xs focus:outline-none focus:bg-white focus:border-[#168A45]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditingUser({ ...editingUser, password: generateRandomPassword() })}
+                      className="text-[10px] text-[#168A45] hover:text-[#0B5D2A] flex items-center space-x-1 font-semibold"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>Generate</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showEditPassword ? 'text' : 'password'}
+                      required
+                      value={editingUser.password || ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                      className="w-full bg-[#F7FAF8] border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-slate-800 font-mono text-xs focus:outline-none focus:bg-white focus:border-[#168A45]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showEditPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div>

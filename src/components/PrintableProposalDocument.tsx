@@ -728,45 +728,130 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       </div>
 
       {/* ========================================================================= */}
-      {/* PAGE 14: 8. CONCLUSION */}
+      {/* PAGE 14: 8. CONCLUSION & SIGNATORY ACCEPTANCE */}
       {/* ========================================================================= */}
       <div className="proposal-page relative bg-white border border-gray-200 rounded-2xl overflow-hidden min-h-[1080px] flex flex-col justify-between p-8 sm:p-12 shadow-sm">
         <TopRightWaves />
         <MysarLogo companyLogo={companyLogo} brandName={brandName} />
 
-        <div className="my-auto py-6 space-y-4 max-w-2xl text-slate-700 text-xs sm:text-sm leading-relaxed">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {content.conclusionTitle || '8. Conclusion'}
-          </h2>
-
-          {content.conclusionParagraphs.map((para, idx) => (
-            <p key={idx}>{replacePlaceholders(para)}</p>
-          ))}
+        <div className="my-auto py-3 space-y-3.5 max-w-2xl text-slate-700 text-xs sm:text-sm leading-relaxed">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {content.conclusionTitle || '8. Conclusion'}
+            </h2>
+            <div className="space-y-2 mt-2">
+              {content.conclusionParagraphs.map((para, idx) => (
+                <p key={idx} className="text-xs sm:text-[13px] text-slate-600 leading-normal">
+                  {replacePlaceholders(para)}
+                </p>
+              ))}
+            </div>
+          </div>
 
           {content.upcomingModules && content.upcomingModules.length > 0 && (
-            <div className="space-y-1.5 pt-2">
-              <p className="font-bold text-slate-900">
+            <div className="space-y-1 pt-0.5">
+              <p className="font-bold text-slate-900 text-xs">
                 {content.upcomingModulesIntro}
               </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 pl-2 text-slate-600">
+              <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 pl-1 text-slate-600 text-[11px]">
                 {content.upcomingModules.map((item, idx) => (
-                  <div key={idx}>• {item}</div>
+                  <div key={idx} className="truncate">• {item}</div>
                 ))}
               </div>
             </div>
           )}
 
-          {content.studentAppNote && (
-            <p className="pt-2 text-slate-600">
-              {content.studentAppNote}
-            </p>
-          )}
-
           {content.finalCallToAction && (
-            <p className="pt-2 font-bold text-slate-900 bg-[#EAF7EF] p-3.5 rounded-xl border border-[#D9E5DD]">
+            <p className="text-xs font-semibold text-slate-900 bg-[#EAF7EF] p-2.5 rounded-xl border border-[#D9E5DD]">
               {replacePlaceholders(content.finalCallToAction)}
             </p>
           )}
+
+          {/* ========================================================================= */}
+          {/* DEDICATED CLIENT SIGNATURE & AUTHORIZED SIGNATORY SECTION */}
+          {/* ========================================================================= */}
+          <div className="pt-2 space-y-2.5 border-t border-gray-200">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#168A45]" />
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                  {content.signatoryTitle || 'Proposal Acceptance & Signatories'}
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {content.signatoryAgreementText ||
+                  'By signing below, the authorized representatives of both parties acknowledge and accept the terms, scope of modules, implementation schedule, and commercial pricing presented in this proposal.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5 pt-0.5">
+              {/* Client Signature Box */}
+              <div className="bg-[#F7FAF8] border border-gray-300/80 rounded-xl p-3 flex flex-col justify-between space-y-2.5">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-bold rounded uppercase tracking-wider">
+                    {content.clientSignatoryLabel || 'Client Signature'}
+                  </div>
+                  <p className="text-xs font-black text-slate-900 line-clamp-1">
+                    {proposal.instituteName}
+                  </p>
+                  <p className="text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-700">Authorized Person: </span>
+                    {proposal.contactPerson || 'Authorized Signatory'}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-600">Designation: </span>
+                    {content.clientSignatoryDesignation || 'Principal / Chairman / Trustee'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-gray-200">
+                  <div className="h-9 border-b border-dashed border-slate-400 flex items-end justify-between pb-1">
+                    <span className="text-[10px] text-slate-400 italic">Signature</span>
+                    <span className="text-[9px] text-slate-400 font-medium">[ Institution Seal ]</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-600">
+                    <span>Date: ______________</span>
+                    <span>Place: ____________</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Authorized Signatory (Casbiro Solutions) Box */}
+              <div className="bg-[#F7FAF8] border border-[#168A45]/30 rounded-xl p-3 flex flex-col justify-between space-y-2.5">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center px-2 py-0.5 bg-[#EAF7EF] text-[#0B5D2A] text-[10px] font-bold rounded uppercase tracking-wider border border-[#D9E5DD]">
+                    {content.companySignatoryLabel || 'Authorized Signatory'}
+                  </div>
+                  <p className="text-xs font-black text-slate-900 line-clamp-1">
+                    {companyName}
+                  </p>
+                  <p className="text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-700">Representative: </span>
+                    {proposal.createdBy || content.companySignatoryName || 'Sakeer Ali V'}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-600">Designation: </span>
+                    {content.companySignatoryDesignation || 'Director & Authorized Signatory'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-gray-200">
+                  <div className="h-9 border-b border-dashed border-[#168A45]/70 flex items-end justify-between pb-1">
+                    <span className="text-[10px] text-[#168A45] font-semibold italic">Authorized Signature</span>
+                    <span className="text-[9px] text-[#168A45]/80 font-medium">[ Casbiro Official Seal ]</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-600">
+                    <span>Date: {proposal.proposalDate || '______________'}</span>
+                    <span>Kochi, Kerala</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 text-center italic pt-0.5">
+              This proposal constitutes a formal agreement framework upon signature by both authorized parties.
+            </p>
+          </div>
         </div>
 
         <PageFooter pageNumber={14} companyName={companyName} />

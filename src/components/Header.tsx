@@ -11,6 +11,7 @@ import {
   Check,
   Calendar,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { User, UserRole, Settings } from '../types';
 import { ROLE_DEFINITIONS } from '../utils/rbac';
@@ -24,6 +25,7 @@ interface HeaderProps {
   currentUser: User;
   users: User[];
   onSwitchUser: (user: User) => void;
+  onLogout?: () => void;
   notificationsCount: number;
   onOpenNotifications: () => void;
   settings?: Settings;
@@ -38,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   users,
   onSwitchUser,
+  onLogout,
   notificationsCount,
   onOpenNotifications,
   settings,
@@ -244,10 +247,23 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
 
-              <div className="p-2 bg-slate-50 border-t border-gray-100 text-center">
-                <div className="text-[10px] text-slate-500">
+              <div className="p-2 bg-slate-50 border-t border-gray-100 flex flex-col space-y-1.5">
+                <div className="text-[10px] text-slate-500 text-center">
                   Permissions adjust dynamically based on selected role
                 </div>
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center justify-center space-x-1.5 py-2 px-3 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

@@ -691,7 +691,22 @@ class StorageService {
 
   // --- USERS ---
   public getUsers(): User[] {
-    return this.getStorage<User[]>(STORAGE_KEYS.USERS, initialUsers);
+    const users = this.getStorage<User[]>(STORAGE_KEYS.USERS, initialUsers);
+    return users.map((u) => {
+      let changed = false;
+      const updated = { ...u };
+      if (!updated.userId) {
+        updated.userId = updated.email
+          ? updated.email.split('@')[0].toLowerCase()
+          : updated.name.toLowerCase().replace(/[^a-z0-9]/g, '.');
+        changed = true;
+      }
+      if (!updated.password) {
+        updated.password = 'Password@123';
+        changed = true;
+      }
+      return updated;
+    });
   }
 
   public saveUser(user: User): User[] {
@@ -733,6 +748,77 @@ class StorageService {
     users[index].status = users[index].status === 'Active' ? 'Inactive' : 'Active';
     this.setStorage(STORAGE_KEYS.USERS, users);
     return users[index];
+  }
+
+  // --- AUTHENTICATION & SESSIONS ---
+  public authenticateUser(identifier: string, password: string): { success: boolean; user?: User; error?: string } {
+    const cleanId = identifier.trim().toLowerCase().replace(/^@/, '');
+    const cleanPass = password.trim();
+
+    if (!cleanId || !cleanPass) {
+      return { success: false, error: 'Please provide both User ID and Password.' };
+    }
+
+    const users = this.getUsers();
+    const matchedUser = users.find((u) => {
+      const uId = (u.userId || '').toLowerCase();
+      const uEmail = (u.email || '').toLowerCase();
+      const uSysId = (u.id || '').toLowerCase();
+      return uId === cleanId || uEmail === cleanId || uSysId === cleanId;
+    });
+
+    if (!matchedUser) {
+      return { success: false, error: `No user account found matching "${identifier}".` };
+    }
+
+    if (matchedUser.status === 'Inactive') {
+      return { success: false, error: 'Your account is deactivated. Please contact your system administrator.' };
+    }
+
+    const expectedPass = matchedUser.password || 'Password@123';
+    if (cleanPass !== expectedPass) {
+      return { success: false, error: 'Incorrect password. Please try again or check with your Admin.' };
+    }
+
+    return { success: true, user: matchedUser };
+  }
+
+  public getSessionUser(): User | null {
+    try {
+      const isLoggedIn = localStorage.getItem('mysar_is_logged_in') === 'true';
+      const storedUserId = localStorage.getItem('mysar_active_user_id');
+      if (!isLoggedIn || !storedUserId) return null;
+
+      const users = this.getUsers();
+      const user = users.find((u) => u.id === storedUserId);
+      if (user && user.status === 'Active') {
+        return user;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  public setSessionUser(user: User, remember: boolean = true): void {
+    try {
+      localStorage.setItem('mysar_is_logged_in', 'true');
+      localStorage.setItem('mysar_active_user_id', user.id);
+      if (remember) {
+        localStorage.setItem('mysar_remember_me', 'true');
+      }
+    } catch (e) {
+      console.error('Failed to set session', e);
+    }
+  }
+
+  public clearSession(): void {
+    try {
+      localStorage.removeItem('mysar_is_logged_in');
+      localStorage.removeItem('mysar_active_user_id');
+    } catch (e) {
+      console.error('Failed to clear session', e);
+    }
   }
 
   // --- ROLE PERMISSIONS OVERRIDES ---
