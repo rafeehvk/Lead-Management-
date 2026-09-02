@@ -1,0 +1,6 @@
+{
+  "name": "MYSAR Lead Management & Proposal Generator",
+  "description": "Professional CRM and Proposal Generator for Casbiro Solutions Private Limited (MYSAR) with Google Meet demo scheduling, Gmail communications, Google Sheets sync, and PDF generation.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
