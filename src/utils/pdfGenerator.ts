@@ -1,6 +1,44 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+// Helper to convert any CSS color string (oklch, oklab, hsl, var, etc.) to standard rgba/hex
+function sanitizeElementColors(doc: Document) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const toSafeColor = (colorStr: string): string => {
+    if (!colorStr || colorStr === 'transparent' || colorStr === 'inherit' || colorStr === 'initial') {
+      return colorStr;
+    }
+    try {
+      ctx.fillStyle = '#000000';
+      ctx.fillStyle = colorStr;
+      return ctx.fillStyle;
+    } catch {
+      return '#000000';
+    }
+  };
+
+  const allElements = doc.querySelectorAll('*');
+  allElements.forEach((node) => {
+    const el = node as HTMLElement;
+    if (el.style) {
+      if (el.style.color && el.style.color.includes('oklch')) {
+        el.style.color = toSafeColor(el.style.color);
+      }
+      if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) {
+        el.style.backgroundColor = toSafeColor(el.style.backgroundColor);
+      }
+      if (el.style.borderColor && el.style.borderColor.includes('oklch')) {
+        el.style.borderColor = toSafeColor(el.style.borderColor);
+      }
+    }
+  });
+}
+
 export async function generatePdfFromElement(
   elementId: string,
   filename: string,
@@ -25,41 +63,61 @@ export async function generatePdfFromElement(
   const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
   if (pageElements.length > 0) {
-    // Process page-by-page: extremely fast, eliminates canvas memory overflows, and guarantees 1-to-1 page alignment
-    for (let i = 0; i < pageElements.length; i++) {
+    const total = pageElements.length;
+    for (let i = 0; i < total; i++) {
       if (onProgress) {
-        onProgress(`Rendering page ${i + 1} of ${pageElements.length}`, i + 1, pageElements.length);
+        onProgress(`Rendering page ${i + 1} of ${total}`, i + 1, total);
       }
       const pageEl = pageElements[i];
-      const canvas = await html2canvas(pageEl, {
-        scale: 1.5, // Clean high-resolution output while keeping memory lightweight
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#FFFFFF',
-        imageTimeout: 8000,
-      });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      try {
+        const canvas = await html2canvas(pageEl, {
+          scale: 1.4, // Optimal balance of crisp typography and rendering speed
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          backgroundColor: '#FFFFFF',
+          imageTimeout: 5000,
+          onclone: (clonedDoc) => {
+            sanitizeElementColors(clonedDoc);
+          },
+        });
 
-      if (i > 0) {
-        pdf.addPage();
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      } catch (pageErr) {
+        console.warn(`Warning: Error rendering page ${i + 1}`, pageErr);
+        // Fallback for single failed page: Add clean blank page with text notice
+        if (i > 0) {
+          pdf.addPage();
+        }
+        pdf.setFontSize(12);
+        pdf.setTextColor(30, 41, 59);
+        pdf.text(`MYSAR Proposal - Page ${i + 1}`, 20, 20);
       }
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     }
   } else {
-    // Single container fallback
+    if (onProgress) {
+      onProgress('Rendering proposal document...', 1, 1);
+    }
     const canvas = await html2canvas(rootElement, {
-      scale: 1.5,
+      scale: 1.4,
       useCORS: true,
       allowTaint: true,
       logging: false,
       backgroundColor: '#FFFFFF',
-      imageTimeout: 8000,
+      imageTimeout: 5000,
+      onclone: (clonedDoc) => {
+        sanitizeElementColors(clonedDoc);
+      },
     });
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
     let heightLeft = imgHeight;
     let position = 0;
@@ -75,24 +133,52 @@ export async function generatePdfFromElement(
     }
   }
 
-  // Universal Blob Download (compatible with browsers, iframes, and mobile devices)
+  if (onProgress) {
+    onProgress('Finalizing and saving PDF...', pageElements.length || 1, pageElements.length || 1);
+  }
+
+  // Multi-tier reliable download delivery
   const safeFilename = `${filename.replace(/\.pdf$/i, '')}.pdf`;
-  const pdfBlob = pdf.output('blob');
-  const blobUrl = URL.createObjectURL(pdfBlob);
 
-  const downloadLink = document.createElement('a');
-  downloadLink.href = blobUrl;
-  downloadLink.download = safeFilename;
-  downloadLink.style.display = 'none';
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
+  try {
+    // Strategy 1: jsPDF standard save
+    pdf.save(safeFilename);
+  } catch (saveErr) {
+    console.warn('jsPDF save failed, trying Blob URL download', saveErr);
+    try {
+      // Strategy 2: Blob URL anchor click
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = safeFilename;
+      downloadLink.target = '_blank';
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
 
-  setTimeout(() => {
-    if (document.body.contains(downloadLink)) {
-      document.body.removeChild(downloadLink);
+      setTimeout(() => {
+        if (document.body.contains(downloadLink)) {
+          document.body.removeChild(downloadLink);
+        }
+        URL.revokeObjectURL(blobUrl);
+      }, 3000);
+    } catch (blobErr) {
+      console.warn('Blob URL download failed, trying data URI', blobErr);
+      // Strategy 3: Direct Data URI
+      const dataUri = pdf.output('datauristring');
+      const dataLink = document.createElement('a');
+      dataLink.href = dataUri;
+      dataLink.download = safeFilename;
+      document.body.appendChild(dataLink);
+      dataLink.click();
+      setTimeout(() => {
+        if (document.body.contains(dataLink)) {
+          document.body.removeChild(dataLink);
+        }
+      }, 3000);
     }
-    URL.revokeObjectURL(blobUrl);
-  }, 2500);
+  }
 }
 
 export function printProposalDocument(elementId: string): void {

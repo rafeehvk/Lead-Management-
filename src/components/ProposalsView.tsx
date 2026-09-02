@@ -49,7 +49,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
   const handleDirectDownloadPdf = async (proposal: Proposal) => {
     setDownloadingId(proposal.id);
     setDownloadingProposal(proposal);
-    setDownloadToast(`Generating PDF for ${proposal.proposalNumber}...`);
+    setDownloadToast(`Preparing PDF for ${proposal.proposalNumber}...`);
 
     // Allow the DOM element to mount cleanly
     setTimeout(async () => {
@@ -57,7 +57,10 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
         const sanitizedName = (proposal.instituteName || 'Proposal').replace(/[^a-zA-Z0-9]/g, '_');
         await generatePdfFromElement(
           'mysar-proposal-direct-download-container',
-          `MYSAR_Proposal_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`
+          `MYSAR_Proposal_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`,
+          (msg) => {
+            setDownloadToast(msg);
+          }
         );
         setDownloadToast(`Proposal PDF for ${proposal.instituteName} downloaded!`);
         setTimeout(() => setDownloadToast(null), 3500);

@@ -134,11 +134,17 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
     setNotes('');
   }, [isOpen, initialLead, leads]);
 
-  const initPricingTiers = (count: number) => {
-    const activePlans = masterPlans.length > 0 ? masterPlans.filter((p) => p.isActive) : [];
+  const initPricingTiers = (count: number, currentPlans?: PricingPlan[]) => {
+    const plansPool =
+      currentPlans && currentPlans.length > 0
+        ? currentPlans
+        : masterPlans.length > 0
+        ? masterPlans
+        : storage.getPricingPlans();
+    const active = plansPool.filter((p) => p.isActive);
 
     const initialTiers: ProposalPricingItem[] = DEFAULT_PRESET_TIERS.map((preset, idx) => {
-      const matched = activePlans.find((m) => m.name.toLowerCase() === preset.name.toLowerCase());
+      const matched = active.find((m) => m.name.toLowerCase() === preset.name.toLowerCase());
       const typeName = matched ? matched.name : preset.name;
       const typePrice = matched ? matched.defaultPrice : preset.price;
       const typeDesc = matched ? matched.description : preset.desc;
@@ -156,8 +162,6 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
 
     setPricingItems(initialTiers);
   };
-
-  if (!isOpen) return null;
 
   const handleLeadSelectChange = (newLeadId: string) => {
     setSelectedLeadId(newLeadId);
@@ -201,14 +205,15 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
   };
 
   const handlePlanTypeChange = (index: number, newType: string) => {
-    const updated = [...pricingItems];
-    const activePlans = masterPlans.filter((p) => p.isActive);
-    const matchedMaster = activePlans.find((p) => p.name.toLowerCase() === newType.toLowerCase());
+    const activePlansPool = masterPlans.length > 0 ? masterPlans : storage.getPricingPlans();
+    const active = activePlansPool.filter((p) => p.isActive);
+    const matchedMaster = active.find((p) => p.name.toLowerCase() === newType.toLowerCase());
     const matchedPreset = DEFAULT_PRESET_TIERS.find((p) => p.name.toLowerCase() === newType.toLowerCase());
 
     const defaultPrice = matchedMaster ? matchedMaster.defaultPrice : matchedPreset ? matchedPreset.price : 100;
     const defaultDesc = matchedMaster ? matchedMaster.description : matchedPreset ? matchedPreset.desc : 'Custom pricing package';
 
+    const updated = [...pricingItems];
     updated[index] = {
       ...updated[index],
       pricingType: newType,
@@ -241,9 +246,10 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
   };
 
   const handleAddRow = () => {
+    const activePlansPool = masterPlans.length > 0 ? masterPlans : storage.getPricingPlans();
+    const active = activePlansPool.filter((p) => p.isActive);
     const existingTypes = new Set(pricingItems.map((p) => p.pricingType));
-    const activePlans = masterPlans.filter((p) => p.isActive);
-    const nextUnused = activePlans.find((p) => !existingTypes.has(p.name)) || activePlans[0];
+    const nextUnused = active.find((p) => !existingTypes.has(p.name)) || active[0];
 
     const planName = nextUnused ? nextUnused.name : 'Custom Plan';
     const planPrice = nextUnused ? nextUnused.defaultPrice : 100;
@@ -324,7 +330,11 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
     });
   };
 
-  const activePlans = masterPlans.filter((p) => p.isActive);
+  if (!isOpen) return null;
+
+  const activePlans = (masterPlans.length > 0 ? masterPlans : storage.getPricingPlans()).filter(
+    (p) => p.isActive
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">

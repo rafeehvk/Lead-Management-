@@ -32,6 +32,8 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   onSendEmail,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState('');
+  const [exportSuccess, setExportSuccess] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -59,16 +61,18 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
 
   if (!isOpen || !proposal) return null;
 
-  const [exportSuccess, setExportSuccess] = useState(false);
-
   const handleDownloadPdf = async () => {
     setIsExporting(true);
+    setExportProgress('Starting PDF export...');
     setExportSuccess(false);
     try {
       const sanitizedName = (proposal.instituteName || 'Proposal').replace(/[^a-zA-Z0-9]/g, '_');
       await generatePdfFromElement(
         'mysar-proposal-printable-document',
-        `MYSAR_Proposal_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`
+        `MYSAR_Proposal_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`,
+        (msg) => {
+          setExportProgress(msg);
+        }
       );
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3500);
@@ -77,6 +81,7 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
       handlePrint();
     } finally {
       setIsExporting(false);
+      setExportProgress('');
     }
   };
 
@@ -156,21 +161,21 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
               onClick={handleDownloadPdf}
               disabled={isExporting}
               title="Save & Download Proposal PDF"
-              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow-xs transition-all active:scale-98 disabled:opacity-50"
+              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow-xs transition-all active:scale-98 disabled:opacity-75 cursor-pointer"
             >
               {isExporting ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Generating PDF...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span className="whitespace-nowrap">{exportProgress || 'Generating PDF...'}</span>
                 </>
               ) : exportSuccess ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
                   <span>Downloaded!</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-3.5 h-3.5 shrink-0" />
                   <span>Download Proposal</span>
                 </>
               )}
