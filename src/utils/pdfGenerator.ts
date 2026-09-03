@@ -24,58 +24,72 @@ export async function generatePdfFromElement(
   const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
   const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
-  if (pageElements.length > 0) {
-    const total = pageElements.length;
-    for (let i = 0; i < total; i++) {
-      if (onProgress) {
-        onProgress(`Rendering page ${i + 1} of ${total}...`, i + 1, total);
-      }
-      const pageEl = pageElements[i];
+  // Add export mode to suppress card shadows and borders for full-bleed printing
+  rootElement.classList.add('pdf-export-mode');
 
-      const canvas = await html2canvas(pageEl, {
-        scale: 1.5, // Crisp high-DPI rasterization
+  try {
+    if (pageElements.length > 0) {
+      const total = pageElements.length;
+      for (let i = 0; i < total; i++) {
+        if (onProgress) {
+          onProgress(`Rendering page ${i + 1} of ${total}...`, i + 1, total);
+        }
+        const pageEl = pageElements[i];
+
+        const canvas = await html2canvas(pageEl, {
+          scale: 2, // Crisp 2x rasterization for sharp vector-like typography
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          backgroundColor: '#FFFFFF',
+          width: 794,
+          height: 1123,
+          windowWidth: 794,
+          scrollX: 0,
+          scrollY: 0,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.96);
+
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      }
+    } else {
+      if (onProgress) {
+        onProgress('Rendering proposal document...', 1, 1);
+      }
+      const canvas = await html2canvas(rootElement, {
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
         backgroundColor: '#FFFFFF',
-        windowWidth: 900,
+        width: 794,
+        windowWidth: 794,
+        scrollX: 0,
+        scrollY: 0,
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgData = canvas.toDataURL('image/jpeg', 0.96);
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-      if (i > 0) {
-        pdf.addPage();
-      }
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-    }
-  } else {
-    if (onProgress) {
-      onProgress('Rendering proposal document...', 1, 1);
-    }
-    const canvas = await html2canvas(rootElement, {
-      scale: 1.5,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      backgroundColor: '#FFFFFF',
-      windowWidth: 900,
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage('a4', 'portrait');
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+      }
     }
+  } finally {
+    rootElement.classList.remove('pdf-export-mode');
   }
 
   if (onProgress) {
@@ -181,6 +195,9 @@ export function printProposalDocument(elementId: string): void {
             border-radius: 0 !important;
             box-shadow: none !important;
             border: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
           }
           .proposal-page:last-child {
             page-break-after: avoid;

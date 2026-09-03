@@ -12,9 +12,12 @@ import {
   Calendar,
   Sparkles,
   LogOut,
+  Camera,
+  X,
 } from 'lucide-react';
 import { User, UserRole, Settings } from '../types';
 import { ROLE_DEFINITIONS } from '../utils/rbac';
+import { ProfilePhotoUploader } from './ProfilePhotoUploader';
 
 interface HeaderProps {
   onOpenNewLead: () => void;
@@ -25,6 +28,7 @@ interface HeaderProps {
   currentUser: User;
   users: User[];
   onSwitchUser: (user: User) => void;
+  onUpdateUser?: (user: User) => void;
   onLogout?: () => void;
   notificationsCount: number;
   onOpenNotifications: () => void;
@@ -40,12 +44,14 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   users,
   onSwitchUser,
+  onUpdateUser,
   onLogout,
   notificationsCount,
   onOpenNotifications,
   settings,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-base md:text-lg font-bold text-slate-800 tracking-tight">
-              {settings?.brandName || 'MYSAR'} Lead Management
+              {settings?.brandName ? (settings.brandName.includes('ERP') ? settings.brandName : `${settings.brandName} ERP`) : 'MYSAR ERP'}
             </h1>
             <span className="hidden lg:inline-flex bg-[#EAF7EF] text-[#0B5D2A] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#D9E5DD]">
               Sheets & GAS Sync
@@ -164,8 +170,17 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="flex items-center space-x-2 pl-2 pr-2.5 py-1.5 rounded-xl border border-gray-200 hover:border-[#168A45] bg-[#F7FAF8] hover:bg-white transition-all text-left group"
           >
-            <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-              {currentUser.name.charAt(0)}
+            <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shadow-2xs overflow-hidden shrink-0 border border-gray-200">
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                currentUser.name.charAt(0)
+              )}
             </div>
             <div className="hidden md:block">
               <div className="text-xs font-bold text-slate-800 leading-tight">
@@ -183,23 +198,66 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User & Role Switcher Dropdown */}
           {isUserMenuOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-2 w-76 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="p-3.5 bg-slate-50 border-b border-gray-100">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                   Active Session & Role
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-slate-800">{currentUser.name}</div>
-                    <div className="text-[11px] text-slate-500">{currentUser.email}</div>
+                <div className="flex items-center space-x-3">
+                  <div className="relative group/avatar shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-bold text-sm overflow-hidden border border-gray-200 shadow-xs">
+                      {currentUser.avatar ? (
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        currentUser.name.charAt(0)
+                      )}
+                    </div>
+                    {onUpdateUser && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsPhotoModalOpen(true);
+                        }}
+                        className="absolute inset-0 rounded-xl bg-black/40 text-white opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                        title="Change Profile Photo"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full border ${roleDef.badgeClass}`}
-                  >
-                    {currentUser.role}
-                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</div>
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${roleDef.badgeClass}`}
+                      >
+                        {currentUser.role}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">{currentUser.email}</div>
+                    {onUpdateUser && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsPhotoModalOpen(true);
+                        }}
+                        className="mt-1 text-[10px] text-[#168A45] hover:text-[#0B5D2A] font-semibold flex items-center space-x-1"
+                      >
+                        <Camera className="w-2.5 h-2.5" />
+                        <span>Change Profile Photo</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-2 leading-relaxed bg-white p-2 rounded-lg border border-gray-200">
+                <p className="text-[11px] text-slate-500 mt-2.5 leading-relaxed bg-white p-2 rounded-lg border border-gray-200">
                   {roleDef.description}
                 </p>
               </div>
@@ -208,10 +266,9 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">
                   Switch Active Role / User
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-h-48 overflow-y-auto">
                   {users.map((user) => {
                     const isSelected = user.id === currentUser.id;
-                    const uRoleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.Salesperson;
                     return (
                       <button
                         key={user.id}
@@ -227,13 +284,22 @@ export const Header: React.FC<HeaderProps> = ({
                       >
                         <div className="flex items-center space-x-2">
                           <div
-                            className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold overflow-hidden shrink-0 border ${
                               isSelected
-                                ? 'bg-[#168A45] text-white'
-                                : 'bg-slate-100 text-slate-600'
+                                ? 'bg-[#168A45] text-white border-[#168A45]'
+                                : 'bg-slate-100 text-slate-600 border-gray-200'
                             }`}
                           >
-                            {user.name.charAt(0)}
+                            {user.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              user.name.charAt(0)
+                            )}
                           </div>
                           <div>
                             <div className="font-semibold">{user.name}</div>
@@ -269,6 +335,60 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Profile Photo Update Modal */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in duration-150">
+            <div className="bg-slate-50 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Camera className="w-4 h-4 text-[#168A45]" />
+                <h4 className="font-bold text-sm text-slate-800">
+                  Update Profile Photo: <span className="text-[#0B5D2A]">{currentUser.name}</span>
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <ProfilePhotoUploader
+                currentAvatar={currentUser.avatar}
+                userName={currentUser.name}
+                onAvatarChange={(avatarUrl) => {
+                  const updated: User = { ...currentUser, avatar: avatarUrl };
+                  if (onUpdateUser) {
+                    onUpdateUser(updated);
+                  }
+                }}
+                onAvatarRemove={() => {
+                  const updated: User = { ...currentUser, avatar: '' };
+                  if (onUpdateUser) {
+                    onUpdateUser(updated);
+                  }
+                }}
+                label="Your Profile Photo"
+                description="Upload an image, pick from corporate avatar presets, or provide a URL"
+              />
+
+              <div className="pt-3 border-t border-gray-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsPhotoModalOpen(false)}
+                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-lg text-xs shadow-xs"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

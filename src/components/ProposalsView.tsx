@@ -302,7 +302,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
             position: 'fixed',
             top: 0,
             left: '-99999px',
-            width: '880px',
+            width: '794px',
             zIndex: -9999,
             opacity: 1,
             pointerEvents: 'none',
@@ -312,6 +312,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
             proposal={downloadingProposal}
             settings={settings}
             id="mysar-proposal-direct-download-container"
+            showPageBadges={false}
           />
         </div>
       )}

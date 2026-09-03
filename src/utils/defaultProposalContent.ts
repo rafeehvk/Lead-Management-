@@ -401,7 +401,7 @@ export const DEFAULT_PROPOSAL_CONTENT: ProposalContentConfig = {
   // Dedicated Signatories & Acceptance
   signatoryTitle: 'Proposal Acceptance & Signatories',
   signatoryAgreementText:
-    'By signing below, the authorized representatives acknowledge and accept the terms, scope of modules, implementation schedule, and commercial pricing presented in this document.',
+    'We hereby acknowledge that we have received and reviewed the proposal issued by Casbiro Solutions Private Limited (MYSAR) and understand the scope of work, deliverables, pricing, payment terms, and conditions mentioned herein.\n\nProposal Number: [PROPOSAL NO.]\nProposal Date: [DD/MM/YYYY]\n\nBy signing below, we confirm our acceptance of the proposal and authorize Casbiro Solutions Private Limited (MYSAR) to proceed with the proposed services, subject to the terms and conditions stated in this proposal.',
   clientSignatoryLabel: 'Client Signature',
   clientSignatoryDesignation: 'Principal / Chairman / Authorized Trustee',
   companySignatoryLabel: 'Authorized Signatory',
@@ -415,9 +415,17 @@ export function getEffectiveProposalContent(settings?: Settings): ProposalConten
   }
 
   const custom = settings.proposalContent;
+  const isOldDefaultAgreement =
+    !custom.signatoryAgreementText ||
+    custom.signatoryAgreementText.includes('By signing below, the authorized representatives acknowledge and accept') ||
+    custom.signatoryAgreementText.includes('By signing below, the authorized representatives of both parties acknowledge');
+
   return {
     ...DEFAULT_PROPOSAL_CONTENT,
     ...custom,
+    signatoryAgreementText: isOldDefaultAgreement
+      ? DEFAULT_PROPOSAL_CONTENT.signatoryAgreementText
+      : custom.signatoryAgreementText,
     modules: custom.modules && custom.modules.length > 0 ? custom.modules : DEFAULT_PROPOSAL_CONTENT.modules,
     reportCategories:
       custom.reportCategories && custom.reportCategories.length > 0

@@ -24,8 +24,10 @@ import {
   Key,
   Copy,
   Sparkles,
+  Camera,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
+import { ProfilePhotoUploader } from './ProfilePhotoUploader';
 import {
   ROLE_DEFINITIONS,
   DEFAULT_ROLE_PERMISSIONS,
@@ -68,6 +70,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
+  const [photoTargetUser, setPhotoTargetUser] = useState<User | null>(null);
 
   // Helper to generate secure password
   const generateRandomPassword = () => {
@@ -88,6 +91,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
     mobile: '',
     role: 'Salesperson',
     status: 'Active',
+    avatar: '',
   });
 
   // Custom RBAC state
@@ -181,6 +185,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
       mobile: newUser.mobile?.trim() || '',
       role: (newUser.role as UserRole) || 'Salesperson',
       status: (newUser.status as 'Active' | 'Inactive') || 'Active',
+      avatar: newUser.avatar?.trim() || '',
     };
 
     onSaveUser(userToSave);
@@ -194,6 +199,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
       mobile: '',
       role: 'Salesperson',
       status: 'Active',
+      avatar: '',
     });
     showToast(`Team member "${userToSave.name}" (@${userToSave.userId}) created successfully!`);
   };
@@ -671,9 +677,31 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
 
                       {/* Member Name */}
                       <td className="py-3 px-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-7 h-7 rounded-full bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                            {u.name.charAt(0)}
+                        <div className="flex items-center space-x-2.5">
+                          <div
+                            onClick={() => canManage && setPhotoTargetUser(u)}
+                            className={`relative w-8 h-8 rounded-full overflow-hidden shrink-0 group ${
+                              canManage ? 'cursor-pointer hover:ring-2 hover:ring-[#168A45]/40' : ''
+                            } border border-gray-200 bg-slate-100 flex items-center justify-center transition-all`}
+                            title={canManage ? 'Click to change profile photo' : u.name}
+                          >
+                            {u.avatar ? (
+                              <img
+                                src={u.avatar}
+                                alt={u.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-[#168A45] text-white flex items-center justify-center font-bold text-xs">
+                                {u.name.charAt(0)}
+                              </div>
+                            )}
+                            {canManage && (
+                              <div className="absolute inset-0 bg-black/45 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Camera className="w-3.5 h-3.5" />
+                              </div>
+                            )}
                           </div>
                           <div>
                             <div className="font-bold text-slate-800 flex items-center space-x-1.5">
@@ -861,6 +889,16 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
             </div>
 
             <form onSubmit={handleAddSubmit} className="p-5 space-y-3.5 text-xs">
+              {/* Profile Photo Option */}
+              <ProfilePhotoUploader
+                currentAvatar={newUser.avatar}
+                userName={newUser.name || 'New Member'}
+                onAvatarChange={(avatarUrl) => setNewUser({ ...newUser, avatar: avatarUrl })}
+                onAvatarRemove={() => setNewUser({ ...newUser, avatar: '' })}
+                label="Member Profile Photo"
+                description="Upload a photo, choose an avatar preset, or enter an image URL"
+              />
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
                   Full Name <span className="text-red-500">*</span>
@@ -1039,6 +1077,16 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
                 <span className="font-mono font-bold text-[#0B5D2A]">{editingUser.id}</span>
               </div>
 
+              {/* Profile Photo Option */}
+              <ProfilePhotoUploader
+                currentAvatar={editingUser.avatar}
+                userName={editingUser.name}
+                onAvatarChange={(avatarUrl) => setEditingUser({ ...editingUser, avatar: avatarUrl })}
+                onAvatarRemove={() => setEditingUser({ ...editingUser, avatar: '' })}
+                label="Profile Photo"
+                description="Change, upload, or remove this member's profile photo"
+              />
+
               {/* Login User ID & Password in a 2-column grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1198,6 +1246,69 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
               >
                 Yes, Delete Member
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: QUICK PROFILE PHOTO UPDATE */}
+      {photoTargetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in duration-150">
+            <div className="bg-slate-50 border-b border-gray-200 px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Camera className="w-4 h-4 text-[#168A45]" />
+                <h4 className="font-bold text-sm text-slate-800">
+                  Update Photo: <span className="text-[#0B5D2A]">{photoTargetUser.name}</span>
+                </h4>
+              </div>
+              <button
+                onClick={() => setPhotoTargetUser(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <ProfilePhotoUploader
+                currentAvatar={photoTargetUser.avatar}
+                userName={photoTargetUser.name}
+                onAvatarChange={(avatarUrl) => {
+                  const updated: User = { ...photoTargetUser, avatar: avatarUrl };
+                  if (onUpdateUser) {
+                    onUpdateUser(updated);
+                  } else {
+                    onSaveUser(updated);
+                  }
+                  setUserList((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+                  setPhotoTargetUser(updated);
+                  showToast(`Profile photo for ${updated.name} updated.`);
+                }}
+                onAvatarRemove={() => {
+                  const updated: User = { ...photoTargetUser, avatar: '' };
+                  if (onUpdateUser) {
+                    onUpdateUser(updated);
+                  } else {
+                    onSaveUser(updated);
+                  }
+                  setUserList((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+                  setPhotoTargetUser(updated);
+                  showToast(`Profile photo for ${updated.name} removed.`);
+                }}
+                label="Member Profile Photo"
+                description="Upload high-resolution image, select a corporate avatar, or enter a direct image URL"
+              />
+
+              <div className="pt-3 border-t border-gray-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPhotoTargetUser(null)}
+                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-lg text-xs shadow-xs"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>

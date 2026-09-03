@@ -113,7 +113,7 @@ export const initialPricingPlans: PricingPlan[] = [
 
 export const initialSettings: Settings = {
   companyName: 'Casbiro Solutions Private Limited',
-  brandName: 'MYSAR',
+  brandName: 'MYSAR ERP',
   tagline: 'My Student Analysis Record (MYSAR) - Transforming Education Through Smart Digital Solutions',
   address: 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
   phone: '+91 7994 807 907 / +91 7994 806 906 / +91 7994 805 905',
@@ -186,9 +186,21 @@ export const initialUsers: User[] = [
     mobile: '+91 98471 23456',
     role: 'Admin',
     status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
   },
   {
     id: 'USR-002',
+    userId: 'sakeer',
+    password: 'Password@123',
+    name: 'Sakeer Ali V',
+    email: 'sakeer@casbiro.com',
+    mobile: '+91 98460 00000',
+    role: 'Manager',
+    status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'USR-003',
     userId: 'anand.k',
     password: 'Password@123',
     name: 'Anand Kumar',
@@ -196,9 +208,10 @@ export const initialUsers: User[] = [
     mobile: '+91 98452 34567',
     role: 'Manager',
     status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&auto=format&fit=crop&q=80',
   },
   {
-    id: 'USR-003',
+    id: 'USR-004',
     userId: 'priya.s',
     password: 'Password@123',
     name: 'Priya Sharma',
@@ -206,9 +219,10 @@ export const initialUsers: User[] = [
     mobile: '+91 98453 45678',
     role: 'Salesperson',
     status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
   },
   {
-    id: 'USR-004',
+    id: 'USR-005',
     userId: 'suhail.m',
     password: 'Password@123',
     name: 'Mohammed Suhail',
@@ -216,6 +230,7 @@ export const initialUsers: User[] = [
     mobile: '+91 98454 56789',
     role: 'Salesperson',
     status: 'Active',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
   },
 ];
 

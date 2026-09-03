@@ -772,7 +772,7 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
                 <div>
                   <h5 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-[#168A45] flex items-center gap-1.5">
                     <CheckCircle className="w-3.5 h-3.5" />
-                    Acceptance & Signatories Section (Page 14 Footer)
+                    Acceptance & Signatories Section (Page 15 Dedicated Sign-off Page)
                   </h5>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     Customize labels and designations rendered on the final PDF proposal signature block.
@@ -815,16 +815,18 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
                       Signatory Agreement / Declaration Statement
                     </label>
                     <textarea
-                      rows={2}
+                      rows={5}
                       disabled={!canManage}
                       value={
-                        content.signatoryAgreementText ||
-                        'By signing below, the authorized representatives of both parties acknowledge and accept the terms, scope of modules, implementation schedule, and commercial pricing presented in this proposal.'
+                        content.signatoryAgreementText !== undefined
+                          ? content.signatoryAgreementText
+                          : DEFAULT_PROPOSAL_CONTENT.signatoryAgreementText
                       }
                       onChange={(e) =>
                         setContent({ ...content, signatoryAgreementText: e.target.value })
                       }
-                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800"
+                      className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 text-xs"
+                      placeholder="Enter acceptance & declaration text..."
                     />
                   </div>
 

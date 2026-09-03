@@ -28,6 +28,40 @@ import {
   ProposalStatus,
 } from './types';
 
+// HR Module Views & Services
+import { HrDashboardView } from './components/hr/HrDashboardView';
+import { RecruitmentView } from './components/hr/RecruitmentView';
+import { StaffManagementView } from './components/hr/StaffManagementView';
+import { AttendanceAndLeaveView } from './components/hr/AttendanceAndLeaveView';
+import { PayrollManagementView } from './components/hr/PayrollManagementView';
+import { KpiManagementView } from './components/hr/KpiManagementView';
+import { HrSettingsView } from './components/hr/HrSettingsView';
+import { hrStorage } from './services/hrStorageService';
+import {
+  Position,
+  Applicant,
+  Interview,
+  OfferLetter,
+  AppointmentLetter,
+  StaffMember,
+  StaffOnboardingTask,
+  DailyAttendanceRecord,
+  LeaveRequest,
+  LeaveBalance,
+  MonthlyPayrollRecord,
+  PositionKpiConfig,
+  StaffPerformanceEvaluation,
+  HrSettingsConfig,
+  HrActivityLog,
+  AttendanceStatus,
+  LeaveRequestStatus,
+  PayrollStatus,
+  RecruitmentStage,
+  InterviewEvaluation,
+  OfferStatus,
+  AppointmentStatus,
+} from './types/hr';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +96,39 @@ export default function App() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [gmailLeadFilter, setGmailLeadFilter] = useState<string>('All');
 
+  // HR Module States
+  const [hrPositions, setHrPositions] = useState<Position[]>([]);
+  const [hrApplicants, setHrApplicants] = useState<Applicant[]>([]);
+  const [hrInterviews, setHrInterviews] = useState<Interview[]>([]);
+  const [hrOffers, setHrOffers] = useState<OfferLetter[]>([]);
+  const [hrAppointments, setHrAppointments] = useState<AppointmentLetter[]>([]);
+  const [hrStaff, setHrStaff] = useState<StaffMember[]>([]);
+  const [hrAttendance, setHrAttendance] = useState<DailyAttendanceRecord[]>([]);
+  const [hrLeaveRequests, setHrLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [hrLeaveBalances, setHrLeaveBalances] = useState<LeaveBalance[]>([]);
+  const [hrPayroll, setHrPayroll] = useState<MonthlyPayrollRecord[]>([]);
+  const [hrPositionKpis, setHrPositionKpis] = useState<PositionKpiConfig[]>([]);
+  const [hrPerformance, setHrPerformance] = useState<StaffPerformanceEvaluation[]>([]);
+  const [hrActivityLogs, setHrActivityLogs] = useState<HrActivityLog[]>([]);
+  const [hrSettings, setHrSettings] = useState<HrSettingsConfig>(() => hrStorage.getHrSettings());
+
+  const refreshHrData = () => {
+    setHrPositions(hrStorage.getPositions());
+    setHrApplicants(hrStorage.getApplicants());
+    setHrInterviews(hrStorage.getInterviews());
+    setHrOffers(hrStorage.getOfferLetters());
+    setHrAppointments(hrStorage.getAppointmentLetters());
+    setHrStaff(hrStorage.getStaff());
+    setHrAttendance(hrStorage.getAttendanceRecords());
+    setHrLeaveRequests(hrStorage.getLeaveRequests());
+    setHrLeaveBalances(hrStorage.getLeaveBalances());
+    setHrPayroll(hrStorage.getPayrollRecords());
+    setHrPositionKpis(hrStorage.getPositionKpis());
+    setHrPerformance(hrStorage.getStaffPerformance());
+    setHrActivityLogs(hrStorage.getActivityLogs());
+    setHrSettings(hrStorage.getHrSettings());
+  };
+
   // Load data on mount
   const refreshAllData = () => {
     const loadedLeads = storage.getLeads();
@@ -77,6 +144,7 @@ export default function App() {
     setUsers(loadedUsers);
     setSettings(loadedSettings);
     setMetrics(loadedMetrics);
+    refreshHrData();
 
     // Keep currentUser reference in sync
     if (currentUser) {
@@ -262,6 +330,129 @@ export default function App() {
     setActiveTab('leads');
   };
 
+  // --- HR Operations Handlers ---
+  const handleSavePosition = (pos: Partial<Position>) => {
+    hrStorage.savePosition(pos, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleDeletePosition = (id: string) => {
+    hrStorage.deletePosition(id, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleSaveApplicant = (app: Partial<Applicant>) => {
+    hrStorage.saveApplicant(app, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleUpdateApplicantStage = (applicantId: string, stage: RecruitmentStage) => {
+    hrStorage.updateApplicantStage(applicantId, stage, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleDeleteApplicant = (id: string) => {
+    hrStorage.deleteApplicant(id, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleScheduleInterview = (interview: Partial<Interview>) => {
+    hrStorage.scheduleInterview(interview, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleSaveInterviewEvaluation = (interviewId: string, evaluation: InterviewEvaluation) => {
+    hrStorage.saveInterviewEvaluation(interviewId, evaluation, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleGenerateOfferLetter = (offer: Partial<OfferLetter>) => {
+    hrStorage.generateOfferLetter(offer, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleUpdateOfferStatus = (id: string, status: OfferStatus) => {
+    hrStorage.updateOfferStatus(id, status, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleGenerateAppointmentLetter = (appt: Partial<AppointmentLetter>) => {
+    hrStorage.generateAppointmentLetter(appt, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
+    hrStorage.updateAppointmentStatus(id, status, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleConvertApplicantToStaff = (applicantId: string, appointmentId?: string) => {
+    hrStorage.convertApplicantToStaff(applicantId, appointmentId, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleSaveStaff = (staffMember: Partial<StaffMember>) => {
+    hrStorage.saveStaff(staffMember, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleDeleteStaff = (id: string) => {
+    hrStorage.deleteStaff(id, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleMarkAttendance = (
+    staffId: string,
+    date: string,
+    status: AttendanceStatus,
+    checkIn?: string,
+    checkOut?: string,
+    remarks?: string
+  ) => {
+    hrStorage.markAttendance(staffId, date, status, checkIn, checkOut, remarks, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleBulkMarkAttendance = (date: string, status: AttendanceStatus) => {
+    hrStorage.bulkMarkAttendance(date, status, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleSubmitLeaveRequest = (leave: Partial<LeaveRequest>) => {
+    hrStorage.submitLeaveRequest(leave, currentUser?.name || 'Employee');
+    refreshHrData();
+  };
+
+  const handleUpdateLeaveStatus = (leaveId: string, status: LeaveRequestStatus, remarks?: string) => {
+    hrStorage.updateLeaveStatus(leaveId, status, remarks, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleGeneratePayroll = (month: string, year: number) => {
+    hrStorage.generateMonthlyPayroll(month, year, currentUser?.name || 'Finance Officer');
+    refreshHrData();
+  };
+
+  const handleUpdatePayrollStatus = (payrollId: string, status: PayrollStatus) => {
+    hrStorage.updatePayrollStatus(payrollId, status, currentUser?.name || 'Finance Officer');
+    refreshHrData();
+  };
+
+  const handleSavePositionKpi = (config: PositionKpiConfig) => {
+    hrStorage.savePositionKpiConfig(config, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleSavePerformance = (perf: Partial<StaffPerformanceEvaluation>) => {
+    hrStorage.saveStaffPerformance(perf, currentUser?.name || 'Evaluator');
+    refreshHrData();
+  };
+
+  const handleSaveHrSettings = (newSettings: HrSettingsConfig) => {
+    hrStorage.saveHrSettings(newSettings, currentUser?.name || 'Admin');
+    refreshHrData();
+  };
+
   // If user is not authenticated, show the Login Page
   if (!currentUser) {
     return (
@@ -296,6 +487,7 @@ export default function App() {
         currentUser={currentUser}
         users={users}
         onSwitchUser={handleSwitchUser}
+        onUpdateUser={handleUpdateUser}
         onLogout={handleLogout}
         notificationsCount={activeUserNotifications.length}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
@@ -306,6 +498,11 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           activeTab={activeTab}
+          settingsSubTab={settingsSubTab}
+          onSettingsSubTabChange={(subTab) => {
+            setSettingsSubTab(subTab);
+            setActiveTab('settings');
+          }}
           onTabChange={(tab) => {
             if (tab === 'gashub') {
               setIsGasHubOpen(true);
@@ -316,6 +513,7 @@ export default function App() {
           leadsCount={leads.length}
           followUpsTodayCount={metrics.followUpsToday}
           proposalsPendingCount={metrics.proposalsPending}
+          pendingLeavesCount={(hrLeaveRequests || []).filter((l) => l.status === 'Pending').length}
           currentUser={currentUser}
           onOpenNotifications={() => setIsNotificationModalOpen(true)}
           onLogout={handleLogout}
@@ -459,6 +657,107 @@ export default function App() {
               onBulkImportLeads={handleBulkImportLeads}
               onNavigateToLeads={() => setActiveTab('leads')}
               initialTab={settingsSubTab}
+              onTabChange={(subTab) => setSettingsSubTab(subTab)}
+            />
+          )}
+
+          {/* HR Module Views */}
+          {activeTab === 'hr-dashboard' && (
+            <HrDashboardView
+              positions={hrPositions}
+              applicants={hrApplicants}
+              staff={hrStaff}
+              attendance={hrAttendance}
+              leaveRequests={hrLeaveRequests}
+              offerLetters={hrOffers}
+              appointmentLetters={hrAppointments}
+              payroll={hrPayroll}
+              performance={hrPerformance}
+              activityLogs={hrActivityLogs}
+              onNavigate={(tab) => setActiveTab(tab as NavTab)}
+              onOpenAddStaff={() => setActiveTab('hr-staff')}
+              onOpenCreatePosition={() => setActiveTab('hr-recruitment')}
+              onOpenNewInterview={() => setActiveTab('hr-recruitment')}
+              onOpenMarkAttendance={() => setActiveTab('hr-attendance')}
+              onOpenLeaveApproval={() => setActiveTab('hr-attendance')}
+              onOpenProcessPayroll={() => setActiveTab('hr-payroll')}
+            />
+          )}
+
+          {activeTab === 'hr-recruitment' && (
+            <RecruitmentView
+              positions={hrPositions}
+              applicants={hrApplicants}
+              interviews={hrInterviews}
+              offerLetters={hrOffers}
+              appointmentLetters={hrAppointments}
+              onSavePosition={handleSavePosition}
+              onDeletePosition={handleDeletePosition}
+              onSaveApplicant={handleSaveApplicant}
+              onUpdateApplicantStage={handleUpdateApplicantStage}
+              onDeleteApplicant={handleDeleteApplicant}
+              onScheduleInterview={handleScheduleInterview}
+              onSaveInterviewEvaluation={handleSaveInterviewEvaluation}
+              onGenerateOffer={handleGenerateOfferLetter}
+              onUpdateOfferStatus={handleUpdateOfferStatus}
+              onGenerateAppointment={handleGenerateAppointmentLetter}
+              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+              onConvertApplicantToStaff={handleConvertApplicantToStaff}
+            />
+          )}
+
+          {activeTab === 'hr-staff' && (
+            <StaffManagementView
+              staff={hrStaff}
+              attendanceRecords={hrAttendance}
+              leaveRequests={hrLeaveRequests}
+              performanceRecords={hrPerformance}
+              onSaveStaff={handleSaveStaff}
+              onDeleteStaff={handleDeleteStaff}
+            />
+          )}
+
+          {activeTab === 'hr-attendance' && (
+            <AttendanceAndLeaveView
+              staff={hrStaff}
+              attendance={hrAttendance}
+              leaveRequests={hrLeaveRequests}
+              leaveBalances={hrLeaveBalances}
+              onMarkAttendance={handleMarkAttendance}
+              onBulkMarkAttendance={handleBulkMarkAttendance}
+              onSubmitLeaveRequest={handleSubmitLeaveRequest}
+              onUpdateLeaveStatus={handleUpdateLeaveStatus}
+            />
+          )}
+
+          {activeTab === 'hr-payroll' && (
+            <PayrollManagementView
+              payrollRecords={hrPayroll}
+              staff={hrStaff}
+              onGeneratePayroll={handleGeneratePayroll}
+              onUpdatePayrollStatus={handleUpdatePayrollStatus}
+            />
+          )}
+
+          {activeTab === 'hr-kpi' && (
+            <KpiManagementView
+              positions={hrPositions}
+              staff={hrStaff}
+              positionKpis={hrPositionKpis}
+              performanceRecords={hrPerformance}
+              onSavePositionKpi={handleSavePositionKpi}
+              onSavePerformance={handleSavePerformance}
+            />
+          )}
+
+          {activeTab === 'hr-settings' && (
+            <HrSettingsView
+              settings={hrSettings}
+              onSaveSettings={handleSaveHrSettings}
+              onResetData={() => {
+                hrStorage.resetHrData();
+                refreshHrData();
+              }}
             />
           )}
         </main>

@@ -41,6 +41,7 @@ interface SettingsViewProps {
   onBulkImportLeads?: (leadsData: Array<Partial<Lead>>) => { successCount: number; createdLeads: Lead[]; errors: string[] };
   onNavigateToLeads?: () => void;
   initialTab?: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations';
+  onTabChange?: (tab: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations') => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -56,8 +57,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onBulkImportLeads,
   onNavigateToLeads,
   initialTab = 'pricing',
+  onTabChange,
 }) => {
   const [activeTab, setActiveTab] = useState<'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations'>(initialTab);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleSubTabSelect = (tab: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations') => {
+    setActiveTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
   const [formData, setFormData] = useState<Settings>(settings);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
@@ -189,7 +204,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3">
         <button
           type="button"
-          onClick={() => setActiveTab('pricing')}
+          onClick={() => handleSubTabSelect('pricing')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'pricing'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -202,7 +217,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('proposal')}
+          onClick={() => handleSubTabSelect('proposal')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'proposal'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -215,7 +230,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('company')}
+          onClick={() => handleSubTabSelect('company')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'company'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -228,7 +243,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('import')}
+          onClick={() => handleSubTabSelect('import')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'import'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -241,7 +256,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('users')}
+          onClick={() => handleSubTabSelect('users')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'users'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -254,7 +269,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('integrations')}
+          onClick={() => handleSubTabSelect('integrations')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'integrations'
               ? 'bg-[#168A45] text-white shadow-xs'
@@ -386,7 +401,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       )}
                       <div className="overflow-hidden">
                         <div className="text-xs font-bold text-slate-800 truncate">
-                          {formData.brandName || 'MYSAR'} Lead Management
+                          {formData.brandName ? (formData.brandName.includes('ERP') ? formData.brandName : `${formData.brandName} ERP`) : 'MYSAR ERP'}
                         </div>
                         <div className="text-[10px] text-slate-500 truncate">
                           {formData.companyName || 'Casbiro Solutions Private Limited'}

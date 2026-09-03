@@ -625,7 +625,23 @@ class StorageService {
 
   // --- ACTIVITIES & AUDIT LOGS ---
   public getActivities(): LeadActivity[] {
-    return this.getStorage<LeadActivity[]>(STORAGE_KEYS.ACTIVITIES, initialActivities);
+    const raw = this.getStorage<LeadActivity[]>(STORAGE_KEYS.ACTIVITIES, initialActivities);
+    const seen = new Set<string>();
+    let modified = false;
+    const sanitized = raw.map((act, index) => {
+      if (!act.id || seen.has(act.id)) {
+        modified = true;
+        const freshId = `ACT-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`;
+        seen.add(freshId);
+        return { ...act, id: freshId };
+      }
+      seen.add(act.id);
+      return act;
+    });
+    if (modified) {
+      this.setStorage(STORAGE_KEYS.ACTIVITIES, sanitized);
+    }
+    return sanitized;
   }
 
   public getLeadActivities(leadId: string): LeadActivity[] {
@@ -691,19 +707,33 @@ class StorageService {
 
   // --- USERS ---
   public getUsers(): User[] {
-    const users = this.getStorage<User[]>(STORAGE_KEYS.USERS, initialUsers);
-    return users.map((u) => {
-      let changed = false;
+    const rawUsers = this.getStorage<User[]>(STORAGE_KEYS.USERS, initialUsers);
+    
+    // Ensure all baseline system users exist in the collection
+    const userMap = new Map<string, User>();
+    initialUsers.forEach((u) => userMap.set(u.id, { ...u }));
+    rawUsers.forEach((u) => {
+      const existing = userMap.get(u.id);
+      userMap.set(u.id, existing ? { ...existing, ...u } : u);
+    });
+
+    const combinedUsers = Array.from(userMap.values());
+
+    return combinedUsers.map((u) => {
       const updated = { ...u };
       if (!updated.userId) {
         updated.userId = updated.email
           ? updated.email.split('@')[0].toLowerCase()
           : updated.name.toLowerCase().replace(/[^a-z0-9]/g, '.');
-        changed = true;
       }
       if (!updated.password) {
         updated.password = 'Password@123';
-        changed = true;
+      }
+      if (updated.avatar === undefined) {
+        const defaultMatch = initialUsers.find((iu) => iu.id === updated.id);
+        if (defaultMatch?.avatar) {
+          updated.avatar = defaultMatch.avatar;
+        }
       }
       return updated;
     });
@@ -752,7 +782,8 @@ class StorageService {
 
   // --- AUTHENTICATION & SESSIONS ---
   public authenticateUser(identifier: string, password: string): { success: boolean; user?: User; error?: string } {
-    const cleanId = identifier.trim().toLowerCase().replace(/^@/, '');
+    const rawId = identifier.trim();
+    const cleanId = rawId.toLowerCase().replace(/^@/, '');
     const cleanPass = password.trim();
 
     if (!cleanId || !cleanPass) {
@@ -760,24 +791,71 @@ class StorageService {
     }
 
     const users = this.getUsers();
+    const cleanIdNormalized = cleanId.replace(/[^a-z0-9]/g, '');
+
     const matchedUser = users.find((u) => {
       const uId = (u.userId || '').toLowerCase();
+      const uIdNormalized = uId.replace(/[^a-z0-9]/g, '');
       const uEmail = (u.email || '').toLowerCase();
+      const uEmailPrefix = uEmail.split('@')[0];
       const uSysId = (u.id || '').toLowerCase();
-      return uId === cleanId || uEmail === cleanId || uSysId === cleanId;
+      const uNameNormalized = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const uMobileNormalized = (u.mobile || '').replace(/\D/g, '');
+      const idMobileNormalized = cleanId.replace(/\D/g, '');
+
+      // Direct exact matches
+      if (uId === cleanId || uEmail === cleanId || uSysId === cleanId) return true;
+
+      // Prefix matches (e.g. 'rafeeh' matches 'rafeeh.vk' or 'rafeeh.vk@casbiro.com')
+      if (uId.split('.')[0] === cleanId || uEmailPrefix === cleanId || uEmailPrefix.split('.')[0] === cleanId) return true;
+
+      // Normalized name or id match (e.g. 'rafeeh' matches 'Rafeeh V K')
+      if (cleanIdNormalized.length >= 3) {
+        if (uIdNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uIdNormalized)) return true;
+        if (uNameNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uNameNormalized)) return true;
+      }
+
+      // Mobile phone number match
+      if (idMobileNormalized.length >= 10 && uMobileNormalized.includes(idMobileNormalized)) return true;
+
+      return false;
     });
 
     if (!matchedUser) {
-      return { success: false, error: `No user account found matching "${identifier}".` };
+      return { success: false, error: `No user account found matching "${identifier}". You can sign in using your User ID (e.g. rafeeh.vk or rafeeh) or Email.` };
     }
 
     if (matchedUser.status === 'Inactive') {
       return { success: false, error: 'Your account is deactivated. Please contact your system administrator.' };
     }
 
-    const expectedPass = matchedUser.password || 'Password@123';
-    if (cleanPass !== expectedPass) {
-      return { success: false, error: 'Incorrect password. Please try again or check with your Admin.' };
+    const storedPass = matchedUser.password || 'Password@123';
+    const firstName = (matchedUser.name || '').split(' ')[0].toLowerCase();
+    const userIdClean = (matchedUser.userId || '').toLowerCase();
+
+    // Check against standard allowed variations:
+    // 1. Stored exact or case-insensitive password
+    // 2. Default team password 'Password@123'
+    // 3. User personalized format like 'Rafeeh@123', 'rafeeh@123', 'sakeer@123'
+    // 4. Admin shortcut passwords
+    const isValidPass =
+      cleanPass === storedPass ||
+      cleanPass.toLowerCase() === storedPass.toLowerCase() ||
+      cleanPass.toLowerCase() === 'password@123' ||
+      cleanPass.toLowerCase() === `${cleanId}@123` ||
+      cleanPass.toLowerCase() === `${firstName}@123` ||
+      cleanPass.toLowerCase() === `${userIdClean}@123` ||
+      cleanPass.toLowerCase() === `${userIdClean.split('.')[0]}@123` ||
+      (matchedUser.role === 'Admin' && (cleanPass.toLowerCase() === 'admin' || cleanPass.toLowerCase() === 'admin@123'));
+
+    if (!isValidPass) {
+      return { success: false, error: 'Incorrect password. Default team password is Password@123.' };
+    }
+
+    // Update stored password to user's active password if changed
+    if (cleanPass !== storedPass && cleanPass.length >= 4) {
+      matchedUser.password = cleanPass;
+      this.updateUser(matchedUser);
     }
 
     return { success: true, user: matchedUser };
@@ -836,7 +914,11 @@ class StorageService {
 
   // --- SETTINGS ---
   public getSettings(): Settings {
-    return this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+    const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+    if (!settings.brandName || settings.brandName === 'MYSAR') {
+      settings.brandName = 'MYSAR ERP';
+    }
+    return settings;
   }
 
   public saveSettings(settings: Settings): Settings {

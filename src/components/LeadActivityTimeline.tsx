@@ -646,11 +646,11 @@ export const LeadActivityTimeline: React.FC<LeadActivityTimelineProps> = ({
           </div>
         ) : (
           <div className="relative pl-6 space-y-4 before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gray-200">
-            {filteredActivities.map((act) => {
+            {filteredActivities.map((act, idx) => {
               const isExpanded = !!expandedActivityIds[act.id];
 
               return (
-                <div key={act.id} className="relative group">
+                <div key={act.id ? `${act.id}-${idx}` : `act-${idx}`} className="relative group">
                   {/* Absolute Timeline Node Icon */}
                   <div className="absolute -left-6 top-0">
                     {renderActivityIcon(act.type, act.metadata)}
