@@ -799,12 +799,13 @@ class StorageService {
       const uEmail = (u.email || '').toLowerCase();
       const uEmailPrefix = uEmail.split('@')[0];
       const uSysId = (u.id || '').toLowerCase();
+      const uStaffId = (u.staffId || '').toLowerCase();
       const uNameNormalized = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const uMobileNormalized = (u.mobile || '').replace(/\D/g, '');
       const idMobileNormalized = cleanId.replace(/\D/g, '');
 
-      // Direct exact matches
-      if (uId === cleanId || uEmail === cleanId || uSysId === cleanId) return true;
+      // Direct exact matches (User ID, Email, System ID, or Employee ID CB/...)
+      if (uId === cleanId || uEmail === cleanId || uSysId === cleanId || uStaffId === cleanId) return true;
 
       // Prefix matches (e.g. 'rafeeh' matches 'rafeeh.vk' or 'rafeeh.vk@casbiro.com')
       if (uId.split('.')[0] === cleanId || uEmailPrefix === cleanId || uEmailPrefix.split('.')[0] === cleanId) return true;
@@ -813,6 +814,7 @@ class StorageService {
       if (cleanIdNormalized.length >= 3) {
         if (uIdNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uIdNormalized)) return true;
         if (uNameNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uNameNormalized)) return true;
+        if (uStaffId.replace(/[^a-z0-9]/g, '').includes(cleanIdNormalized)) return true;
       }
 
       // Mobile phone number match
@@ -822,11 +824,37 @@ class StorageService {
     });
 
     if (!matchedUser) {
-      return { success: false, error: `No user account found matching "${identifier}". You can sign in using your User ID (e.g. rafeeh.vk or rafeeh) or Email.` };
+      return { success: false, error: `No user account found matching "${identifier}". You can sign in using your User ID (e.g. rafeeh.vk), Employee ID (e.g. CB/ADM/001), or Email.` };
     }
 
+    // Direct user status check
     if (matchedUser.status === 'Inactive') {
-      return { success: false, error: 'Your account is deactivated. Please contact your system administrator.' };
+      return { success: false, error: 'Access Denied: Your user account is deactivated. Please contact system administrator.' };
+    }
+
+    // Cross-verify linked staff status: IF THE STAFF IS INACTIVE, RESTRICT ACCESS
+    try {
+      const rawStaff = localStorage.getItem('mysar_hr_staff_v1');
+      if (rawStaff) {
+        const staffList: any[] = JSON.parse(rawStaff);
+        const linkedStaff = staffList.find(
+          (s) =>
+            (matchedUser.staffId && (s.id === matchedUser.staffId || s.staffCode === matchedUser.staffId || s.previousEmployeeId === matchedUser.staffId)) ||
+            (matchedUser.email && s.email && s.email.toLowerCase() === matchedUser.email.toLowerCase()) ||
+            (matchedUser.userId && s.systemAccess?.username && s.systemAccess.username.toLowerCase() === matchedUser.userId.toLowerCase())
+        );
+
+        if (linkedStaff && (linkedStaff.employmentStatus === 'Inactive' || linkedStaff.employmentStatus === 'Resigned' || linkedStaff.employmentStatus === 'Terminated')) {
+          matchedUser.status = 'Inactive';
+          this.updateUser(matchedUser);
+          return {
+            success: false,
+            error: `Access Restricted: Staff member ${linkedStaff.fullName} (${linkedStaff.id}) is marked as ${linkedStaff.employmentStatus}. ERP access is restricted for inactive staff. Please contact HR.`,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Error verifying staff status during login', e);
     }
 
     const storedPass = matchedUser.password || 'Password@123';
@@ -870,6 +898,25 @@ class StorageService {
       const users = this.getUsers();
       const user = users.find((u) => u.id === storedUserId);
       if (user && user.status === 'Active') {
+        // Double check linked staff status: IF STAFF IS INACTIVE, RESTRICT ACCESS
+        try {
+          const rawStaff = localStorage.getItem('mysar_hr_staff_v1');
+          if (rawStaff) {
+            const staffList: any[] = JSON.parse(rawStaff);
+            const linkedStaff = staffList.find(
+              (s) =>
+                (user.staffId && (s.id === user.staffId || s.staffCode === user.staffId || s.previousEmployeeId === user.staffId)) ||
+                (user.email && s.email && s.email.toLowerCase() === user.email.toLowerCase()) ||
+                (user.userId && s.systemAccess?.username && s.systemAccess.username.toLowerCase() === user.userId.toLowerCase())
+            );
+            if (linkedStaff && (linkedStaff.employmentStatus === 'Inactive' || linkedStaff.employmentStatus === 'Resigned' || linkedStaff.employmentStatus === 'Terminated')) {
+              this.clearSession();
+              return null;
+            }
+          }
+        } catch {
+          // ignore
+        }
         return user;
       }
       return null;

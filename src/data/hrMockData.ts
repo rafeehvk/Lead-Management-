@@ -13,6 +13,7 @@ import {
   StaffPerformanceEvaluation,
   HrSettingsConfig,
   HrActivityLog,
+  DepartmentMaster,
 } from '../types/hr';
 
 export const initialPositions: Position[] = [
@@ -477,6 +478,79 @@ export const initialAppointmentLetters: AppointmentLetter[] = [
     termsAndConditions: 'Appointment letter issued pursuant to offer acceptance dated 2026-08-25.',
     issueDate: '2026-08-30',
     status: 'Generated',
+  },
+];
+
+export const initialDepartmentsMaster: DepartmentMaster[] = [
+  {
+    id: 'DEPT-001',
+    departmentCode: 'ACAD',
+    departmentName: 'Academic',
+    reporting: 'Dr. Ramesh Nambiar (Principal & Academic Director)',
+    headOfDepartment: 'Prof. K. G. Menon',
+    description: 'Instructional curriculum delivery, faculty mentorship, classroom pedagogy, and academic performance evaluation.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-002',
+    departmentCode: 'ADM',
+    departmentName: 'Administration',
+    reporting: 'Muhammed Rafeeh (Managing Director)',
+    headOfDepartment: 'Dr. Ramesh Nambiar',
+    description: 'Institutional management, corporate governance, campus facilities, and general administration.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-003',
+    departmentCode: 'FIN',
+    departmentName: 'Finance & Accounts',
+    reporting: 'Chief Financial Officer / Managing Director',
+    headOfDepartment: 'Smt. Latha Madhavan',
+    description: 'Payroll disbursement, financial auditing, student fees collection, vendor accounting, and budget control.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-004',
+    departmentCode: 'HR',
+    departmentName: 'Human Resources',
+    reporting: 'Muhammed Rafeeh (Managing Director)',
+    headOfDepartment: 'Sri. Ananthan K.',
+    description: 'Talent recruitment, staff onboarding, employee welfare, statutory compliance (PF/ESI), and KPI reviews.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-005',
+    departmentCode: 'IT',
+    departmentName: 'Engineering & IT',
+    reporting: 'Chief Technology Officer',
+    headOfDepartment: 'Sri. Sanjay Thomas',
+    description: 'ERP portal administration, IT infrastructure, cloud databases, server security, and technical support.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-006',
+    departmentCode: 'MKT',
+    departmentName: 'Sales & Marketing',
+    reporting: 'Head of Growth / Managing Director',
+    headOfDepartment: 'Sri. Rahul Mehta',
+    description: 'Admissions growth, institutional partnerships, client proposals, CRM pipeline, and brand outreach.',
+    status: 'Active',
+    createdDate: '2026-01-10',
+  },
+  {
+    id: 'DEPT-007',
+    departmentCode: 'OPS',
+    departmentName: 'Campus Operations',
+    reporting: 'Chief Operating Officer',
+    headOfDepartment: 'Sri. Suresh Babu',
+    description: 'Campus security, transportation fleet, procurement, physical safety, and student utility logistics.',
+    status: 'Active',
+    createdDate: '2026-01-10',
   },
 ];
 

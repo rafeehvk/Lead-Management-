@@ -394,11 +394,13 @@ export default function App() {
   const handleSaveStaff = (staffMember: Partial<StaffMember>) => {
     hrStorage.saveStaff(staffMember, currentUser?.name || 'HR Admin');
     refreshHrData();
+    setUsers(storage.getUsers());
   };
 
   const handleDeleteStaff = (id: string) => {
     hrStorage.deleteStaff(id, currentUser?.name || 'HR Admin');
     refreshHrData();
+    setUsers(storage.getUsers());
   };
 
   const handleMarkAttendance = (

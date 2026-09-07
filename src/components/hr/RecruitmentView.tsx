@@ -41,6 +41,7 @@ import {
   OfferStatus,
   AppointmentStatus,
   EmploymentType,
+  AllowanceItem,
 } from '../../types/hr';
 
 interface RecruitmentViewProps {
@@ -170,10 +171,16 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     evaluatedDate: new Date().toISOString().split('T')[0],
   });
 
-  // Offer Form State
+  // Offer Form State with Multiple Allowances Support
   const [offerForm, setOfferForm] = useState<Partial<OfferLetter>>({
     basicSalary: 30000,
     allowances: 15000,
+    allowanceItems: [
+      { id: 'all-1', name: 'Room Allowance', amount: 5000 },
+      { id: 'all-2', name: 'Transportation', amount: 4000 },
+      { id: 'all-3', name: 'Over time', amount: 3000 },
+      { id: 'all-4', name: 'Special Allowance', amount: 3000 },
+    ],
     joiningDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
     employmentType: 'Full Time',
     workingHours: '8:15 AM – 4:00 PM (Monday to Friday)',
@@ -182,11 +189,41 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     expiryDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
   });
 
+  const handleAddOfferAllowance = (name = 'Room Allowance', amount = 3000) => {
+    const currentItems = offerForm.allowanceItems || [];
+    const newItems: AllowanceItem[] = [
+      ...currentItems,
+      { id: `all-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, name, amount },
+    ];
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, allowanceItems: newItems, allowances: total });
+  };
+
+  const handleUpdateOfferAllowance = (id: string, updates: Partial<AllowanceItem>) => {
+    const currentItems = offerForm.allowanceItems || [];
+    const newItems = currentItems.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, allowanceItems: newItems, allowances: total });
+  };
+
+  const handleRemoveOfferAllowance = (id: string) => {
+    const currentItems = offerForm.allowanceItems || [];
+    const newItems = currentItems.filter((item) => item.id !== id);
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, allowanceItems: newItems, allowances: total });
+  };
+
   // Appt Form State
   const [apptForm, setApptForm] = useState<Partial<AppointmentLetter>>({
     employeeId: `EMP-2026-${String(applicants.length + 10).padStart(3, '0')}`,
     basicSalary: 30000,
     allowances: 15000,
+    allowanceItems: [
+      { id: 'appt-all-1', name: 'Room Allowance', amount: 5000 },
+      { id: 'appt-all-2', name: 'Transportation', amount: 4000 },
+      { id: 'appt-all-3', name: 'Over time', amount: 3000 },
+      { id: 'appt-all-4', name: 'Special Allowance', amount: 3000 },
+    ],
     joiningDate: new Date().toISOString().split('T')[0],
     probationPeriod: '6 Months',
     workingHours: '8:15 AM – 4:00 PM',
@@ -1299,17 +1336,122 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
                     type="number"
                     value={offerForm.basicSalary}
                     onChange={(e) => setOfferForm({ ...offerForm, basicSalary: parseInt(e.target.value) || 0 })}
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
+                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Allowances (₹ / Month)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-700">Total Allowances (₹ / Month)</label>
+                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      {(offerForm.allowanceItems || []).length} Components
+                    </span>
+                  </div>
                   <input
                     type="number"
                     value={offerForm.allowances}
-                    onChange={(e) => setOfferForm({ ...offerForm, allowances: parseInt(e.target.value) || 0 })}
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setOfferForm({ ...offerForm, allowances: val });
+                    }}
+                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-slate-50 font-semibold"
                   />
+                </div>
+              </div>
+
+              {/* MULTIPLE ALLOWANCES COMPONENT BUILDER */}
+              <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      Multiple Allowances (Room, Transportation, Overtime, etc.)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddOfferAllowance('Custom Allowance', 2000)}
+                    className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center space-x-1 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-slate-200 hover:border-emerald-300 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Allowance</span>
+                  </button>
+                </div>
+
+                {/* Quick Add Chips */}
+                <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-slate-400 font-medium">Quick Add:</span>
+                  {[
+                    { label: '+ Room Allowance', name: 'Room Allowance', amount: 5000 },
+                    { label: '+ Transportation', name: 'Transportation', amount: 4000 },
+                    { label: '+ Over time', name: 'Over time', amount: 3000 },
+                    { label: '+ Food / Meal', name: 'Food Allowance', amount: 2500 },
+                    { label: '+ Medical Allowance', name: 'Medical Allowance', amount: 2000 },
+                    { label: '+ Special Allowance', name: 'Special Allowance', amount: 2000 },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAddOfferAllowance(preset.name, preset.amount)}
+                      className="text-[10px] bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic Allowance Rows */}
+                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                  {(offerForm.allowanceItems || []).length === 0 ? (
+                    <div className="text-center py-2.5 text-[11px] text-slate-400 bg-white rounded-lg border border-dashed border-slate-200">
+                      No individual allowances added. Click a &quot;Quick Add&quot; chip above or &quot;Add Allowance&quot; to specify Room, Transportation, Overtime, etc.
+                    </div>
+                  ) : (
+                    (offerForm.allowanceItems || []).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-slate-200"
+                      >
+                        <input
+                          type="text"
+                          value={item.name}
+                          placeholder="Allowance Name (e.g. Room Allowance)"
+                          onChange={(e) => handleUpdateOfferAllowance(item.id, { name: e.target.value })}
+                          className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-emerald-500"
+                        />
+                        <div className="relative w-32">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            value={item.amount}
+                            placeholder="Amount"
+                            onChange={(e) =>
+                              handleUpdateOfferAllowance(item.id, { amount: parseInt(e.target.value) || 0 })
+                            }
+                            className="w-full border border-slate-200 rounded-lg pl-6 pr-2 py-1 text-xs text-slate-900 font-semibold focus:outline-emerald-500"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOfferAllowance(item.id)}
+                          title="Remove Allowance"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
+                  <span className="text-slate-500">
+                    Subtotal of {offerForm.allowanceItems?.length || 0} allowances:
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    ₹{(offerForm.allowances || 0).toLocaleString('en-IN')} / mo
+                  </span>
                 </div>
               </div>
 
@@ -1412,7 +1554,20 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
                 <div className="font-bold text-slate-900 mb-2">Compensation Summary:</div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>Basic Salary: ₹{previewOffer.basicSalary.toLocaleString()}/month</div>
-                  <div>Allowances: ₹{previewOffer.allowances.toLocaleString()}/month</div>
+                  <div>Total Allowances: ₹{previewOffer.allowances.toLocaleString()}/month</div>
+                  {previewOffer.allowanceItems && previewOffer.allowanceItems.length > 0 && (
+                    <div className="col-span-2 p-2 bg-white rounded-lg border border-slate-200 mt-1">
+                      <div className="font-semibold text-slate-700 text-[11px] mb-1">Itemized Allowance Components:</div>
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600">
+                        {previewOffer.allowanceItems.map((item, idx) => (
+                          <div key={idx} className="flex justify-between pr-2">
+                            <span>• {item.name}:</span>
+                            <span className="font-medium text-slate-800">₹{item.amount.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="col-span-2 font-bold text-[#0B5D2A] pt-1 border-t border-slate-200">
                     Gross Monthly Emoluments: ₹{previewOffer.grossSalary.toLocaleString()}/month
                   </div>

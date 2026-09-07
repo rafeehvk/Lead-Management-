@@ -139,7 +139,7 @@ export interface FollowUp {
   createdDate: string;
 }
 
-export type UserRole = 'Admin' | 'Manager' | 'Salesperson';
+export type UserRole = 'Admin' | 'Manager' | 'Salesperson' | 'Staff';
 
 export interface User {
   id: string;
@@ -149,8 +149,12 @@ export interface User {
   email: string;
   mobile: string;
   role: UserRole;
+  userType?: string;
   status: 'Active' | 'Inactive';
   avatar?: string;
+  staffId?: string; // e.g. "CB/ACAD/001"
+  department?: string;
+  departmentCode?: string;
 }
 
 export interface FollowUpNotification {

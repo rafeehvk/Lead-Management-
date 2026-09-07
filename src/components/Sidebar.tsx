@@ -540,30 +540,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Google Sheets Sync status card */}
-      <div className="pt-4 border-t border-gray-200 space-y-2">
-        <div className="bg-[#F7FAF8] border border-[#D9E5DD] rounded-xl p-3 shadow-2xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center space-x-1.5">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-[#168A45]" />
-              <span className="text-xs font-bold text-slate-800">Google Sheets</span>
-            </div>
-            <span className="flex items-center text-[10px] font-bold text-[#0B5D2A] bg-[#EAF7EF] px-1.5 py-0.5 rounded-full border border-[#D9E5DD]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#168A45] mr-1 animate-pulse"></span> Live
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            5 Tables connected with RBAC security & Gmail notification triggers.
-          </p>
-          <button
-            onClick={() => onTabChange('gashub')}
-            className="mt-2.5 w-full bg-white hover:bg-[#EAF7EF] text-[#0B5D2A] border border-gray-200 text-xs font-semibold py-1.5 rounded-lg transition-colors text-center flex items-center justify-center space-x-1 shadow-2xs"
-          >
-            <span>Apps Script & Email Hub</span>
-            <ArrowUpRight className="w-3 h-3 text-[#168A45]" />
-          </button>
-        </div>
-
+      {/* Bottom User Card & Sign Out */}
+      <div className="pt-3 border-t border-gray-200 space-y-2">
         {/* User Card & Sign Out */}
         <div className="bg-slate-50 border border-gray-200 rounded-xl p-2.5 flex items-center justify-between">
           <div className="flex items-center space-x-2 min-w-0">

@@ -128,6 +128,12 @@ export interface Interview {
 
 export type OfferStatus = 'Draft' | 'Sent' | 'Viewed' | 'Accepted' | 'Rejected' | 'Expired';
 
+export interface AllowanceItem {
+  id: string;
+  name: string; // e.g. "Room Allowance", "Transportation", "Over time", "Food Allowance", "Medical", "Special Allowance"
+  amount: number;
+}
+
 export interface OfferLetter {
   id: string; // e.g. "OFFER-2026-001"
   offerNumber: string;
@@ -141,6 +147,7 @@ export interface OfferLetter {
   employmentType: EmploymentType;
   basicSalary: number;
   allowances: number;
+  allowanceItems?: AllowanceItem[];
   grossSalary: number;
   workingHours: string;
   benefits: string[];
@@ -166,6 +173,7 @@ export interface AppointmentLetter {
   employmentType: EmploymentType;
   basicSalary: number;
   allowances: number;
+  allowanceItems?: AllowanceItem[];
   grossSalary: number;
   probationPeriod: string;
   workingHours: string;
@@ -203,6 +211,7 @@ export interface StaffSalaryDetails {
   basicSalary: number;
   hra: number;
   allowances: number;
+  allowanceItems?: AllowanceItem[];
   specialAllowance: number;
   bonus: number;
   otherEarnings: number;
@@ -270,6 +279,17 @@ export interface StaffFamilyContact {
   isDependent: boolean;
 }
 
+export interface DepartmentMaster {
+  id: string; // e.g. "DEPT-001"
+  departmentCode: string; // e.g. "ACAD", "ADM", "FIN", "IT", "HR", "MKT", "OPS"
+  departmentName: string; // e.g. "Academic", "Administration", "Finance & Accounts"
+  reporting: string; // e.g. "Dr. Ramesh Nambiar (Principal & Academic Director)"
+  headOfDepartment?: string;
+  description?: string;
+  status: 'Active' | 'Inactive';
+  createdDate?: string;
+}
+
 export interface StaffBankPayroll {
   bankName: string;
   accountHolderName: string;
@@ -284,7 +304,9 @@ export interface StaffBankPayroll {
 
 export interface StaffSystemAccess {
   enableLogin: boolean;
+  userType?: string; // e.g. "Administrator" | "Manager" | "Salesperson" | "Staff" | "Accountant" | "HR Admin"
   username: string;
+  password?: string;
   role: string;
   accessLevel: 'Read-Only' | 'Standard' | 'Manager' | 'Administrator' | 'Super Admin';
   assignedModules: string[];
@@ -302,8 +324,12 @@ export interface StaffVerificationDetails {
 }
 
 export interface StaffMember {
-  id: string; // e.g. "EMP-2026-001"
+  id: string; // Employee ID e.g. "CB/ACAD/001"
   staffId?: string;
+  staffCode?: string; // e.g. "CB/ACAD/001"
+  departmentCode?: string; // e.g. "ACAD"
+  reportingTo?: string; // Department reporting manager from master
+  userId?: string; // Linked portal user id
   profilePhoto?: string;
   fullName: string;
   dateOfBirth: string;

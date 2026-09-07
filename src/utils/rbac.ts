@@ -54,6 +54,19 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissionConfig> = 
     canAccessGasHub: false,
     canTriggerAllReminders: false,
   },
+  Staff: {
+    canViewAllLeads: false,
+    canEditAllLeads: false,
+    canDeleteLeads: false,
+    canReassignLeads: false,
+    canApproveProposals: false,
+    canDeleteProposals: false,
+    canManageSettings: false,
+    canManageUsers: false,
+    canExportData: false,
+    canAccessGasHub: false,
+    canTriggerAllReminders: false,
+  },
 };
 
 export const PERMISSION_METADATA: {
@@ -203,6 +216,19 @@ export const ROLE_DEFINITIONS: Record<
     ],
     badgeClass: 'bg-[#EAF7EF] text-[#168A45] border-[#D9E5DD] font-semibold',
     dotColor: 'bg-[#168A45]',
+  },
+  Staff: {
+    name: 'Staff Member',
+    title: 'Institutional Staff / Faculty',
+    description: 'General staff account with access to attendance check-in, leave applications, payroll payslips, and staff self-service.',
+    permissions: [
+      'Access MYSAR ERP Staff Self-Service Portal',
+      'Mark daily attendance and submit leave requests',
+      'View monthly salary pay slips and tax deductions',
+      'Access department assignments and curriculum tasks',
+    ],
+    badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-semibold',
+    dotColor: 'bg-blue-600',
   },
 };
 

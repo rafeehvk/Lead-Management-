@@ -25,6 +25,15 @@ import {
   Sparkles,
   AlertCircle,
   FileCheck,
+  Maximize2,
+  Minimize2,
+  Download,
+  Printer,
+  Eye,
+  EyeOff,
+  Copy,
+  Key,
+  RefreshCw,
 } from 'lucide-react';
 import {
   StaffMember,
@@ -35,7 +44,12 @@ import {
   StaffFamilyContact,
   StaffSalaryDetails,
   StaffDocument,
+  DepartmentMaster,
+  AllowanceItem,
 } from '../../types/hr';
+import { PrintableStaffOnboarding } from './PrintableStaffOnboarding';
+import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
+import { hrStorage } from '../../services/hrStorageService';
 
 interface StaffRegistrationModalProps {
   isOpen: boolean;
@@ -84,8 +98,13 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
 
-  // Auto-generate next employee ID
-  const nextId = `EMP-2026-${String(existingStaffCount + 1).padStart(3, '0')}`;
+  // Department Master table integration & continuous ID generation: CB/{DeptCode}/{ContinuesNumber}
+  const [departmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
+  const initialDept = departmentsList[0] || { departmentCode: 'ACAD', departmentName: 'Academic', reporting: 'Dr. Ramesh Nambiar' };
+  const [departmentCode, setDepartmentCode] = useState(initialDept.departmentCode);
+
+  // Auto-generate next employee ID in required format: CB/Department ID/Continues Number
+  const nextId = hrStorage.generateNextEmployeeId(initialDept.departmentCode);
 
   // 1. Personal Information State
   const [staffId, setStaffId] = useState(nextId);
@@ -210,10 +229,42 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [esiNumber, setEsiNumber] = useState('4800918234001');
   const [basicSalary, setBasicSalary] = useState(38000);
   const [hra, setHra] = useState(15200);
+  const [allowanceItems, setAllowanceItems] = useState<AllowanceItem[]>([
+    { id: 'all-room', name: 'Room Allowance', amount: 3000 },
+    { id: 'all-trans', name: 'Transportation', amount: 2000 },
+    { id: 'all-ot', name: 'Over time', amount: 1000 },
+    { id: 'all-med', name: 'Medical Allowance', amount: 800 },
+  ]);
   const [allowances, setAllowances] = useState(6800);
   const [specialAllowance, setSpecialAllowance] = useState(2000);
   const [pfDeduction, setPfDeduction] = useState(1800);
   const [taxDeduction, setTaxDeduction] = useState(1500);
+
+  const handleAddAllowanceItem = (name = 'Room Allowance', amount = 2000) => {
+    const newItem: AllowanceItem = {
+      id: `all-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      amount,
+    };
+    const updated = [...allowanceItems, newItem];
+    setAllowanceItems(updated);
+    const sum = updated.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setAllowances(sum);
+  };
+
+  const handleUpdateAllowanceItem = (id: string, updates: Partial<AllowanceItem>) => {
+    const updated = allowanceItems.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    setAllowanceItems(updated);
+    const sum = updated.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setAllowances(sum);
+  };
+
+  const handleRemoveAllowanceItem = (id: string) => {
+    const updated = allowanceItems.filter((item) => item.id !== id);
+    setAllowanceItems(updated);
+    const sum = updated.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setAllowances(sum);
+  };
 
   // Computed Salary Values
   const grossSalary = basicSalary + hra + allowances + specialAllowance;
@@ -233,9 +284,12 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     joiningDocs: true,
   });
 
-  // 9. System & Access Information State
+  // 9. System & Access Information State (Connect User Creation & Staff Onboarding)
   const [enableLogin, setEnableLogin] = useState(true);
+  const [systemUserType, setSystemUserType] = useState('Faculty / Staff');
   const [systemUsername, setSystemUsername] = useState('');
+  const [systemPassword, setSystemPassword] = useState('Password@123');
+  const [showPassword, setShowPassword] = useState(false);
   const [systemRole, setSystemRole] = useState('Staff');
   const [accessLevel, setAccessLevel] = useState<'Read-Only' | 'Standard' | 'Manager' | 'Administrator' | 'Super Admin'>('Standard');
   const [assignedModules, setAssignedModules] = useState<string[]>([
@@ -245,6 +299,35 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   ]);
   const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Main Campus');
   const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
+  const [copiedPass, setCopiedPass] = useState(false);
+
+  // Department Master Selection Handler: syncs Department Name, Code, Reporting Manager & continuous ID
+  const handleDepartmentChange = (code: string) => {
+    const dept = departmentsList.find((d) => d.departmentCode === code);
+    if (dept) {
+      setDepartmentCode(dept.departmentCode);
+      setDepartment(dept.departmentName);
+      setReportingManager(dept.reporting);
+      const generatedId = hrStorage.generateNextEmployeeId(dept.departmentCode);
+      setStaffId(generatedId);
+    }
+  };
+
+  const handleGeneratePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$';
+    let res = '';
+    for (let i = 0; i < 9; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setSystemPassword(res + '1!');
+  };
+
+  const handleCopyCredentials = () => {
+    const credText = `MYSAR ERP Portal Access:\nUser ID / Username: ${systemUsername || officialEmail || 'staff.user'}\nPassword: ${systemPassword}\nUser Type: ${systemUserType}\nEmployee ID: ${staffId}`;
+    navigator.clipboard?.writeText(credText);
+    setCopiedPass(true);
+    setTimeout(() => setCopiedPass(false), 2000);
+  };
 
   // 10. Registration & Verification State
   const [registrationDate, setRegistrationDate] = useState(new Date().toISOString().split('T')[0]);
@@ -433,6 +516,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         sameAsPermanent,
       },
       joiningDate: dateOfJoining,
+      staffCode: staffId,
+      departmentCode: departmentCode,
+      reportingTo: reportingManager,
       division: `${department} Wing`,
       department,
       position: position || 'Staff Specialist',
@@ -449,6 +535,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         basicSalary,
         hra,
         allowances,
+        allowanceItems,
         specialAllowance,
         bonus: 0,
         otherEarnings: 0,
@@ -483,12 +570,14 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       familyMembers,
       systemAccess: {
         enableLogin,
-        username: systemUsername || (officialEmail ? officialEmail.split('@')[0] : 'staff.user'),
+        userType: systemUserType,
+        username: systemUsername || (officialEmail ? officialEmail.split('@')[0] : fullName.toLowerCase().replace(/[^a-z0-9]/g, '.')),
+        password: systemPassword || 'Password@123',
         role: systemRole,
         accessLevel,
         assignedModules,
         branchAccess: systemBranchAccess,
-        accountStatus,
+        accountStatus: employmentStatus === 'Active' ? accountStatus : 'Suspended',
       },
       verification: {
         registrationDate,
@@ -524,19 +613,148 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     }
   };
 
+  // Full Screen & PDF Export State
+  const [isFullScreen, setIsFullScreen] = useState(true);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState('');
+
+  // Helper to compile current form state into a StaffMember payload for PDF & preview
+  const getCurrentOnboardingPayload = (): Partial<StaffMember> => ({
+    id: staffId,
+    staffId,
+    fullName: fullName || 'Candidate Full Name',
+    profilePhoto,
+    gender,
+    dateOfBirth,
+    bloodGroup,
+    nationality,
+    maritalStatus,
+    personalEmail,
+    email: officialEmail || `${(fullName || 'staff').toLowerCase().replace(/\s+/g, '.')}@casbiro.com`,
+    contactNumber,
+    whatsappNumber: whatsappNumber || contactNumber,
+    emergencyContact: {
+      name: emergencyContactName || 'Spouse / Parent',
+      relationship: emergencyRelationship,
+      phone: emergencyPhone || contactNumber,
+    },
+    permanentAddress,
+    communicationAddress: sameAsPermanent
+      ? { ...permanentAddress, sameAsPermanent: true }
+      : { ...communicationAddress, sameAsPermanent: false },
+    joiningDate: dateOfJoining,
+    department,
+    position: position || 'Institutional Staff',
+    employeeCategory,
+    employmentType,
+    branchLocation,
+    reportingManager,
+    workLocation,
+    employmentStatus,
+    probationPeriod,
+    experiences,
+    qualifications,
+    familyMembers,
+    salary: {
+      basicSalary: Number(basicSalary) || 0,
+      hra: Number(hra) || 0,
+      allowances: Number(allowances) || 0,
+      allowanceItems,
+      specialAllowance: Number(specialAllowance) || 0,
+      bonus: 0,
+      otherEarnings: 0,
+      grossSalary,
+      pfDeduction: Number(pfDeduction) || 0,
+      taxDeduction: Number(taxDeduction) || 0,
+      otherDeductions: 0,
+      totalDeductions,
+      netSalary,
+      salaryFrequency: 'Monthly',
+      paymentMethod: 'Bank Transfer',
+      bankDetails: {
+        bankName,
+        accountNo: accountNo || '••••••••4819',
+        ifscCode,
+        branch: bankBranch,
+      },
+    },
+    bankPayroll: {
+      bankName,
+      accountHolderName: accountHolderName || fullName,
+      accountNo,
+      ifscCode,
+      branch: bankBranch,
+      uan,
+      pfNumber,
+      esiNumber,
+      salaryStructure: `Standard MYSAR Grade (Gross ₹${grossSalary.toLocaleString()}/mo)`,
+    },
+    documents: uploadedDocs,
+    systemAccess: {
+      enableLogin,
+      username: systemUsername || `${(fullName || 'staff').toLowerCase().replace(/\s+/g, '.')}`,
+      role: systemRole,
+      accessLevel,
+      assignedModules,
+      branchAccess: systemBranchAccess,
+      accountStatus,
+    },
+    verification: {
+      registrationDate,
+      registeredBy,
+      verificationStatus,
+      verifiedBy,
+      verificationDate,
+      remarks: registrationRemarks,
+    },
+    aadhaarNumber,
+    panNumber,
+  });
+
+  const handleDownloadOnboardingPdf = async () => {
+    setIsGeneratingPdf(true);
+    setPdfProgress('Rendering form pages...');
+    try {
+      const sanitizedName = (fullName || 'Application').replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `MYSAR_Staff_Onboarding_${staffId}_${sanitizedName}.pdf`;
+      await generateHrPdfFromElement('printable-staff-onboarding-doc', {
+        filename,
+        onProgress: (msg) => setPdfProgress(msg),
+      });
+    } catch (err) {
+      console.error('Failed to generate onboarding PDF', err);
+      printHrDocument('printable-staff-onboarding-doc');
+    } finally {
+      setIsGeneratingPdf(false);
+      setPdfProgress('');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 text-xs flex flex-col max-h-[94vh] overflow-hidden">
+    <div
+      className={
+        isFullScreen
+          ? 'fixed inset-0 z-50 bg-white flex flex-col w-screen h-screen overflow-hidden text-xs'
+          : 'fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto'
+      }
+    >
+      <div
+        className={
+          isFullScreen
+            ? 'bg-white w-full h-full text-xs flex flex-col overflow-hidden'
+            : 'bg-white w-full max-w-6xl rounded-2xl shadow-2xl border border-slate-200 text-xs flex flex-col max-h-[94vh] overflow-hidden'
+        }
+      >
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-[#168A45] shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-[#168A45] shadow-xs shrink-0">
               <User className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                 <h2 className="text-base font-bold text-slate-900">Onboard New Staff Member</h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   MYSAR HR Module
@@ -551,16 +769,48 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 shrink-0">
             <button
               type="button"
               onClick={handlePreloadDemo}
               title="Click to populate realistic sample staff credentials"
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl font-semibold cursor-pointer transition-all"
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl font-semibold cursor-pointer transition-all text-xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>Fill Demo Details</span>
             </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadOnboardingPdf}
+              disabled={isGeneratingPdf}
+              title="Download 10-section staff onboarding application form as PDF"
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all disabled:opacity-60 text-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isGeneratingPdf ? (pdfProgress || 'Exporting...') : 'Download Form (PDF)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => printHrDocument('printable-staff-onboarding-doc')}
+              title="Print Application Form"
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer text-xs"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              title={isFullScreen ? 'Exit Full Screen' : 'View Full Screen'}
+              className="flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer text-xs"
+            >
+              {isFullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5 text-emerald-700" />}
+              <span className="hidden md:inline">{isFullScreen ? 'Windowed' : 'Full Screen'}</span>
+            </button>
+
             <button
               type="button"
               onClick={onClose}
@@ -1020,13 +1270,50 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700">Employee ID</label>
-                  <input
-                    type="text"
-                    value={staffId}
-                    readOnly
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-slate-100 font-mono font-bold cursor-not-allowed"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-700">Employee ID *</label>
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      CB/Dept/Seq
+                    </span>
+                  </div>
+                  <div className="relative mt-1">
+                    <input
+                      type="text"
+                      value={staffId}
+                      onChange={(e) => setStaffId(e.target.value)}
+                      placeholder="e.g. CB/ACAD/001"
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-slate-900 bg-emerald-50/40 font-mono font-bold text-sm tracking-wide focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStaffId(hrStorage.generateNextEmployeeId(departmentCode))}
+                      title="Regenerate next continuous sequence ID for this department"
+                      className="absolute right-2 top-2 text-slate-400 hover:text-emerald-700 transition-colors p-1"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Format: <span className="font-mono font-bold text-emerald-800">CB/{departmentCode || 'DEPT'}/###</span> (Continuous sequence)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Department (Master Table) *</label>
+                  <select
+                    value={departmentCode}
+                    onChange={(e) => handleDepartmentChange(e.target.value)}
+                    className="w-full mt-1 border border-emerald-300 bg-emerald-50/30 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {departmentsList.map((d) => (
+                      <option key={d.id} value={d.departmentCode}>
+                        [{d.departmentCode}] {d.departmentName}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Code: <span className="font-mono font-bold text-slate-800">{departmentCode}</span> • Reports to: <span className="font-medium text-slate-700">{reportingManager}</span>
+                  </p>
                 </div>
 
                 <div>
@@ -1038,24 +1325,6 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     required
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-700">Department *</label>
-                  <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
-                  >
-                    <option value="Academic">Academic</option>
-                    <option value="Administration">Administration</option>
-                    <option value="Finance">Finance</option>
-                    <option value="HR">HR</option>
-                    <option value="IT">IT</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Operations">Operations</option>
-                  </select>
                 </div>
 
                 <div>
@@ -1802,12 +2071,17 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-700">Special Allowances (₹)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="font-semibold text-slate-700">Total Allowances (₹)</label>
+                      <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        {allowanceItems.length} Components
+                      </span>
+                    </div>
                     <input
                       type="number"
                       value={allowances}
                       onChange={(e) => setAllowances(parseInt(e.target.value) || 0)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-slate-50 font-semibold"
                     />
                   </div>
 
@@ -1819,6 +2093,106 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       readOnly
                       className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-rose-700 bg-rose-50/60 font-bold"
                     />
+                  </div>
+                </div>
+
+                {/* MULTIPLE ALLOWANCES BREAKDOWN */}
+                <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Multiple Monthly Allowances (Room, Transportation, Overtime, etc.)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Add itemized allowance components. Sum automatically synchronizes with total allowances and gross salary.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddAllowanceItem('Custom Allowance', 2000)}
+                      className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Allowance</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Add Presets */}
+                  <div className="flex items-center flex-wrap gap-1.5 pt-1">
+                    <span className="text-[10px] text-slate-400 font-medium">Quick Add Presets:</span>
+                    {[
+                      { label: '+ Room Allowance', name: 'Room Allowance', amount: 3000 },
+                      { label: '+ Transportation', name: 'Transportation', amount: 2000 },
+                      { label: '+ Over time', name: 'Over time', amount: 1500 },
+                      { label: '+ Food Allowance', name: 'Food Allowance', amount: 1500 },
+                      { label: '+ Medical Allowance', name: 'Medical Allowance', amount: 1000 },
+                      { label: '+ Academic Allowance', name: 'Academic Allowance', amount: 1000 },
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddAllowanceItem(preset.name, preset.amount)}
+                        className="text-[10px] bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Dynamic Allowance List */}
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {allowanceItems.length === 0 ? (
+                      <div className="text-center py-3 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        No individual allowances defined. Click a Quick Add button above or &quot;Add Allowance&quot;.
+                      </div>
+                    ) : (
+                      allowanceItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center space-x-2 bg-slate-50/70 p-2 rounded-xl border border-slate-200"
+                        >
+                          <input
+                            type="text"
+                            value={item.name}
+                            placeholder="Allowance Name (e.g. Room Allowance)"
+                            onChange={(e) => handleUpdateAllowanceItem(item.id, { name: e.target.value })}
+                            className="flex-1 border border-slate-200 bg-white rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-emerald-500"
+                          />
+                          <div className="relative w-36">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              value={item.amount}
+                              placeholder="Amount"
+                              onChange={(e) =>
+                                handleUpdateAllowanceItem(item.id, { amount: parseInt(e.target.value) || 0 })
+                              }
+                              className="w-full border border-slate-200 bg-white rounded-lg pl-6 pr-2.5 py-1 text-xs text-slate-900 font-bold focus:outline-emerald-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAllowanceItem(item.id)}
+                            title="Remove Allowance"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
+                    <span className="text-slate-500">
+                      Total from {allowanceItems.length} itemized allowance component{allowanceItems.length === 1 ? '' : 's'}:
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      ₹{allowances.toLocaleString('en-IN')} / mo
+                    </span>
                   </div>
                 </div>
 
@@ -1953,74 +2327,171 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               </div>
 
               {enableLogin && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="font-semibold text-slate-700">Username / Login Email *</label>
-                    <input
-                      type="text"
-                      value={systemUsername || (officialEmail ? officialEmail.split('@')[0] : '')}
-                      onChange={(e) => setSystemUsername(e.target.value)}
-                      placeholder="e.g. meera.g"
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono"
-                    />
+                <div className="space-y-4">
+                  {/* User Account Link Notice */}
+                  <div className="p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200 flex items-start space-x-3">
+                    <Key className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <div className="font-bold text-emerald-950">
+                        Integrated Master User Creation & Staff Onboarding
+                      </div>
+                      <p className="text-emerald-800/90 mt-0.5 leading-relaxed">
+                        Completing this staff registration will automatically provision an active ERP User Account with the specified <b>User Type</b>, <b>User Name</b>, and <b>Password</b>.
+                        If this staff member is subsequently deactivated, access will be restricted automatically.
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="font-semibold text-slate-700">System Role</label>
-                    <select
-                      value={systemRole}
-                      onChange={(e) => setSystemRole(e.target.value)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
-                    >
-                      <option value="Staff">Faculty / Teaching Staff</option>
-                      <option value="Department Coordinator">Department Coordinator</option>
-                      <option value="Manager">Office / Campus Manager</option>
-                      <option value="Accountant">Finance & Accountant</option>
-                      <option value="HR Admin">HR Administrator</option>
-                      <option value="Principal">Principal / Executive Director</option>
-                    </select>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* User Type */}
+                    <div>
+                      <label className="font-semibold text-slate-700">User Type (Access Profile) *</label>
+                      <select
+                        value={systemUserType}
+                        onChange={(e) => {
+                          setSystemUserType(e.target.value);
+                          if (e.target.value === 'Administrator') {
+                            setSystemRole('HR Admin');
+                            setAccessLevel('Administrator');
+                          } else if (e.target.value === 'Manager') {
+                            setSystemRole('Manager');
+                            setAccessLevel('Manager');
+                          } else if (e.target.value === 'Accountant') {
+                            setSystemRole('Accountant');
+                            setAccessLevel('Standard');
+                          }
+                        }}
+                        className="w-full mt-1 border border-emerald-300 bg-white rounded-xl px-3 py-2 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="Faculty / Staff">Faculty / Teaching Staff</option>
+                        <option value="Administrator">Administrator (Full ERP Control)</option>
+                        <option value="Manager">Department / Campus Manager</option>
+                        <option value="Sales / Admissions">Sales / Admission Counselor</option>
+                        <option value="Marketing">Marketing Executive</option>
+                        <option value="CSR / Front Office">CSR / Front Office Desk</option>
+                        <option value="Accountant">Finance & Accountant</option>
+                        <option value="HR Admin">HR Specialist / Admin</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 mt-1">Defines dashboard views & permissions</p>
+                    </div>
 
-                  <div>
-                    <label className="font-semibold text-slate-700">Access Level</label>
-                    <select
-                      value={accessLevel}
-                      onChange={(e) => setAccessLevel(e.target.value as any)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold text-emerald-800"
-                    >
-                      <option value="Standard">Standard User (Self Service)</option>
-                      <option value="Read-Only">Read-Only Observer</option>
-                      <option value="Manager">Department Manager</option>
-                      <option value="Administrator">Administrator</option>
-                      <option value="Super Admin">Super Admin</option>
-                    </select>
-                  </div>
+                    {/* User Name */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-slate-700">User Name / Login ID *</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nameBased = fullName
+                              ? fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.')
+                              : 'new.staff';
+                            setSystemUsername(nameBased);
+                          }}
+                          className="text-[10px] text-emerald-700 hover:underline font-semibold"
+                        >
+                          Auto-Suggest
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={systemUsername || (officialEmail ? officialEmail.split('@')[0] : fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, ''))}
+                        onChange={(e) => setSystemUsername(e.target.value)}
+                        placeholder="e.g. rafeeh.vk or meera.g"
+                        className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono font-semibold"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Login identifier for ERP Portal
+                      </p>
+                    </div>
 
-                  <div>
-                    <label className="font-semibold text-slate-700">Branch / Location Scope</label>
-                    <select
-                      value={systemBranchAccess}
-                      onChange={(e) => setSystemBranchAccess(e.target.value)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
-                    >
-                      <option value="Kochi Main Campus">Kochi Main Campus Only</option>
-                      <option value="Calicut Regional Centre">Calicut Regional Centre</option>
-                      <option value="Trivandrum South Wing">Trivandrum South Wing</option>
-                      <option value="All Branches">All Institutional Branches</option>
-                    </select>
-                  </div>
+                    {/* Password */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-slate-700">Password *</label>
+                        <button
+                          type="button"
+                          onClick={handleGeneratePassword}
+                          className="text-[10px] text-emerald-700 hover:underline font-semibold flex items-center space-x-1"
+                        >
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Generate</span>
+                        </button>
+                      </div>
+                      <div className="relative mt-1">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={systemPassword}
+                          onChange={(e) => setSystemPassword(e.target.value)}
+                          placeholder="Password@123"
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono pr-16"
+                        />
+                        <div className="absolute right-1.5 top-1.5 flex items-center space-x-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCopyCredentials}
+                            className="p-1.5 text-slate-400 hover:text-emerald-700 rounded-lg"
+                            title="Copy credentials"
+                          >
+                            {copiedPass ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        {copiedPass ? <span className="text-emerald-700 font-semibold">Credentials copied!</span> : 'Default: Password@123'}
+                      </p>
+                    </div>
 
-                  <div>
-                    <label className="font-semibold text-slate-700">Account Status</label>
-                    <select
-                      value={accountStatus}
-                      onChange={(e) => setAccountStatus(e.target.value as any)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Pending">Pending First Login</option>
-                      <option value="Suspended">Suspended</option>
-                    </select>
+                    <div>
+                      <label className="font-semibold text-slate-700">System Role Designation</label>
+                      <select
+                        value={systemRole}
+                        onChange={(e) => setSystemRole(e.target.value)}
+                        className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                      >
+                        <option value="Staff">Faculty / Teaching Staff</option>
+                        <option value="Department Coordinator">Department Coordinator</option>
+                        <option value="Manager">Office / Campus Manager</option>
+                        <option value="Accountant">Finance & Accountant</option>
+                        <option value="HR Admin">HR Administrator</option>
+                        <option value="Principal">Principal / Executive Director</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700">Access Level Tier</label>
+                      <select
+                        value={accessLevel}
+                        onChange={(e) => setAccessLevel(e.target.value as any)}
+                        className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold text-emerald-800"
+                      >
+                        <option value="Standard">Standard User (Self Service)</option>
+                        <option value="Read-Only">Read-Only Observer</option>
+                        <option value="Manager">Department Manager</option>
+                        <option value="Administrator">Administrator</option>
+                        <option value="Super Admin">Super Admin</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700">Account Access Status</label>
+                      <select
+                        value={accountStatus}
+                        onChange={(e) => setAccountStatus(e.target.value as any)}
+                        className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold"
+                      >
+                        <option value="Active">Active (Granted Access)</option>
+                        <option value="Pending">Pending First Login</option>
+                        <option value="Suspended">Suspended / Restricted</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2147,6 +2618,30 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                 />
               </div>
 
+              {/* PDF Export Banner in Verification Tab */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-white rounded-2xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">Download Official Application Form (PDF)</div>
+                    <div className="text-slate-500 text-xs">
+                      Export the complete 10-section formal onboarding dossier with candidate declaration and institutional signature blocks.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadOnboardingPdf}
+                  disabled={isGeneratingPdf}
+                  className="flex items-center space-x-2 px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all shrink-0 text-xs disabled:opacity-60"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isGeneratingPdf ? (pdfProgress || 'Generating...') : 'Download Form (PDF)'}</span>
+                </button>
+              </div>
+
               {/* Summary Overview Card before submitting */}
               <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-slate-800 space-y-2">
                 <div className="flex items-center space-x-2 font-bold text-emerald-950">
@@ -2178,12 +2673,12 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
         {/* Modal Footer Controls */}
         <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
-          <div>
+          <div className="flex items-center space-x-2">
             {currentTabIndex > 0 ? (
               <button
                 type="button"
                 onClick={handlePrev}
-                className="flex items-center space-x-1.5 px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                className="flex items-center space-x-1.5 px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer text-xs"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Previous Section</span>
@@ -2192,11 +2687,26 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer text-xs"
               >
                 Cancel
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleDownloadOnboardingPdf}
+              disabled={isGeneratingPdf}
+              title="Download entire application form as PDF"
+              className="flex items-center space-x-1.5 px-3.5 py-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-[#0B5D2A] rounded-xl font-semibold cursor-pointer text-xs disabled:opacity-60 transition-all"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isGeneratingPdf ? (pdfProgress || 'Exporting...') : 'Download PDF Form'}</span>
+            </button>
+          </div>
+
+          <div className="hidden md:flex items-center text-slate-500 font-medium text-xs">
+            Step {currentTabIndex + 1} of 10 • {TABS[currentTabIndex].label}
           </div>
 
           <div className="flex items-center space-x-2.5">
@@ -2204,7 +2714,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold cursor-pointer shadow-2xs"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold cursor-pointer shadow-2xs text-xs"
               >
                 <span>Next Section</span>
                 <ChevronRight className="w-4 h-4" />
@@ -2214,13 +2724,21 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              className="flex items-center space-x-2 px-5 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer shadow-sm transition-all"
+              className="flex items-center space-x-2 px-5 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer shadow-sm transition-all text-xs"
             >
               <Check className="w-4 h-4" />
               <span>Save & Onboard Staff</span>
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Off-screen Printable Document for PDF Generation and Print */}
+      <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none opacity-0">
+        <PrintableStaffOnboarding
+          onboardingData={getCurrentOnboardingPayload()}
+          id="printable-staff-onboarding-doc"
+        />
       </div>
     </div>
   );
