@@ -315,7 +315,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     Company & Brand Logo
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Upload your official company logo. It will automatically be rendered in the top-left app bar, generated commercial PDF proposals, and printable documents.
+                    Upload your official company logo. It will automatically be rendered in the Login Screen badge & emblem, top-left app bar, generated commercial PDF proposals, and printable documents.
                   </p>
                 </div>
                 {formData.companyLogo && canManage && (
@@ -436,6 +436,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </div>
                         <div className="text-[10px] text-white/80 truncate">
                           {formData.companyName || 'Casbiro Solutions Private Limited'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Login Screen Emblem Badge Preview */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 shadow-2xs">
+                    <div className="text-[10px] font-semibold text-slate-500 mb-1.5 flex items-center justify-between">
+                      <span>Login Screen Emblem Badge Preview</span>
+                      <span className="text-[9px] bg-[#EAF7EF] text-[#235E3F] border border-[#D9E5DD] px-1.5 py-0.5 rounded font-bold">Login Screen</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-full bg-white border-2 border-[#235E3F] p-1 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                        {formData.companyLogo ? (
+                          <img
+                            src={formData.companyLogo}
+                            alt="Login emblem preview"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-center font-black text-[#235E3F] text-[10px] leading-tight">
+                            mysar
+                          </div>
+                        )}
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-xs font-bold text-slate-800 truncate">
+                          Central Login Brand Emblem
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          Displayed at center boundary on login page & mobile
                         </div>
                       </div>
                     </div>

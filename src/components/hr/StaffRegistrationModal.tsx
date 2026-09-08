@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
@@ -34,6 +34,9 @@ import {
   Copy,
   Key,
   RefreshCw,
+  Edit2,
+  FilePlus,
+  Paperclip,
 } from 'lucide-react';
 import {
   StaffMember,
@@ -44,6 +47,7 @@ import {
   StaffFamilyContact,
   StaffSalaryDetails,
   StaffDocument,
+  StaffDocumentReference,
   DepartmentMaster,
   AllowanceItem,
 } from '../../types/hr';
@@ -51,11 +55,12 @@ import { PrintableStaffOnboarding } from './PrintableStaffOnboarding';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
 
-interface StaffRegistrationModalProps {
+export interface StaffRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (staffData: Partial<StaffMember>) => void;
   existingStaffCount: number;
+  staffToEdit?: StaffMember | null;
 }
 
 type TabKey =
@@ -95,12 +100,14 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   onClose,
   onSave,
   existingStaffCount,
+  staffToEdit,
 }) => {
+  const isEditMode = Boolean(staffToEdit);
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
 
   // Department Master table integration & continuous ID generation: CB/{DeptCode}/{ContinuesNumber}
   const [departmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
-  const initialDept = departmentsList[0] || { departmentCode: 'ACAD', departmentName: 'Academic', reporting: 'Dr. Ramesh Nambiar' };
+  const initialDept = departmentsList[0] || { departmentCode: '101', departmentName: 'Academic', reporting: 'Dr. Ramesh Nambiar' };
   const [departmentCode, setDepartmentCode] = useState(initialDept.departmentCode);
 
   // Auto-generate next employee ID in required format: CB/Department ID/Continues Number
@@ -240,6 +247,241 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [pfDeduction, setPfDeduction] = useState(1800);
   const [taxDeduction, setTaxDeduction] = useState(1500);
 
+  // 8. Documents & Attachments State
+  const [aadhaarNumber, setAadhaarNumber] = useState('•••• •••• 9812');
+  const [panNumber, setPanNumber] = useState('ABCDE1234F');
+  const [uploadedDocs, setUploadedDocs] = useState<{ [key: string]: boolean }>({
+    aadhaar: true,
+    pan: true,
+    passportPhoto: true,
+    resume: true,
+    experienceCert: true,
+    qualificationCert: true,
+    joiningDocs: true,
+  });
+
+  const [docReferences, setDocReferences] = useState<StaffDocumentReference[]>([
+    {
+      id: 'doc-ref-1',
+      name: 'Employment Contract & Appointment Order',
+      category: 'Appointment Letter',
+      fileName: 'Employment_Contract_Executed.pdf',
+      fileSize: '1.4 MB',
+      verificationStatus: 'Verified',
+      uploadDate: '2026-08-01',
+      documentNumber: 'CAS-APPT-2026-001',
+      notes: 'Signed institutional agreement with probation terms',
+    },
+    {
+      id: 'doc-ref-2',
+      name: 'Highest Educational Degree Certificate',
+      category: 'Educational Certificate',
+      fileName: 'Post_Graduate_Degree_Certificate.pdf',
+      fileSize: '2.1 MB',
+      verificationStatus: 'Verified',
+      uploadDate: '2026-08-01',
+      documentNumber: 'DEG-78912',
+      notes: 'Original verified by Directorate of Academics',
+    },
+  ]);
+
+  const [isAddingDocModal, setIsAddingDocModal] = useState(false);
+  const [newDocName, setNewDocName] = useState('');
+  const [newDocCategory, setNewDocCategory] = useState<string>('Appointment Letter');
+  const [newDocFileName, setNewDocFileName] = useState('');
+  const [newDocFileSize, setNewDocFileSize] = useState('1.5 MB');
+  const [newDocNumber, setNewDocNumber] = useState('');
+  const [newDocIssueDate, setNewDocIssueDate] = useState('');
+  const [newDocExpiryDate, setNewDocExpiryDate] = useState('');
+  const [newDocStatus, setNewDocStatus] = useState<'Verified' | 'Pending' | 'Rejected'>('Verified');
+  const [newDocNotes, setNewDocNotes] = useState('');
+
+  // 9. System & Access Information State (Connect User Creation & Staff Onboarding)
+  const [enableLogin, setEnableLogin] = useState(true);
+  const [systemUserType, setSystemUserType] = useState('Faculty / Staff');
+  const [systemUsername, setSystemUsername] = useState('');
+  const [systemPassword, setSystemPassword] = useState('Password@123');
+  const [showPassword, setShowPassword] = useState(false);
+  const [systemRole, setSystemRole] = useState('Staff');
+  const [accessLevel, setAccessLevel] = useState<'Read-Only' | 'Standard' | 'Manager' | 'Administrator' | 'Super Admin'>('Standard');
+  const [assignedModules, setAssignedModules] = useState<string[]>([
+    'Dashboard',
+    'HR & Staff Directory',
+    'Attendance & Leave',
+  ]);
+  const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Main Campus');
+  const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
+  const [copiedPass, setCopiedPass] = useState(false);
+
+  // Synchronize state when opening in Edit mode or Resetting for Add mode
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (staffToEdit) {
+      const existingId = staffToEdit.staffCode || staffToEdit.id || '';
+      setStaffId(existingId);
+      setFullName(staffToEdit.fullName || '');
+      setProfilePhoto(staffToEdit.profilePhoto || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80');
+      setGender(staffToEdit.gender || 'Female');
+      setDateOfBirth(staffToEdit.dateOfBirth || '1990-01-01');
+      setBloodGroup(staffToEdit.bloodGroup || 'O+');
+      setNationality(staffToEdit.nationality || 'Indian');
+      setMaritalStatus(staffToEdit.maritalStatus || 'Married');
+      setPersonalEmail(staffToEdit.personalEmail || '');
+      setOfficialEmail(staffToEdit.email || '');
+      setContactNumber(staffToEdit.contactNumber || '');
+      setWhatsappNumber(staffToEdit.whatsappNumber || staffToEdit.contactNumber || '');
+      setEmergencyContactName(staffToEdit.emergencyContact?.name || '');
+      setEmergencyRelationship(staffToEdit.emergencyContact?.relationship || 'Spouse');
+      setEmergencyPhone(staffToEdit.emergencyContact?.phone || '');
+
+      // Address
+      if (staffToEdit.permanentAddress) {
+        setPermanentAddress({
+          addressLine1: staffToEdit.permanentAddress.addressLine1 || '',
+          addressLine2: staffToEdit.permanentAddress.addressLine2 || '',
+          city: staffToEdit.permanentAddress.city || '',
+          district: staffToEdit.permanentAddress.district || 'Ernakulam',
+          state: staffToEdit.permanentAddress.state || 'Kerala',
+          country: staffToEdit.permanentAddress.country || 'India',
+          pinCode: staffToEdit.permanentAddress.pinCode || '',
+        });
+      }
+      const same = staffToEdit.communicationAddress?.sameAsPermanent ?? true;
+      setSameAsPermanent(same);
+      if (staffToEdit.communicationAddress) {
+        setCommunicationAddress({
+          addressLine1: staffToEdit.communicationAddress.addressLine1 || '',
+          addressLine2: staffToEdit.communicationAddress.addressLine2 || '',
+          city: staffToEdit.communicationAddress.city || '',
+          district: staffToEdit.communicationAddress.district || 'Ernakulam',
+          state: staffToEdit.communicationAddress.state || 'Kerala',
+          country: staffToEdit.communicationAddress.country || 'India',
+          pinCode: staffToEdit.communicationAddress.pinCode || '',
+        });
+      }
+
+      // Employment
+      setDateOfJoining(staffToEdit.joiningDate || new Date().toISOString().split('T')[0]);
+      setDepartment(staffToEdit.department || 'Academic');
+      const code = staffToEdit.departmentCode || hrStorage.getDepartmentCodeByNameOrCode(staffToEdit.department);
+      setDepartmentCode(code);
+      setPosition(staffToEdit.position || '');
+      setEmployeeCategory(staffToEdit.employeeCategory || 'Administrator');
+      setEmploymentType(staffToEdit.employmentType || 'Full Time');
+      setBranchLocation(staffToEdit.branchLocation || 'Kochi Main Campus');
+      setReportingManager(staffToEdit.reportingTo || staffToEdit.reportingManager || 'Dr. Ramesh Nambiar');
+      setWorkLocation(staffToEdit.workLocation || 'On-site (Campus Wing A)');
+      setPreviousEmployeeId(staffToEdit.previousEmployeeId || '');
+      setEmploymentStatus(staffToEdit.employmentStatus || 'Active');
+      setProbationPeriod(staffToEdit.probationPeriod || '6 Months');
+
+      // Records
+      if (staffToEdit.experiences && staffToEdit.experiences.length > 0) {
+        setExperiences(staffToEdit.experiences);
+      }
+      if (staffToEdit.qualifications && staffToEdit.qualifications.length > 0) {
+        setQualifications(staffToEdit.qualifications);
+      }
+      if (staffToEdit.familyMembers && staffToEdit.familyMembers.length > 0) {
+        setFamilyMembers(staffToEdit.familyMembers);
+      }
+
+      // Bank & Salary
+      const sal = staffToEdit.salary;
+      const bp = staffToEdit.bankPayroll;
+      setBankName(sal?.bankDetails?.bankName || bp?.bankName || 'State Bank of India');
+      setAccountHolderName(bp?.accountHolderName || staffToEdit.fullName || '');
+      setAccountNo(sal?.bankDetails?.accountNo || bp?.accountNo || '');
+      setIfscCode(sal?.bankDetails?.ifscCode || bp?.ifscCode || 'SBIN0002144');
+      setBankBranch(sal?.bankDetails?.branch || bp?.branch || 'Edappally, Kochi');
+      setUan(bp?.uan || '100984712093');
+      setPfNumber(bp?.pfNumber || 'KR/KCH/0048192/000/1209');
+      setEsiNumber(bp?.esiNumber || '4800918234001');
+
+      setBasicSalary(sal?.basicSalary ?? 38000);
+      setHra(sal?.hra ?? 15200);
+      if (sal?.allowanceItems && sal.allowanceItems.length > 0) {
+        setAllowanceItems(sal.allowanceItems);
+        const sum = sal.allowanceItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+        setAllowances(sum);
+      } else {
+        setAllowances(sal?.allowances ?? 6800);
+      }
+      setSpecialAllowance(sal?.specialAllowance ?? 2000);
+      setPfDeduction(sal?.pfDeduction ?? 1800);
+      setTaxDeduction(sal?.taxDeduction ?? 1500);
+
+      // Documents
+      setAadhaarNumber(staffToEdit.aadhaarNumber || '•••• •••• 9812');
+      setPanNumber(staffToEdit.panNumber || 'ABCDE1234F');
+
+      // Populate document references
+      if (staffToEdit.documentReferences && staffToEdit.documentReferences.length > 0) {
+        setDocReferences(staffToEdit.documentReferences);
+      } else if (staffToEdit.documents && staffToEdit.documents.length > 0) {
+        setDocReferences(
+          staffToEdit.documents.map((d, idx) => ({
+            id: d.id || `doc-ref-${idx + 1}`,
+            name: `${d.category} - ${d.fileName}`,
+            category: d.category,
+            fileName: d.fileName,
+            fileSize: d.fileSize || '1.4 MB',
+            verificationStatus: d.verificationStatus || 'Verified',
+            uploadDate: d.uploadDate || staffToEdit.joiningDate || new Date().toISOString().split('T')[0],
+            documentNumber: d.documentNumber,
+            issueDate: d.issueDate,
+            expiryDate: d.expiryDate,
+            notes: d.notes || 'Official institutional record',
+          }))
+        );
+      }
+
+      // System Access
+      if (staffToEdit.systemAccess) {
+        setEnableLogin(staffToEdit.systemAccess.enableLogin ?? true);
+        setSystemUserType(staffToEdit.systemAccess.userType || 'Faculty / Staff');
+        setSystemUsername(staffToEdit.systemAccess.username || '');
+        setSystemRole(staffToEdit.systemAccess.role || 'Staff');
+        setAccessLevel(staffToEdit.systemAccess.accessLevel || 'Standard');
+        if (staffToEdit.systemAccess.assignedModules) {
+          setAssignedModules(staffToEdit.systemAccess.assignedModules);
+        }
+        setSystemBranchAccess(staffToEdit.systemAccess.branchAccess || 'Kochi Main Campus');
+        setAccountStatus(staffToEdit.systemAccess.accountStatus || 'Active');
+      }
+
+      // Verification
+      if (staffToEdit.verification) {
+        setRegistrationDate(staffToEdit.verification.registrationDate || staffToEdit.createdDate || '');
+        setRegisteredBy(staffToEdit.verification.registeredBy || 'HR Admin');
+        setVerificationStatus(staffToEdit.verification.verificationStatus || 'Verified');
+        setVerifiedBy(staffToEdit.verification.verifiedBy || 'Dr. Ramesh Nambiar');
+        setVerificationDate(staffToEdit.verification.verificationDate || '');
+        setRegistrationRemarks(staffToEdit.verification.remarks || '');
+      }
+    } else {
+      // New Onboard Mode
+      const freshId = hrStorage.generateNextEmployeeId(departmentCode);
+      setStaffId(freshId);
+      setFullName('');
+      setPosition('');
+      setPersonalEmail('');
+      setOfficialEmail('');
+      setContactNumber('');
+      setWhatsappNumber('');
+      setAccountNo('');
+      setAccountHolderName('');
+      setAllowanceItems([
+        { id: 'all-room', name: 'Room Allowance', amount: 3000 },
+        { id: 'all-trans', name: 'Transportation', amount: 2000 },
+        { id: 'all-ot', name: 'Over time', amount: 1000 },
+        { id: 'all-med', name: 'Medical Allowance', amount: 800 },
+      ]);
+      setAllowances(6800);
+    }
+  }, [isOpen, staffToEdit]);
+
   const handleAddAllowanceItem = (name = 'Room Allowance', amount = 2000) => {
     const newItem: AllowanceItem = {
       id: `all-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -271,35 +513,46 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const totalDeductions = pfDeduction + taxDeduction;
   const netSalary = grossSalary - totalDeductions;
 
-  // 8. Documents State
-  const [aadhaarNumber, setAadhaarNumber] = useState('•••• •••• 9812');
-  const [panNumber, setPanNumber] = useState('ABCDE1234F');
-  const [uploadedDocs, setUploadedDocs] = useState<{ [key: string]: boolean }>({
-    aadhaar: true,
-    pan: true,
-    passportPhoto: true,
-    resume: true,
-    experienceCert: true,
-    qualificationCert: true,
-    joiningDocs: true,
-  });
+  // Document References Handlers
+  const handleAddDocReference = () => {
+    if (!newDocName.trim()) return;
+    const item: StaffDocumentReference = {
+      id: `doc-ref-${Date.now()}`,
+      name: newDocName.trim(),
+      category: newDocCategory,
+      fileName: newDocFileName.trim() || `${newDocName.trim().replace(/\s+/g, '_')}.pdf`,
+      fileSize: newDocFileSize || '1.2 MB',
+      documentNumber: newDocNumber.trim(),
+      issueDate: newDocIssueDate,
+      expiryDate: newDocExpiryDate,
+      verificationStatus: newDocStatus,
+      uploadDate: new Date().toISOString().split('T')[0],
+      notes: newDocNotes.trim(),
+    };
+    setDocReferences([...docReferences, item]);
+    setIsAddingDocModal(false);
+    setNewDocName('');
+    setNewDocFileName('');
+    setNewDocNumber('');
+    setNewDocIssueDate('');
+    setNewDocExpiryDate('');
+    setNewDocNotes('');
+  };
 
-  // 9. System & Access Information State (Connect User Creation & Staff Onboarding)
-  const [enableLogin, setEnableLogin] = useState(true);
-  const [systemUserType, setSystemUserType] = useState('Faculty / Staff');
-  const [systemUsername, setSystemUsername] = useState('');
-  const [systemPassword, setSystemPassword] = useState('Password@123');
-  const [showPassword, setShowPassword] = useState(false);
-  const [systemRole, setSystemRole] = useState('Staff');
-  const [accessLevel, setAccessLevel] = useState<'Read-Only' | 'Standard' | 'Manager' | 'Administrator' | 'Super Admin'>('Standard');
-  const [assignedModules, setAssignedModules] = useState<string[]>([
-    'Dashboard',
-    'HR & Staff Directory',
-    'Attendance & Leave',
-  ]);
-  const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Main Campus');
-  const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
-  const [copiedPass, setCopiedPass] = useState(false);
+  const handleRemoveDocReference = (id: string) => {
+    setDocReferences(docReferences.filter((d) => d.id !== id));
+  };
+
+  const handleToggleDocVerification = (id: string) => {
+    setDocReferences(
+      docReferences.map((d) => {
+        if (d.id !== id) return d;
+        const nextStatus: 'Verified' | 'Pending' | 'Rejected' =
+          d.verificationStatus === 'Verified' ? 'Pending' : d.verificationStatus === 'Pending' ? 'Rejected' : 'Verified';
+        return { ...d, verificationStatus: nextStatus };
+      })
+    );
+  };
 
   // Department Master Selection Handler: syncs Department Name, Code, Reporting Manager & continuous ID
   const handleDepartmentChange = (code: string) => {
@@ -308,8 +561,20 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       setDepartmentCode(dept.departmentCode);
       setDepartment(dept.departmentName);
       setReportingManager(dept.reporting);
-      const generatedId = hrStorage.generateNextEmployeeId(dept.departmentCode);
-      setStaffId(generatedId);
+      if (!isEditMode) {
+        // When onboarding, update department code while keeping the next continuous global sequence number
+        const generatedId = hrStorage.generateNextEmployeeId(dept.departmentCode);
+        setStaffId(generatedId);
+      } else {
+        // In edit mode: preserve the staff member's continuous sequence number and swap the department code
+        const match = staffId.match(/(\d+)$/);
+        if (match) {
+          const num = match[1];
+          setStaffId(`CB/${dept.departmentCode}/${num}`);
+        } else {
+          setStaffId(hrStorage.generateNextEmployeeId(dept.departmentCode));
+        }
+      }
     }
   };
 
@@ -492,8 +757,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     ];
 
     const staffPayload: Partial<StaffMember> = {
-      id: staffId || nextId,
-      staffId: staffId || nextId,
+      id: staffId || staffToEdit?.id || nextId,
+      staffId: staffId || staffToEdit?.staffId || staffToEdit?.id || nextId,
+      staffCode: staffId || staffToEdit?.staffCode || staffToEdit?.id || nextId,
       fullName: fullName.trim(),
       profilePhoto,
       gender,
@@ -516,7 +782,6 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         sameAsPermanent,
       },
       joiningDate: dateOfJoining,
-      staffCode: staffId,
       departmentCode: departmentCode,
       reportingTo: reportingManager,
       division: `${department} Wing`,
@@ -531,6 +796,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       employmentStatus,
       probationPeriod,
       documents: initialDocs,
+      documentReferences: docReferences,
       salary: {
         basicSalary,
         hra,
@@ -755,16 +1021,20 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <h2 className="text-base font-bold text-slate-900">Onboard New Staff Member</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  MYSAR HR Module
+                <h2 className="text-base font-bold text-slate-900">
+                  {isEditMode ? `Edit Staff Member: ${fullName || staffToEdit?.fullName || 'Staff'}` : 'Onboard New Staff Member'}
+                </h2>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isEditMode ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>
+                  {isEditMode ? 'Edit Mode' : 'MYSAR HR Module'}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 font-mono">
                   ID: {staffId}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Official institutional staff registration form spanning 10 structured sections.
+                {isEditMode
+                  ? 'Update staff demographics, department assignment, document attachments, allowances, and system credentials.'
+                  : 'Official institutional staff registration form spanning 10 structured sections.'}
               </p>
             </div>
           </div>
@@ -1281,20 +1551,20 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       type="text"
                       value={staffId}
                       onChange={(e) => setStaffId(e.target.value)}
-                      placeholder="e.g. CB/ACAD/001"
+                      placeholder="e.g. CB/101/001"
                       className="w-full border border-slate-300 rounded-xl px-3 py-2 text-slate-900 bg-emerald-50/40 font-mono font-bold text-sm tracking-wide focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                     />
                     <button
                       type="button"
                       onClick={() => setStaffId(hrStorage.generateNextEmployeeId(departmentCode))}
-                      title="Regenerate next continuous sequence ID for this department"
+                      title="Regenerate next continuous sequence ID across all staff"
                       className="absolute right-2 top-2 text-slate-400 hover:text-emerald-700 transition-colors p-1"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Format: <span className="font-mono font-bold text-emerald-800">CB/{departmentCode || 'DEPT'}/###</span> (Continuous sequence)
+                    Format: <span className="font-mono font-bold text-emerald-800">CB/{departmentCode || '101'}/###</span> (Global continuous sequence, e.g. CB/101/001, CB101/002, CB/102/003, CB/103/004)
                   </p>
                 </div>
 
@@ -2287,6 +2557,246 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* Document Attachments & Institutional Contracts (documentReferences) */}
+              <div className="space-y-3 pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <Paperclip className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-slate-900 text-sm">Institutional Document Attachments & Contracts</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        {docReferences.length} files
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      List and manage signed employment contracts, degree certificates, experience letters, and statutory records.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingDocModal(!isAddingDocModal)}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer transition-all text-xs shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isAddingDocModal ? 'Close Form' : 'Attach Document'}</span>
+                  </button>
+                </div>
+
+                {/* Inline Add Document Form */}
+                {isAddingDocModal && (
+                  <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-3 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                      <div className="font-bold text-emerald-950 flex items-center space-x-2">
+                        <FilePlus className="w-4 h-4 text-emerald-600" />
+                        <span>Add New Document Attachment</span>
+                      </div>
+                      <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                        Attachment Dossier
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="font-semibold text-slate-700">Document Title / Description *</label>
+                        <input
+                          type="text"
+                          value={newDocName}
+                          onChange={(e) => setNewDocName(e.target.value)}
+                          placeholder="e.g. Full-Time Employment Contract 2026"
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Category *</label>
+                        <select
+                          value={newDocCategory}
+                          onChange={(e) => setNewDocCategory(e.target.value)}
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        >
+                          <option value="Appointment Letter">Appointment Letter / Contract</option>
+                          <option value="Educational Certificate">Educational Certificate / Degree</option>
+                          <option value="Experience Certificate">Experience Certificate</option>
+                          <option value="ID Proof">Government ID Proof</option>
+                          <option value="Relieving Letter">Relieving Order / NOC</option>
+                          <option value="NDA & Compliance">NDA & Statutory Compliance</option>
+                          <option value="Medical Clearance">Medical / Police Verification</option>
+                          <option value="Other">Other Document</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">File Name</label>
+                        <input
+                          type="text"
+                          value={newDocFileName}
+                          onChange={(e) => setNewDocFileName(e.target.value)}
+                          placeholder="e.g. Appointment_Order_Executed.pdf"
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Document / Ref Number</label>
+                        <input
+                          type="text"
+                          value={newDocNumber}
+                          onChange={(e) => setNewDocNumber(e.target.value)}
+                          placeholder="e.g. CAS/APPT/2026/04"
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Verification Status</label>
+                        <select
+                          value={newDocStatus}
+                          onChange={(e) => setNewDocStatus(e.target.value as any)}
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        >
+                          <option value="Verified">Verified ✓</option>
+                          <option value="Pending">Pending Review</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Issue Date</label>
+                        <input
+                          type="date"
+                          value={newDocIssueDate}
+                          onChange={(e) => setNewDocIssueDate(e.target.value)}
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-700">Expiry Date (If applicable)</label>
+                        <input
+                          type="date"
+                          value={newDocExpiryDate}
+                          onChange={(e) => setNewDocExpiryDate(e.target.value)}
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <label className="font-semibold text-slate-700">Verification Notes / Institutional Remarks</label>
+                        <input
+                          type="text"
+                          value={newDocNotes}
+                          onChange={(e) => setNewDocNotes(e.target.value)}
+                          placeholder="e.g. Original physically inspected and signed by Registrar / Director."
+                          className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end space-x-2 pt-2 border-t border-emerald-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingDocModal(false)}
+                        className="px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-white rounded-xl font-medium cursor-pointer text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddDocReference}
+                        disabled={!newDocName.trim()}
+                        className="flex items-center space-x-1.5 px-4 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer transition-all text-xs disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Add Document Attachment</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Document References List */}
+                {docReferences.length === 0 ? (
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                    <Paperclip className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                    <p className="text-slate-700 font-semibold">No Document Attachments Added</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Click &quot;Attach Document&quot; above to add appointment contracts, certificates, and compliance forms.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {docReferences.map((doc) => {
+                      const isVerified = doc.verificationStatus === 'Verified';
+                      const isPending = doc.verificationStatus === 'Pending';
+                      return (
+                        <div
+                          key={doc.id}
+                          className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs hover:border-emerald-300 transition-all"
+                        >
+                          <div className="flex items-start space-x-3 min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-[#168A45] flex items-center justify-center shrink-0 mt-0.5">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span className="font-bold text-slate-900">{doc.name}</span>
+                                <span className="px-2 py-0.2 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                  {doc.category}
+                                </span>
+                                {doc.documentNumber && (
+                                  <span className="text-[10px] font-mono text-slate-500 bg-slate-50 px-1.5 py-0.2 rounded-sm border border-slate-100">
+                                    Ref: {doc.documentNumber}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-3 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+                                <span className="font-mono text-[10px] text-slate-600">{doc.fileName}</span>
+                                {doc.fileSize && <span>• {doc.fileSize}</span>}
+                                {doc.uploadDate && <span>• Uploaded: {doc.uploadDate}</span>}
+                                {doc.expiryDate && <span className="text-amber-700 font-medium">• Expires: {doc.expiryDate}</span>}
+                              </div>
+                              {doc.notes && (
+                                <p className="text-[10px] text-slate-500 mt-1 italic line-clamp-1">
+                                  Note: {doc.notes}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 shrink-0">
+                            {/* Verification Status Button (clickable to cycle status) */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleDocVerification(doc.id)}
+                              title="Click to toggle status (Verified / Pending / Rejected)"
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer border transition-all flex items-center space-x-1 ${
+                                isVerified
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                  : isPending
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                              }`}
+                            >
+                              {isVerified && <Check className="w-3 h-3 text-emerald-600 inline" />}
+                              <span>{doc.verificationStatus}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDocReference(doc.id)}
+                              title="Delete document attachment"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2727,7 +3237,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               className="flex items-center space-x-2 px-5 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer shadow-sm transition-all text-xs"
             >
               <Check className="w-4 h-4" />
-              <span>Save & Onboard Staff</span>
+              <span>{isEditMode ? 'Update Staff Member' : 'Save & Onboard Staff'}</span>
             </button>
           </div>
         </div>

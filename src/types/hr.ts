@@ -203,8 +203,25 @@ export interface StaffDocument {
   expiryDate?: string;
   fileName: string;
   fileSize?: string;
+  fileUrl?: string;
   verificationStatus: 'Verified' | 'Pending' | 'Rejected';
   uploadDate: string;
+  notes?: string;
+}
+
+export interface StaffDocumentReference {
+  id: string;
+  name: string;
+  category: DocumentCategory | string;
+  fileName: string;
+  fileSize?: string;
+  fileUrl?: string;
+  documentNumber?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  verificationStatus: 'Verified' | 'Pending' | 'Rejected';
+  uploadDate: string;
+  notes?: string;
 }
 
 export interface StaffSalaryDetails {
@@ -324,10 +341,10 @@ export interface StaffVerificationDetails {
 }
 
 export interface StaffMember {
-  id: string; // Employee ID e.g. "CB/ACAD/001"
+  id: string; // Employee ID e.g. "CB/101/001"
   staffId?: string;
-  staffCode?: string; // e.g. "CB/ACAD/001"
-  departmentCode?: string; // e.g. "ACAD"
+  staffCode?: string; // e.g. "CB/101/001"
+  departmentCode?: string; // e.g. "101"
   reportingTo?: string; // Department reporting manager from master
   userId?: string; // Linked portal user id
   profilePhoto?: string;
@@ -378,6 +395,7 @@ export interface StaffMember {
   probationPeriod: string;
   employmentStatus: EmploymentStatus;
   documents: StaffDocument[];
+  documentReferences?: StaffDocumentReference[];
   salary: StaffSalaryDetails;
   todayAttendanceStatus?: 'Present' | 'Absent' | 'Late' | 'Half Day' | 'On Leave' | 'Not Marked';
   overallKpiScore?: number; // percentage e.g. 91
@@ -563,6 +581,53 @@ export interface StaffPerformanceEvaluation {
   evaluatedDate: string;
 }
 
+export interface IdCardFieldConfig {
+  id: string; // e.g. 'photo', 'fullName', 'staffId', 'department', 'position', 'bloodGroup', 'emergencyPhone', 'joiningDate', 'validUntil', 'workLocation', 'qrCode', 'barcode', 'signature', 'custom_...'
+  label: string;
+  type: 'photo' | 'text' | 'qrcode' | 'barcode' | 'signature' | 'badge';
+  visible: boolean;
+  x: number; // percentage (0 to 100)
+  y: number; // percentage (0 to 100)
+  width?: number; // width in px
+  height?: number; // height in px
+  fontSize?: number; // font size in px (e.g. 12)
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';
+  color?: string; // hex code
+  textAlign?: 'left' | 'center' | 'right';
+  showLabel?: boolean; // e.g. whether to show prefix
+  customPrefix?: string; // e.g. "ID: " or "Blood: "
+  customValue?: string; // static value if not bound to staff object
+  shape?: 'circle' | 'rounded' | 'square'; // for photo
+  borderWidth?: number;
+  borderColor?: string;
+  isCustom?: boolean;
+}
+
+export interface IdCardTemplateSettings {
+  templateName: string;
+  orientation: 'portrait' | 'landscape'; // 'portrait' (CR80: 320x500) or 'landscape' (500x320)
+  useFullBackgroundArtwork: boolean; // if true, suppresses default top banner so uploaded template artwork is full card
+  backgroundImage?: string; // Base64 data URL or image URL for front
+  backBackgroundImage?: string; // Base64 data URL or image URL for back
+  headerBgColor: string; // default '#0B5D2A'
+  headerTextColor: string; // default '#ffffff'
+  accentColor: string; // default '#168A45'
+  institutionName: string; // default 'CASBIRO SOLUTIONS PVT LTD'
+  institutionSubtitle: string; // default 'Campus Management & HR Division'
+  logoUrl?: string; // base64 or URL
+  cardCornerRadius: number; // in px, default 16
+  photoShape: 'circle' | 'rounded' | 'square';
+  photoBorderColor: string;
+  photoBorderWidth: number;
+  photoSize: number; // in px, default 84
+  authorizedSignatoryTitle: string; // default 'Authorized Signatory'
+  authorizedSignatureImage?: string; // signature image
+  backTermsAndConditions: string;
+  backReturnAddress: string;
+  backEmergencyHelpline: string;
+  fields: IdCardFieldConfig[];
+}
+
 export interface HrSettingsConfig {
   divisions: string[];
   departments: string[];
@@ -594,6 +659,7 @@ export interface HrSettingsConfig {
     esiRatePercent: number; // e.g. 0.75
     standardHraPercent: number; // e.g. 40
   };
+  idCardSettings?: IdCardTemplateSettings;
 }
 
 export interface HrActivityLog {

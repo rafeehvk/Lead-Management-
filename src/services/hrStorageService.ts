@@ -21,6 +21,7 @@ import {
   AppointmentStatus,
   InterviewEvaluation,
   DepartmentMaster,
+  IdCardTemplateSettings,
 } from '../types/hr';
 import {
   initialPositions,
@@ -38,6 +39,7 @@ import {
   initialHrSettings,
   initialHrActivityLogs,
   initialDepartmentsMaster,
+  initialIdCardSettings,
 } from '../data/hrMockData';
 
 const HR_STORAGE_KEYS = {
@@ -56,6 +58,7 @@ const HR_STORAGE_KEYS = {
   PERFORMANCE: 'mysar_hr_performance_v1',
   SETTINGS: 'mysar_hr_settings_v1',
   LOGS: 'mysar_hr_activity_logs_v1',
+  ID_CARD_TEMPLATE: 'mysar_hr_id_card_template_v1',
 };
 
 class HrStorageService {
@@ -689,61 +692,203 @@ class HrStorageService {
     return true;
   }
 
-  public generateNextEmployeeId(departmentCodeOrName: string): string {
-    const depts = this.getDepartmentsMaster();
+  public getDepartmentCodeByNameOrCode(departmentCodeOrName?: string): string {
     const clean = (departmentCodeOrName || '').trim();
+    if (!clean) return '101';
 
-    // Find matching department by code or name
+    const lower = clean.toLowerCase();
+    const standardMap: { [key: string]: string } = {
+      academic: '101',
+      acad: '101',
+      '101': '101',
+      administration: '102',
+      admin: '102',
+      admi: '102',
+      adm: '102',
+      '102': '102',
+      'finance & accounts': '103',
+      finance: '103',
+      accounts: '103',
+      fin: '103',
+      '103': '103',
+      'human resources': '104',
+      hr: '104',
+      '104': '104',
+      'engineering & it': '105',
+      it: '105',
+      tech: '105',
+      '105': '105',
+      'sales & marketing': '106',
+      sales: '106',
+      marketing: '106',
+      mkt: '106',
+      '106': '106',
+      'campus operations': '107',
+      operations: '107',
+      ops: '107',
+      '107': '107',
+    };
+
+    if (standardMap[lower]) {
+      return standardMap[lower];
+    }
+
+    const depts = this.getDepartmentsMaster();
     const foundDept = depts.find(
-      (d) => d.departmentCode.toLowerCase() === clean.toLowerCase() ||
-             d.departmentName.toLowerCase() === clean.toLowerCase() ||
-             d.id.toLowerCase() === clean.toLowerCase()
+      (d) =>
+        d.departmentCode.toLowerCase() === lower ||
+        d.departmentName.toLowerCase() === lower ||
+        d.id.toLowerCase() === lower
     );
+    if (foundDept) return foundDept.departmentCode.toUpperCase();
+    if (clean.length <= 4) return clean.toUpperCase();
+    return clean.substring(0, 4).toUpperCase();
+  }
 
-    const code = foundDept ? foundDept.departmentCode.toUpperCase() : (clean.substring(0, 4).toUpperCase() || 'GEN');
-    const staff = this.getStaff();
-    const prefix = `CB/${code}/`;
+  public getNextContinuousSequenceNumber(staffListOverride?: StaffMember[]): number {
+    const staff = staffListOverride || this.getStaff();
     let maxNum = 0;
 
     for (const s of staff) {
-      const sId = (s.id || s.staffCode || '').toUpperCase();
-      if (sId.startsWith(prefix)) {
-        const remainder = sId.substring(prefix.length);
-        const parsed = parseInt(remainder, 10);
+      const sId = (s.id || s.staffCode || '').trim();
+      const match = sId.match(/(\d+)$/);
+      if (match) {
+        const parsed = parseInt(match[1], 10);
         if (!isNaN(parsed) && parsed > maxNum) {
           maxNum = parsed;
-        }
-      } else if (
-        (s.departmentCode && s.departmentCode.toUpperCase() === code) ||
-        (s.department && foundDept && s.department.toLowerCase() === foundDept.departmentName.toLowerCase())
-      ) {
-        const match = sId.match(/(\d+)$/);
-        if (match) {
-          const parsed = parseInt(match[1], 10);
-          if (!isNaN(parsed) && parsed > maxNum) {
-            maxNum = parsed;
-          }
         }
       }
     }
 
-    const nextNumber = maxNum + 1;
+    return maxNum + 1;
+  }
+
+  public generateNextEmployeeId(departmentCodeOrName?: string, staffListOverride?: StaffMember[]): string {
+    const code = this.getDepartmentCodeByNameOrCode(departmentCodeOrName);
+    const nextNumber = this.getNextContinuousSequenceNumber(staffListOverride);
     return `CB/${code}/${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  public formatOrValidateEmployeeId(
+    rawId?: string,
+    departmentCodeOrName?: string,
+    existingStaffList?: StaffMember[]
+  ): string {
+    const deptCode = this.getDepartmentCodeByNameOrCode(departmentCodeOrName);
+    const cleaned = (rawId || '').trim();
+
+    // Check if rawId matches CB/{DEPT}/{number} or CB{DEPT}/{number}
+    const match = cleaned.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
+    if (match) {
+      const parsedDept = this.getDepartmentCodeByNameOrCode(match[1]);
+      const num = parseInt(match[2], 10);
+      return `CB/${parsedDept}/${String(num).padStart(3, '0')}`;
+    }
+
+    // Otherwise generate the next available employee ID in global continuous sequence
+    return this.generateNextEmployeeId(deptCode, existingStaffList);
   }
 
   // --- STAFF MANAGEMENT ---
   public getStaff(): StaffMember[] {
-    return this.getStorage<StaffMember[]>(HR_STORAGE_KEYS.STAFF, initialStaffMembers);
+    const rawList = this.getStorage<StaffMember[]>(HR_STORAGE_KEYS.STAFF, initialStaffMembers);
+    
+    // Automatically migrate/standardize any legacy IDs to CB/{DeptCode}/{GlobalContinuousNumber}
+    // Ensures global continuous numbering without department-wise reset (e.g. CB/101/001, CB101/002, CB/102/003, CB/103/004)
+    let hasChanges = false;
+    const seenNumbers = new Set<number>();
+    let hasDuplicateNumbersOrLegacy = false;
+
+    for (const s of rawList) {
+      const sId = (s.id || s.staffCode || '').trim();
+      const match = sId.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
+      if (match) {
+        const dept = match[1];
+        const num = parseInt(match[2], 10);
+        // If the department code is still legacy alpha (e.g. ACAD, ADMI, IT) or number is repeated across different staff
+        if (['ACAD', 'ADM', 'ADMI', 'FIN', 'HR', 'IT', 'MKT', 'OPS'].includes(dept.toUpperCase()) || seenNumbers.has(num)) {
+          hasDuplicateNumbersOrLegacy = true;
+          break;
+        }
+        seenNumbers.add(num);
+      } else {
+        hasDuplicateNumbersOrLegacy = true;
+        break;
+      }
+    }
+
+    let runningSeq = 0;
+    const validatedList = rawList.map((s) => {
+      const deptCode = this.getDepartmentCodeByNameOrCode(s.departmentCode || s.department || 'Academic');
+      let id = (s.id || s.staffCode || '').trim();
+      const match = id.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
+
+      let seqNum: number;
+      let effectiveDept = deptCode;
+
+      if (!hasDuplicateNumbersOrLegacy && match) {
+        seqNum = parseInt(match[2], 10);
+        effectiveDept = this.getDepartmentCodeByNameOrCode(match[1]);
+      } else {
+        runningSeq += 1;
+        seqNum = runningSeq;
+        hasChanges = true;
+      }
+
+      const normalized = `CB/${effectiveDept}/${String(seqNum).padStart(3, '0')}`;
+      if (id !== normalized || s.staffCode !== normalized || s.departmentCode !== effectiveDept) {
+        hasChanges = true;
+      }
+
+      return {
+        ...s,
+        id: normalized,
+        staffCode: normalized,
+        departmentCode: effectiveDept,
+      };
+    });
+
+    if (hasChanges) {
+      this.setStorage(HR_STORAGE_KEYS.STAFF, validatedList);
+    }
+    return validatedList;
+  }
+
+  public clearAllDummyData(actorName = 'Admin'): void {
+    this.setStorage(HR_STORAGE_KEYS.STAFF, []);
+    this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, []);
+    this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, []);
+    this.setStorage(HR_STORAGE_KEYS.LEAVE_BALANCES, []);
+    this.setStorage(HR_STORAGE_KEYS.PERFORMANCE, []);
+    this.setStorage(HR_STORAGE_KEYS.APPLICANTS, []);
+    this.setStorage(HR_STORAGE_KEYS.INTERVIEWS, []);
+    this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, []);
+    this.setStorage(HR_STORAGE_KEYS.APPOINTMENT_LETTERS, []);
+    this.addActivity(actorName, 'HR Admin', 'Cleared all dummy records and staff data', 'Settings', 'Clean Slate');
   }
 
   public saveStaff(staffData: Partial<StaffMember>, actorName = 'Admin'): StaffMember {
     const staffList = this.getStaff();
+    const deptParam = staffData.departmentCode || staffData.department || 'Academic';
+    const deptCode = this.getDepartmentCodeByNameOrCode(deptParam);
+
     if (staffData.id) {
-      const idx = staffList.findIndex((s) => s.id === staffData.id);
+      const idx = staffList.findIndex((s) => s.id === staffData.id || (staffData.previousEmployeeId && s.id === staffData.previousEmployeeId));
       if (idx !== -1) {
+        const current = staffList[idx];
+        const otherStaff = staffList.filter((_, i) => i !== idx);
+        const finalId = this.formatOrValidateEmployeeId(
+          staffData.id || current.id,
+          deptCode,
+          otherStaff
+        );
+
         const updated: StaffMember = {
-          ...staffList[idx],
+          ...current,
           ...staffData,
+          id: finalId,
+          staffCode: finalId,
+          departmentCode: deptCode,
           updatedDate: new Date().toISOString().split('T')[0],
         };
         staffList[idx] = updated;
@@ -754,8 +899,7 @@ class HrStorageService {
       }
     }
 
-    const deptParam = staffData.departmentCode || staffData.department || 'Academic';
-    const newId = staffData.id || this.generateNextEmployeeId(deptParam);
+    const newId = this.formatOrValidateEmployeeId(staffData.id || staffData.staffCode, deptCode, staffList);
     const basic = staffData.salary?.basicSalary || 30000;
     const hra = staffData.salary?.hra || Math.round(basic * 0.4);
     const allowances = staffData.salary?.allowances || 8000;
@@ -771,8 +915,8 @@ class HrStorageService {
     const newStaff: StaffMember = {
       ...staffData,
       id: newId,
-      staffCode: staffData.staffCode || newId,
-      departmentCode: staffData.departmentCode,
+      staffCode: newId,
+      departmentCode: deptCode,
       reportingTo: staffData.reportingTo || staffData.reportingManager,
       fullName: staffData.fullName || 'New Staff',
       dateOfBirth: staffData.dateOfBirth || '1990-01-01',
@@ -1215,12 +1359,35 @@ class HrStorageService {
 
   // --- HR SETTINGS ---
   public getHrSettings(): HrSettingsConfig {
-    return this.getStorage<HrSettingsConfig>(HR_STORAGE_KEYS.SETTINGS, initialHrSettings);
+    const settings = this.getStorage<HrSettingsConfig>(HR_STORAGE_KEYS.SETTINGS, initialHrSettings);
+    if (!settings.idCardSettings) {
+      settings.idCardSettings = this.getIdCardSettings();
+    }
+    return settings;
   }
 
   public saveHrSettings(settings: HrSettingsConfig, actorName = 'Admin'): void {
+    if (settings.idCardSettings) {
+      this.setStorage(HR_STORAGE_KEYS.ID_CARD_TEMPLATE, settings.idCardSettings);
+    }
     this.setStorage(HR_STORAGE_KEYS.SETTINGS, settings);
     this.addActivity(actorName, 'Admin', 'Updated HR Global Settings', 'Settings', 'Organization & Rules');
+  }
+
+  // --- ID CARD TEMPLATE SETTINGS ---
+  public getIdCardSettings(): IdCardTemplateSettings {
+    return this.getStorage<IdCardTemplateSettings>(
+      HR_STORAGE_KEYS.ID_CARD_TEMPLATE,
+      initialIdCardSettings
+    );
+  }
+
+  public saveIdCardSettings(settings: IdCardTemplateSettings, actorName = 'Admin'): void {
+    this.setStorage(HR_STORAGE_KEYS.ID_CARD_TEMPLATE, settings);
+    const hrConfig = this.getHrSettings();
+    hrConfig.idCardSettings = settings;
+    this.setStorage(HR_STORAGE_KEYS.SETTINGS, hrConfig);
+    this.addActivity(actorName, 'Admin', 'Updated Staff ID Card Template & Fields', 'Settings', settings.templateName);
   }
 
   // --- RESET TO DEMO ---
@@ -1239,6 +1406,7 @@ class HrStorageService {
     localStorage.removeItem(HR_STORAGE_KEYS.PERFORMANCE);
     localStorage.removeItem(HR_STORAGE_KEYS.SETTINGS);
     localStorage.removeItem(HR_STORAGE_KEYS.LOGS);
+    localStorage.removeItem(HR_STORAGE_KEYS.ID_CARD_TEMPLATE);
   }
 }
 

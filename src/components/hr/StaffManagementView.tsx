@@ -43,6 +43,7 @@ import {
 } from '../../types/hr';
 import { StaffRegistrationModal } from './StaffRegistrationModal';
 import { PrintableStaffProfile } from './PrintableStaffProfile';
+import { StaffIdCardRenderer } from './StaffIdCardRenderer';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
 
@@ -54,6 +55,7 @@ interface StaffManagementViewProps {
   onSaveStaff: (staffData: Partial<StaffMember>) => void;
   onDeleteStaff: (id: string) => void;
   onUploadDocument?: (staffId: string, doc: StaffDocument) => void;
+  onClearAllDummyData?: () => void;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -63,10 +65,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   performanceRecords = [],
   onSaveStaff,
   onDeleteStaff,
+  onClearAllDummyData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+
+  // Staff Edit & Registration Modal State
+  const [staffToEdit, setStaffToEdit] = useState<StaffMember | null>(null);
 
   // Department Master Table state
   const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
@@ -83,6 +89,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [isGeneratingProfilePdf, setIsGeneratingProfilePdf] = useState(false);
   const [pdfExportMessage, setPdfExportMessage] = useState('');
   const [selectedStaffForIdCard, setSelectedStaffForIdCard] = useState<StaffMember | null>(null);
+  const [idCardSide, setIdCardSide] = useState<'front' | 'back'>('front');
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<
     'profile' | 'experience' | 'qualifications' | 'family' | 'documents' | 'compensation' | 'attendance' | 'performance' | 'systemAccess'
@@ -123,7 +130,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     }
     const cleanCode = newDeptCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (cleanCode.length < 2) {
-      setDeptFormError('Department Code must be at least 2 characters (e.g. ACAD, ADM, FIN).');
+      setDeptFormError('Department Code must be at least 2 characters (e.g. 101, 102, 103).');
       return;
     }
 
@@ -213,6 +220,129 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     }
   };
 
+  // Staff Edit & Creation Handlers
+  const handleOpenAddStaff = () => {
+    setStaffToEdit(null);
+    setIsAddStaffOpen(true);
+  };
+
+  const handleEditStaff = (staffMember: StaffMember) => {
+    setStaffToEdit(staffMember);
+    setIsAddStaffOpen(true);
+  };
+
+  // Clear Dummy Data Handler
+  const handleClearDummyData = () => {
+    if (
+      window.confirm(
+        'Are you sure you want to clear all dummy/mock data? This will clear sample staff members and sample records from storage.'
+      )
+    ) {
+      if (onClearAllDummyData) {
+        onClearAllDummyData();
+      } else {
+        hrStorage.clearAllDummyData('HR Admin');
+      }
+      setDepartmentsList(hrStorage.getDepartmentsMaster());
+    }
+  };
+
+  // Download CSV Report Handler (includes auto-generated Employee ID)
+  const handleDownloadCsvReport = () => {
+    if (!staff || staff.length === 0) {
+      alert('No staff records found to export.');
+      return;
+    }
+
+    const headers = [
+      'Employee ID',
+      'Full Name',
+      'Department',
+      'Department Code',
+      'Designation / Position',
+      'Employment Status',
+      'Employment Type',
+      'Category',
+      'Date of Joining',
+      'Official Email',
+      'Personal Email',
+      'Contact Number',
+      'WhatsApp Number',
+      'Gross Salary (INR)',
+      'Basic Salary (INR)',
+      'Net Salary (INR)',
+      'Bank Name',
+      'Account Number',
+      'IFSC Code',
+      'PAN Number',
+      'Aadhaar Number',
+      'Reporting Manager',
+      'Work Location',
+      'Emergency Contact Name',
+      'Emergency Contact Phone',
+      'Document Attachments Count',
+      'System Username',
+      'System Role',
+      'System Access Status',
+      'Last Updated',
+    ];
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const clean = String(val).replace(/"/g, '""');
+      return `"${clean}"`;
+    };
+
+    const rows = staff.map((s) => {
+      const empId = s.staffCode || s.id;
+      const docsCount = (s.documentReferences?.length || 0) + (s.documents?.length || 0);
+      return [
+        escapeCsv(empId),
+        escapeCsv(s.fullName),
+        escapeCsv(s.department),
+        escapeCsv(s.departmentCode || ''),
+        escapeCsv(s.position),
+        escapeCsv(s.employmentStatus),
+        escapeCsv(s.employmentType),
+        escapeCsv(s.employeeCategory || ''),
+        escapeCsv(s.joiningDate),
+        escapeCsv(s.email),
+        escapeCsv(s.personalEmail || ''),
+        escapeCsv(s.contactNumber),
+        escapeCsv(s.whatsappNumber || ''),
+        escapeCsv(s.salary?.grossSalary || 0),
+        escapeCsv(s.salary?.basicSalary || 0),
+        escapeCsv(s.salary?.netSalary || 0),
+        escapeCsv(s.salary?.bankDetails?.bankName || s.bankPayroll?.bankName || ''),
+        escapeCsv(s.salary?.bankDetails?.accountNo || s.bankPayroll?.accountNo || ''),
+        escapeCsv(s.salary?.bankDetails?.ifscCode || s.bankPayroll?.ifscCode || ''),
+        escapeCsv(s.panNumber || ''),
+        escapeCsv(s.aadhaarNumber || ''),
+        escapeCsv(s.reportingTo || s.reportingManager || ''),
+        escapeCsv(s.workLocation || s.branchLocation || ''),
+        escapeCsv(s.emergencyContact?.name || ''),
+        escapeCsv(s.emergencyContact?.phone || ''),
+        escapeCsv(docsCount),
+        escapeCsv(s.systemAccess?.username || ''),
+        escapeCsv(s.systemAccess?.role || ''),
+        escapeCsv(s.systemAccess?.accountStatus || s.employmentStatus),
+        escapeCsv(s.updatedDate || s.createdDate || s.joiningDate),
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `MYSAR_Staff_Directory_Report_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Filtered staff
   const filteredStaff = staff.filter((s) => {
     const matchSearch =
@@ -278,8 +408,28 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           </button>
 
           <button
-            onClick={() => setIsAddStaffOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+            type="button"
+            onClick={handleDownloadCsvReport}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer border border-slate-300"
+            title="Download CSV Report of current staff directory including auto-generated Employee IDs"
+          >
+            <Download className="w-4 h-4 text-[#168A45]" />
+            <span>Download Report</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClearDummyData}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer border border-rose-200"
+            title="Clear all dummy and mock staff data from database"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span>Clear Dummy Data</span>
+          </button>
+
+          <button
+            onClick={handleOpenAddStaff}
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Onboard Staff</span>
@@ -404,6 +554,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                         <Eye className="w-3.5 h-3.5" />
                       </button>
                       <button
+                        onClick={() => handleEditStaff(staffMember)}
+                        title="Edit Staff Member"
+                        className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors cursor-pointer border border-amber-200/60"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => setSelectedStaffForIdCard(staffMember)}
                         title="Print Staff ID Card"
                         className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#0B5D2A] rounded-lg transition-colors cursor-pointer"
@@ -481,6 +638,20 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               {/* Header Action Buttons */}
               <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const member = selectedStaffForView;
+                    setSelectedStaffForView(null);
+                    handleEditStaff(member);
+                  }}
+                  title="Edit Staff Member Details"
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-slate-900" />
+                  <span>Edit Staff</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleDownloadStaffProfilePdf}
@@ -1142,65 +1313,71 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* MODAL: PRINT STAFF ID CARD */}
       {selectedStaffForIdCard && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-slate-200 text-xs">
-            <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-md bg-white">
-              {/* ID Card Header */}
-              <div className="bg-gradient-to-r from-[#0B5D2A] to-[#168A45] p-3 text-white text-center">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-200">MYSAR Staff ID Card</div>
-                <div className="text-sm font-bold">Casbiro Solutions Private Limited</div>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 text-xs flex flex-col items-center max-w-md w-full">
+            {/* Modal Header */}
+            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Staff Institutional ID Badge</h3>
+                <p className="text-[11px] text-slate-500">
+                  {selectedStaffForIdCard.fullName} • {selectedStaffForIdCard.id}
+                </p>
               </div>
 
-              {/* ID Card Body */}
-              <div className="p-4 text-center space-y-2">
-                <div className="w-20 h-20 mx-auto rounded-full bg-slate-100 border-2 border-emerald-600 flex items-center justify-center text-xl font-bold text-emerald-800 shadow-xs">
-                  {selectedStaffForIdCard.fullName.charAt(0)}
-                </div>
-
-                <div>
-                  <div className="text-sm font-bold text-slate-900">{selectedStaffForIdCard.fullName}</div>
-                  <div className="text-xs text-emerald-700 font-semibold">{selectedStaffForIdCard.position}</div>
-                  <div className="text-[11px] text-slate-500">{selectedStaffForIdCard.department}</div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200 text-left space-y-1 text-[11px] text-slate-700">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Employee ID:</span>
-                    <span className="font-bold text-slate-900">{selectedStaffForIdCard.id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Blood Group:</span>
-                    <span className="font-semibold text-rose-700">O+ Positive</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Emergency:</span>
-                    <span className="font-semibold text-slate-800">{selectedStaffForIdCard.emergencyContact.phone}</span>
-                  </div>
-                </div>
-
-                {/* QR Code Graphic */}
-                <div className="pt-3 border-t border-slate-200 flex items-center justify-center space-x-2 text-slate-400">
-                  <QrCode className="w-8 h-8 text-slate-800" />
-                  <div className="text-[9px] text-left leading-tight text-slate-500">
-                    Scan for digital authentication & emergency profile
-                  </div>
-                </div>
+              {/* Side toggle */}
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setIdCardSide('front')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    idCardSide === 'front'
+                      ? 'bg-[#168A45] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Front
+                </button>
+                <button
+                  onClick={() => setIdCardSide('back')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    idCardSide === 'back'
+                      ? 'bg-[#168A45] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Back
+                </button>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
+            {/* Rendered Template ID Card */}
+            <div className="py-2 flex justify-center w-full">
+              <StaffIdCardRenderer
+                template={hrStorage.getIdCardSettings()}
+                staff={selectedStaffForIdCard}
+                side={idCardSide}
+                scale={1}
+                isInteractive={false}
+              />
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="w-full mt-5 pt-3 border-t border-slate-200 flex items-center justify-between">
               <button
-                onClick={() => setSelectedStaffForIdCard(null)}
-                className="px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                onClick={() => {
+                  setSelectedStaffForIdCard(null);
+                  setIdCardSide('front');
+                }}
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer text-xs"
               >
                 Close
               </button>
+
               <button
                 onClick={() => window.print()}
-                className="flex items-center space-x-1.5 px-4 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer shadow-xs"
+                className="flex items-center space-x-1.5 px-5 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer shadow-xs text-xs"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print ID Card</span>
+                <span>Print Official Badge</span>
               </button>
             </div>
           </div>
@@ -1264,12 +1441,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     <label className="block text-slate-600 font-semibold mb-1">Department Code *</label>
                     <input
                       type="text"
-                      placeholder="e.g. ACAD, ADM, FIN"
+                      placeholder="e.g. 101, 102, 103"
                       value={newDeptCode}
                       onChange={(e) => setNewDeptCode(e.target.value.toUpperCase())}
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold uppercase focus:ring-1 focus:ring-emerald-600 focus:outline-hidden"
                     />
-                    <span className="text-[10px] text-slate-400">Used for ID: CB/{newDeptCode || 'CODE'}/001</span>
+                    <span className="text-[10px] text-slate-400">Used for ID: CB/{newDeptCode || '101'}/### (continuous sequence)</span>
                   </div>
 
                   <div>
@@ -1401,14 +1578,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </div>
       )}
 
-      {/* MODAL: COMPREHENSIVE 10-SECTION ONBOARD STAFF WIZARD */}
+      {/* MODAL: COMPREHENSIVE 10-SECTION ONBOARD / EDIT STAFF WIZARD */}
       <StaffRegistrationModal
         isOpen={isAddStaffOpen}
-        onClose={() => setIsAddStaffOpen(false)}
+        onClose={() => {
+          setIsAddStaffOpen(false);
+          setStaffToEdit(null);
+        }}
         onSave={(staffData) => {
           onSaveStaff(staffData);
+          setStaffToEdit(null);
         }}
         existingStaffCount={staff.length}
+        staffToEdit={staffToEdit}
       />
     </div>
   );

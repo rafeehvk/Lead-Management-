@@ -12,8 +12,10 @@ import {
   MapPin,
   Plus,
   X,
+  BadgeCheck,
 } from 'lucide-react';
 import { HrSettingsConfig } from '../../types/hr';
+import { IdCardSettingsView } from './IdCardSettingsView';
 
 interface HrSettingsViewProps {
   settings: HrSettingsConfig;
@@ -27,7 +29,9 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
   onResetData,
 }) => {
   const [formState, setFormState] = useState<HrSettingsConfig>(settings);
-  const [activeSection, setActiveSection] = useState<'attendance' | 'leave' | 'payroll' | 'roles'>('attendance');
+  const [activeSection, setActiveSection] = useState<
+    'attendance' | 'leave' | 'payroll' | 'idcards' | 'roles'
+  >('attendance');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [newLocation, setNewLocation] = useState('');
 
@@ -148,6 +152,18 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveSection('idcards')}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              activeSection === 'idcards'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A]'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <BadgeCheck className="w-4 h-4 text-[#168A45]" />
+            <span>ID Card Settings</span>
+          </button>
+
+          <button
             onClick={() => setActiveSection('roles')}
             className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
               activeSection === 'roles'
@@ -161,8 +177,19 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
         </div>
 
         {/* Configuration Body */}
-        <div className="md:col-span-3 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs text-xs space-y-6">
-          {/* 1. Attendance & Shift Hours */}
+        {activeSection === 'idcards' ? (
+          <div className="md:col-span-3">
+            <IdCardSettingsView
+              settings={formState}
+              onSaveSettings={(newSettings) => {
+                setFormState(newSettings);
+                onSaveSettings(newSettings);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="md:col-span-3 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs text-xs space-y-6">
+            {/* 1. Attendance & Shift Hours */}
           {activeSection === 'attendance' && (
             <div className="space-y-6">
               <div>
@@ -763,6 +790,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

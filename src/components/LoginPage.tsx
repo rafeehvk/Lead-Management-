@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ShieldCheck,
   Lock,
   Eye,
   EyeOff,
@@ -8,8 +7,6 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  FileSpreadsheet,
-  FileText,
   X,
   KeyRound,
   ArrowRight,
@@ -28,6 +25,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   settings,
 }) => {
+  // Use passed settings or fallback to current persistent settings
+  const effectiveSettings = settings || storage.getSettings();
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -65,51 +65,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       {/* LEFT SECTION (Main Form & Brand Content) */}
       <div className="w-full lg:w-[76%] xl:w-[77%] min-h-screen flex flex-col justify-between relative z-10 px-6 sm:px-12 lg:px-16 py-6 md:py-8 bg-white">
-        {/* Top Header */}
-        <header className="flex items-center justify-between pb-6 border-b border-gray-100">
-          <div className="flex items-center space-x-3">
-            {settings?.companyLogo ? (
-              <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 p-1 flex items-center justify-center overflow-hidden shadow-2xs">
-                <img
-                  src={settings.companyLogo}
-                  alt="Company Logo"
-                  className="max-h-full max-w-full object-contain"
-                />
-              </div>
-            ) : (
-              <div className="w-9 h-9 rounded-xl bg-[#235E3F] flex items-center justify-center text-white font-black text-sm shadow-2xs">
-                M
-              </div>
-            )}
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-slate-900 text-base tracking-tight">
-                  {settings?.brandName ? (settings.brandName.includes('ERP') ? settings.brandName : `${settings.brandName} ERP`) : 'MYSAR ERP'}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAF7EF] text-[#235E3F] border border-[#D9E5DD] uppercase tracking-wider">
-                  ERP
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 hidden sm:block">
-                {settings?.companyName || 'Casbiro Solutions Private Limited'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center text-[11px] font-bold text-[#235E3F] bg-[#EAF7EF] px-3 py-1 rounded-full border border-[#D9E5DD] shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-[#235E3F] mr-2 animate-pulse"></span>
-              Google Sheets Live
-            </span>
-          </div>
-        </header>
-
         {/* Center Content & Login Card */}
         <main className="flex-1 flex items-center justify-center py-8 lg:py-12">
           <div className="w-full max-w-[430px] space-y-6">
             {/* Mobile / Tablet Logo Badge (Shown only when right panel is hidden) */}
             <div className="lg:hidden flex justify-center pb-2">
-              <MysarBrandBadge size="md" />
+              <MysarBrandBadge
+                size="md"
+                logoUrl={effectiveSettings?.companyLogo}
+                brandName={effectiveSettings?.brandName}
+                companyName={effectiveSettings?.companyName}
+              />
             </div>
 
             {/* Login Card */}
@@ -125,7 +91,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </span>
                 </div>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                  Sign in to {settings?.brandName ? (settings.brandName.includes('ERP') ? settings.brandName : `${settings.brandName} ERP`) : 'MYSAR ERP'}
+                  Sign in to {effectiveSettings?.brandName ? (effectiveSettings.brandName.includes('ERP') ? effectiveSettings.brandName : `${effectiveSettings.brandName} ERP`) : 'MYSAR ERP'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
                   Institutional ERP & Proposal Engine
@@ -228,31 +194,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Sign In to MYSAR ERP</span>
+                      <span>Sign In to {effectiveSettings?.brandName ? (effectiveSettings.brandName.includes('ERP') ? effectiveSettings.brandName : `${effectiveSettings.brandName} ERP`) : 'MYSAR ERP'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
               </form>
-            </div>
-
-            {/* Feature Badges */}
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="bg-slate-50 border border-gray-200/70 p-3 rounded-xl">
-                <ShieldCheck className="w-4 h-4 text-[#235E3F] mx-auto mb-1" />
-                <div className="text-[11px] font-bold text-slate-700">RBAC Security</div>
-                <div className="text-[9px] text-slate-500 font-medium">Multi-level Roles</div>
-              </div>
-              <div className="bg-slate-50 border border-gray-200/70 p-3 rounded-xl">
-                <FileSpreadsheet className="w-4 h-4 text-[#235E3F] mx-auto mb-1" />
-                <div className="text-[11px] font-bold text-slate-700">Google Sheets</div>
-                <div className="text-[9px] text-slate-500 font-medium">Real-time sync</div>
-              </div>
-              <div className="bg-slate-50 border border-gray-200/70 p-3 rounded-xl">
-                <FileText className="w-4 h-4 text-[#235E3F] mx-auto mb-1" />
-                <div className="text-[11px] font-bold text-slate-700">PDF Proposals</div>
-                <div className="text-[9px] text-slate-500 font-medium">14-Page Auto Deck</div>
-              </div>
             </div>
           </div>
         </main>
@@ -260,7 +207,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* Footer */}
         <footer className="pt-4 text-xs text-slate-400 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>
-            {settings?.companyName || 'Casbiro Solutions Private Limited'} &copy; {new Date().getFullYear()} &bull; All rights reserved
+            {effectiveSettings?.companyName || 'Casbiro Solutions Private Limited'} &copy; {new Date().getFullYear()} &bull; All rights reserved
           </p>
           <p className="text-slate-400 font-medium">
             MYSAR ERP System v2.4
@@ -284,7 +231,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         Straddling the exact vertical boundary between the White Left Area and the Green Right Column
       */}
       <div className="hidden lg:block absolute top-1/2 -translate-y-1/2 right-[24%] xl:right-[23%] translate-x-1/2 z-30 pointer-events-none">
-        <MysarBrandBadge size="lg" />
+        <MysarBrandBadge
+          size="lg"
+          logoUrl={effectiveSettings?.companyLogo}
+          brandName={effectiveSettings?.brandName}
+          companyName={effectiveSettings?.companyName}
+        />
       </div>
 
       {/* Forgot Password / Help Dialog */}

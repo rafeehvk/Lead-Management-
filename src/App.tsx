@@ -403,6 +403,12 @@ export default function App() {
     setUsers(storage.getUsers());
   };
 
+  const handleClearAllDummyData = () => {
+    hrStorage.clearAllDummyData(currentUser?.name || 'HR Admin');
+    refreshHrData();
+    setUsers(storage.getUsers());
+  };
+
   const handleMarkAttendance = (
     staffId: string,
     date: string,
@@ -716,6 +722,7 @@ export default function App() {
               performanceRecords={hrPerformance}
               onSaveStaff={handleSaveStaff}
               onDeleteStaff={handleDeleteStaff}
+              onClearAllDummyData={handleClearAllDummyData}
             />
           )}
 

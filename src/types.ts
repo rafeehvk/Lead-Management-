@@ -152,7 +152,7 @@ export interface User {
   userType?: string;
   status: 'Active' | 'Inactive';
   avatar?: string;
-  staffId?: string; // e.g. "CB/ACAD/001"
+  staffId?: string; // e.g. "CB/101/001"
   department?: string;
   departmentCode?: string;
 }
