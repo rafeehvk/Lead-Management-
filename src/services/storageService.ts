@@ -1,6 +1,9 @@
 import {
   Lead,
   Proposal,
+  ProposalDigitalSignature,
+  ProposalVersionEntry,
+  ProposalAgreementDetails,
   FollowUp,
   User,
   Settings,
@@ -31,6 +34,10 @@ const STORAGE_KEYS = {
   PRICING_PLANS: 'mysar_pricing_plans_master_v2',
   ACTIVITIES: 'mysar_lead_activities_data_v1',
   MEETINGS: 'mysar_scheduled_meetings_data_v1',
+  COMPANY_LOGO: 'mysar_persistent_company_logo_v1',
+  NAVBAR_LOGO: 'mysar_persistent_navbar_logo_v1',
+  DOCUMENT_LOGO: 'mysar_persistent_document_logo_v1',
+  LOGIN_LOGO: 'mysar_persistent_login_logo_v1',
 };
 
 class StorageService {
@@ -214,14 +221,22 @@ class StorageService {
     return newLead;
   }
 
-  public updateLeadStatus(leadId: string, newStatus: LeadStatus, actorName?: string): Lead | null {
+  public updateLeadStatus(
+    leadId: string,
+    newStatus: LeadStatus,
+    actorName?: string,
+    notes?: string,
+    effectiveDate?: string
+  ): Lead | null {
     const leads = this.getLeads();
     const index = leads.findIndex((l) => l.id === leadId);
     if (index === -1) return null;
 
     const oldStatus = leads[index].status;
-    const today = new Date().toISOString().split('T')[0];
-    const timeString = new Date().toTimeString().split(' ')[0];
+    const now = new Date();
+    const today = effectiveDate || now.toISOString().split('T')[0];
+    const timeString = now.toTimeString().split(' ')[0];
+    const fullTimestamp = `${today} ${timeString}`;
 
     leads[index] = {
       ...leads[index],
@@ -230,14 +245,18 @@ class StorageService {
     };
     this.setStorage(STORAGE_KEYS.LEADS, leads);
 
-    if (oldStatus !== newStatus) {
+    if (oldStatus !== newStatus || notes) {
+      const desc = notes
+        ? `Lead status progressed from "${oldStatus}" to "${newStatus}". Remarks: ${notes}`
+        : `Lead status progressed from "${oldStatus}" to "${newStatus}".`;
+
       this.saveActivity({
         leadId,
         type: 'change',
         title: `Status Changed to ${newStatus}`,
-        description: `Lead status progressed from "${oldStatus}" to "${newStatus}".`,
+        description: desc,
         actor: actorName || leads[index].assignedTo || 'System',
-        timestamp: `${today} ${timeString}`,
+        timestamp: fullTimestamp,
         metadata: {
           field: 'status',
           oldValue: oldStatus,
@@ -369,7 +388,11 @@ class StorageService {
 
   // --- PROPOSALS ---
   public getProposals(): Proposal[] {
-    return this.getStorage<Proposal[]>(STORAGE_KEYS.PROPOSALS, initialProposals);
+    const list = this.getStorage<Proposal[]>(STORAGE_KEYS.PROPOSALS, initialProposals);
+    return list.map((p) => ({
+      ...p,
+      version: p.version || 1,
+    }));
   }
 
   public createProposal(proposalData: {
@@ -381,6 +404,7 @@ class StorageService {
     pricePerStudent: number;
     totalAmount?: number;
     pricingItems?: any[];
+    agreementDetails?: ProposalAgreementDetails;
     proposalDate?: string;
     createdBy?: string;
     notes?: string;
@@ -409,6 +433,39 @@ class StorageService {
 
     const newId = `PROP-${currentYear}-${String(proposals.length + 1).padStart(3, '0')}`;
 
+    // Default 5-Year Agreement Terms if not provided
+    const defaultAgreementDetails: ProposalAgreementDetails = {
+      agreementPeriod: '5 Years',
+      registrationFee: 30000,
+      trialPrice: 30,
+      trialAcademicYear: `${currentYear}–${currentYear + 1} Academic Year`,
+      planChosen: proposalData.pricingType || 'Institute Payment',
+      hasSpecialPrice: false,
+      specialPrice: 65,
+      specialPriceLabel: 'Institute Subscription (Special Price)',
+      agreementClause:
+        'The student subscription price quoted in this proposal is applicable for a period of five (5) years from the date of commencement of the agreement, subject to the terms and conditions specified in this proposal.\n\nThe quoted student price covers the agreed MYSAR services and features for the full five-year agreement period. Any services, features, requirements, or changes outside the agreed scope may be subject to additional charges.',
+      acceptanceClause:
+        'We hereby acknowledge that we have received and reviewed the proposal issued by Casbiro Solutions Private Limited (MYSAR) and confirm our acceptance of the proposed scope of work, technical deliverables, pricing, and terms specified herein.\n\nBy accepting this proposal, the institution authorizes Casbiro Solutions Private Limited (MYSAR) to proceed with implementation planning, campus infrastructure setup, smart ID card configuration, and operational rollout.',
+      paymentSchedule: [
+        'Registration fee at the time of registration',
+        'Balance 60% after students onboarding, after two months balance 40% will pay.',
+      ],
+      paymentTerms: [
+        'Registration Fee will be included in the Trial Price and will be deducted from it.',
+        `The Trial Price is applicable only for the current academic year (${currentYear}–${currentYear + 1} Academic Year).`,
+        'Payment shall be made according to the payment schedule specified in this proposal.',
+        'The student subscription price is based on a five (5) year agreement between the client/institution and Casbiro Solutions Private Limited (MYSAR).',
+        'Any applicable taxes, government charges, or additional services outside the agreed scope will be charged separately.',
+        'Any additional requirements or changes to the agreed scope may be subject to additional charges.',
+        'The terms and pricing specified in this proposal are subject to the agreed five-year contract period.',
+      ],
+      clientAuthorizedPerson: proposalData.contactPerson || 'Principal / Management',
+      clientDesignation: 'Principal / Authorized Signatory',
+      companyAuthorizedPerson: proposalData.createdBy || 'Authorized Person',
+      companyDesignation: 'Director & Authorized Signatory',
+    };
+
     const newProposal: Proposal = {
       id: newId,
       leadId: proposalData.leadId,
@@ -430,7 +487,26 @@ class StorageService {
           isPrimary: true,
         },
       ],
+      agreementDetails: proposalData.agreementDetails
+        ? {
+            ...defaultAgreementDetails,
+            ...proposalData.agreementDetails,
+          }
+        : defaultAgreementDetails,
       proposalStatus: 'Draft',
+      version: 1,
+      versionHistory: [
+        {
+          version: 1,
+          updatedAt: `${today} ${new Date().toTimeString().split(' ')[0].substring(0, 5)}`,
+          updatedBy: proposalData.createdBy || 'Sales Rep',
+          pricingType: proposalData.pricingType,
+          pricePerStudent: Number(proposalData.pricePerStudent) || 0,
+          studentCount: Number(proposalData.studentCount) || 0,
+          totalAmount,
+          changesSummary: 'Initial proposal created',
+        },
+      ],
       createdBy: proposalData.createdBy || 'Sales Rep',
       createdDate: today,
       validUntil,
@@ -492,6 +568,160 @@ class StorageService {
       }
     }
     return proposal;
+  }
+
+  public signProposal(
+    proposalId: string,
+    signature: ProposalDigitalSignature,
+    actorName?: string
+  ): Proposal {
+    const proposals = this.getProposals();
+    const index = proposals.findIndex((p) => p.id === proposalId);
+    if (index === -1) {
+      throw new Error(`Proposal ${proposalId} not found`);
+    }
+
+    const current = proposals[index];
+    const updatedAgreement: ProposalAgreementDetails = {
+      ...(current.agreementDetails || ({} as any)),
+      clientAuthorizedPerson: signature.signerName,
+      clientDesignation: signature.signerDesignation,
+    };
+
+    const updatedProposal: Proposal = {
+      ...current,
+      proposalStatus: 'Approved',
+      digitalSignature: signature,
+      agreementDetails: updatedAgreement,
+    };
+
+    proposals[index] = updatedProposal;
+    this.setStorage(STORAGE_KEYS.PROPOSALS, proposals);
+
+    // Update lead status to 'Closed Won' and record activity
+    if (updatedProposal.leadId) {
+      this.updateLeadStatus(updatedProposal.leadId, 'Closed Won', actorName || signature.signerName);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      this.saveActivity({
+        leadId: updatedProposal.leadId,
+        type: 'proposal',
+        title: `Proposal Digitally Signed & Accepted (${updatedProposal.proposalNumber})`,
+        description: `Customer acceptance form completed and digitally signed by ${signature.signerName} (${signature.signerDesignation}). Verification: ${signature.verificationCode}.`,
+        actor: actorName || signature.signerName,
+        timestamp: `${todayStr} ${timeStr}`,
+        metadata: {
+          proposalNumber: updatedProposal.proposalNumber,
+          verificationCode: signature.verificationCode,
+          signerName: signature.signerName,
+          signerDesignation: signature.signerDesignation,
+          statusBadge: 'Approved',
+        },
+      });
+    }
+
+    return updatedProposal;
+  }
+
+  public saveEditedProposal(
+    proposalId: string,
+    updatedData: Partial<Proposal> & { revisionNotes?: string },
+    actorName?: string
+  ): Proposal {
+    const proposals = this.getProposals();
+    const index = proposals.findIndex((p) => p.id === proposalId);
+    if (index === -1) {
+      throw new Error(`Proposal ${proposalId} not found`);
+    }
+
+    const current = proposals[index];
+    const currentVersion = current.version || 1;
+    const nextVersion = currentVersion + 1;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const timeStr = new Date().toTimeString().split(' ')[0].substring(0, 5);
+
+    // Build changes summary
+    const changes: string[] = [];
+    if (updatedData.studentCount !== undefined && updatedData.studentCount !== current.studentCount) {
+      changes.push(`Students: ${current.studentCount} → ${updatedData.studentCount}`);
+    }
+    if (updatedData.pricePerStudent !== undefined && updatedData.pricePerStudent !== current.pricePerStudent) {
+      changes.push(`Rate: ₹${current.pricePerStudent} → ₹${updatedData.pricePerStudent}/student`);
+    }
+    if (updatedData.totalAmount !== undefined && updatedData.totalAmount !== current.totalAmount) {
+      changes.push(`Total: ₹${current.totalAmount.toLocaleString('en-IN')} → ₹${updatedData.totalAmount.toLocaleString('en-IN')}`);
+    }
+    if (updatedData.pricingType && updatedData.pricingType !== current.pricingType) {
+      changes.push(`Plan: ${current.pricingType} → ${updatedData.pricingType}`);
+    }
+    if (
+      updatedData.agreementDetails?.agreementPeriod &&
+      updatedData.agreementDetails.agreementPeriod !== current.agreementDetails?.agreementPeriod
+    ) {
+      changes.push(`Period: ${current.agreementDetails?.agreementPeriod || '5 Years'} → ${updatedData.agreementDetails.agreementPeriod}`);
+    }
+
+    const summaryText =
+      updatedData.revisionNotes?.trim() ||
+      (changes.length > 0 ? changes.join(', ') : 'Terms, pricing, and scope updated');
+
+    // Existing history or bootstrap v1 history
+    const existingHistory: ProposalVersionEntry[] =
+      current.versionHistory && current.versionHistory.length > 0
+        ? [...current.versionHistory]
+        : [
+            {
+              version: currentVersion,
+              updatedAt: current.createdDate || todayStr,
+              updatedBy: current.createdBy || 'Sales Rep',
+              pricingType: current.pricingType,
+              pricePerStudent: current.pricePerStudent,
+              studentCount: current.studentCount,
+              totalAmount: current.totalAmount,
+              changesSummary: 'Initial proposal created',
+            },
+          ];
+
+    const newHistoryEntry: ProposalVersionEntry = {
+      version: nextVersion,
+      updatedAt: `${todayStr} ${timeStr}`,
+      updatedBy: actorName || current.createdBy || 'Sales Rep',
+      pricingType: updatedData.pricingType || current.pricingType,
+      pricePerStudent: updatedData.pricePerStudent !== undefined ? updatedData.pricePerStudent : current.pricePerStudent,
+      studentCount: updatedData.studentCount !== undefined ? updatedData.studentCount : current.studentCount,
+      totalAmount: updatedData.totalAmount !== undefined ? updatedData.totalAmount : current.totalAmount,
+      changesSummary: summaryText,
+      notes: updatedData.notes || current.notes,
+    };
+
+    const updatedProposal: Proposal = {
+      ...current,
+      ...updatedData,
+      version: nextVersion,
+      versionHistory: [...existingHistory, newHistoryEntry],
+    };
+
+    proposals[index] = updatedProposal;
+    this.setStorage(STORAGE_KEYS.PROPOSALS, proposals);
+
+    if (updatedProposal.leadId) {
+      this.saveActivity({
+        leadId: updatedProposal.leadId,
+        type: 'proposal',
+        title: `Proposal ${updatedProposal.proposalNumber} updated to v${nextVersion}`,
+        description: `Version v${nextVersion} saved by ${actorName || 'User'}: ${summaryText}`,
+        actor: actorName || 'Sales Rep',
+        timestamp: `${todayStr} ${timeStr}`,
+        metadata: {
+          proposalNumber: updatedProposal.proposalNumber,
+          proposalAmount: updatedProposal.totalAmount,
+          version: nextVersion,
+        },
+      });
+    }
+
+    return updatedProposal;
   }
 
   public deleteProposal(proposalId: string): boolean {
@@ -959,17 +1189,271 @@ class StorageService {
     localStorage.removeItem('mysar_rbac_permissions_v1');
   }
 
+  // --- COMPANY LOGO PERSISTENCE ---
+  public getCompanyLogo(): string | undefined {
+    try {
+      // 1. Direct dedicated persistent key
+      const logo = localStorage.getItem(STORAGE_KEYS.COMPANY_LOGO);
+      if (logo && logo.trim().length > 0) {
+        return logo;
+      }
+      // 2. Fallback to settings
+      const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+      if (settings?.companyLogo && settings.companyLogo.trim().length > 0) {
+        // Auto-heal: mirror to dedicated persistent key
+        try {
+          localStorage.setItem(STORAGE_KEYS.COMPANY_LOGO, settings.companyLogo);
+        } catch {
+          // ignore
+        }
+        return settings.companyLogo;
+      }
+    } catch (e) {
+      console.warn('Failed reading persistent company logo', e);
+    }
+    return undefined;
+  }
+
+  public saveCompanyLogo(logo?: string): void {
+    try {
+      if (logo && logo.trim().length > 0) {
+        localStorage.setItem(STORAGE_KEYS.COMPANY_LOGO, logo);
+        // Also update settings payload
+        const settings = this.getSettings();
+        settings.companyLogo = logo;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.COMPANY_LOGO);
+        const settings = this.getSettings();
+        settings.companyLogo = undefined;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      }
+
+      // Broadcast update event so all views (Login, Navbar, Proposal docs) update immediately
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_company_logo_changed', { detail: logo || null }));
+      }
+    } catch (e) {
+      console.error('Failed to save persistent company logo', e);
+    }
+  }
+
+  // --- SEPARATE LOGO PERSISTENCE: NAVBAR LOGO ---
+  public getNavbarLogo(): string | undefined {
+    try {
+      const logo = localStorage.getItem(STORAGE_KEYS.NAVBAR_LOGO);
+      if (logo && logo.trim().length > 0) {
+        return logo;
+      }
+      const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+      if (settings?.navbarLogo && settings.navbarLogo.trim().length > 0) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.NAVBAR_LOGO, settings.navbarLogo);
+        } catch {}
+        return settings.navbarLogo;
+      }
+    } catch (e) {
+      console.warn('Failed reading persistent navbar logo', e);
+    }
+    return undefined;
+  }
+
+  public saveNavbarLogo(logo?: string): void {
+    try {
+      if (logo && logo.trim().length > 0) {
+        localStorage.setItem(STORAGE_KEYS.NAVBAR_LOGO, logo);
+        const settings = this.getSettings();
+        settings.navbarLogo = logo;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.NAVBAR_LOGO);
+        const settings = this.getSettings();
+        settings.navbarLogo = undefined;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_navbar_logo_changed', { detail: logo || null }));
+      }
+    } catch (e) {
+      console.error('Failed to save navbar logo', e);
+    }
+  }
+
+  // --- SEPARATE LOGO PERSISTENCE: DOCUMENT & PDF PRINT LOGO ---
+  public getDocumentLogo(): string | undefined {
+    try {
+      const logo = localStorage.getItem(STORAGE_KEYS.DOCUMENT_LOGO);
+      if (logo && logo.trim().length > 0) {
+        return logo;
+      }
+      const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+      if (settings?.documentLogo && settings.documentLogo.trim().length > 0) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.DOCUMENT_LOGO, settings.documentLogo);
+        } catch {}
+        return settings.documentLogo;
+      }
+    } catch (e) {
+      console.warn('Failed reading persistent document logo', e);
+    }
+    return undefined;
+  }
+
+  public saveDocumentLogo(logo?: string): void {
+    try {
+      if (logo && logo.trim().length > 0) {
+        localStorage.setItem(STORAGE_KEYS.DOCUMENT_LOGO, logo);
+        const settings = this.getSettings();
+        settings.documentLogo = logo;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.DOCUMENT_LOGO);
+        const settings = this.getSettings();
+        settings.documentLogo = undefined;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_document_logo_changed', { detail: logo || null }));
+      }
+    } catch (e) {
+      console.error('Failed to save document logo', e);
+    }
+  }
+
+  // --- SEPARATE LOGO PERSISTENCE: LOGIN EMBLEM LOGO ---
+  public getLoginLogo(): string | undefined {
+    try {
+      const logo = localStorage.getItem(STORAGE_KEYS.LOGIN_LOGO);
+      if (logo && logo.trim().length > 0) {
+        return logo;
+      }
+      const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+      if (settings?.loginLogo && settings.loginLogo.trim().length > 0) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.LOGIN_LOGO, settings.loginLogo);
+        } catch {}
+        return settings.loginLogo;
+      }
+    } catch (e) {
+      console.warn('Failed reading persistent login logo', e);
+    }
+    return undefined;
+  }
+
+  public saveLoginLogo(logo?: string): void {
+    try {
+      if (logo && logo.trim().length > 0) {
+        localStorage.setItem(STORAGE_KEYS.LOGIN_LOGO, logo);
+        const settings = this.getSettings();
+        settings.loginLogo = logo;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.LOGIN_LOGO);
+        const settings = this.getSettings();
+        settings.loginLogo = undefined;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_login_logo_changed', { detail: logo || null }));
+      }
+    } catch (e) {
+      console.error('Failed to save login logo', e);
+    }
+  }
+
   // --- SETTINGS ---
   public getSettings(): Settings {
     const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
-    if (!settings.brandName || settings.brandName === 'MYSAR') {
-      settings.brandName = 'MYSAR ERP';
+    if (!settings.brandName) {
+      settings.brandName = 'MYSAr';
     }
+
+    // Restore master logo if present
+    if (!settings.companyLogo) {
+      const persistentLogo = this.getCompanyLogo();
+      if (persistentLogo) {
+        settings.companyLogo = persistentLogo;
+      }
+    }
+
+    // Restore navbar logo if present
+    if (!settings.navbarLogo) {
+      const pNav = this.getNavbarLogo();
+      if (pNav) settings.navbarLogo = pNav;
+    }
+
+    // Restore document logo if present
+    if (!settings.documentLogo) {
+      const pDoc = this.getDocumentLogo();
+      if (pDoc) settings.documentLogo = pDoc;
+    }
+
+    // Restore login logo if present
+    if (!settings.loginLogo) {
+      const pLogin = this.getLoginLogo();
+      if (pLogin) settings.loginLogo = pLogin;
+    }
+
     return settings;
   }
 
   public saveSettings(settings: Settings): Settings {
+    // Mirror master logo
+    if (settings.companyLogo && settings.companyLogo.trim().length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.COMPANY_LOGO, settings.companyLogo);
+      } catch (e) {
+        console.warn('Failed to mirror company logo to dedicated key', e);
+      }
+    } else if (settings.companyLogo === undefined) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.COMPANY_LOGO);
+      } catch {}
+    }
+
+    // Mirror navbar logo
+    if (settings.navbarLogo && settings.navbarLogo.trim().length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.NAVBAR_LOGO, settings.navbarLogo);
+      } catch {}
+    } else if (settings.navbarLogo === undefined) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.NAVBAR_LOGO);
+      } catch {}
+    }
+
+    // Mirror document logo
+    if (settings.documentLogo && settings.documentLogo.trim().length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.DOCUMENT_LOGO, settings.documentLogo);
+      } catch {}
+    } else if (settings.documentLogo === undefined) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.DOCUMENT_LOGO);
+      } catch {}
+    }
+
+    // Mirror login logo
+    if (settings.loginLogo && settings.loginLogo.trim().length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.LOGIN_LOGO, settings.loginLogo);
+      } catch {}
+    } else if (settings.loginLogo === undefined) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.LOGIN_LOGO);
+      } catch {}
+    }
+
     this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_company_logo_changed', { detail: settings.companyLogo || null }));
+      window.dispatchEvent(new CustomEvent('mysar_navbar_logo_changed', { detail: settings.navbarLogo || null }));
+      window.dispatchEvent(new CustomEvent('mysar_document_logo_changed', { detail: settings.documentLogo || null }));
+      window.dispatchEvent(new CustomEvent('mysar_login_logo_changed', { detail: settings.loginLogo || null }));
+      window.dispatchEvent(new CustomEvent('mysar_settings_updated', { detail: settings }));
+    }
+
     return settings;
   }
 
@@ -1245,6 +1729,9 @@ class StorageService {
   }
 
   public resetAllToDemo(): void {
+    // Preserve company logo across demo data resets so brand identity is preserved
+    const logoBackup = this.getCompanyLogo();
+
     localStorage.removeItem(STORAGE_KEYS.LEADS);
     localStorage.removeItem(STORAGE_KEYS.PROPOSALS);
     localStorage.removeItem(STORAGE_KEYS.FOLLOWUPS);
@@ -1253,6 +1740,17 @@ class StorageService {
     localStorage.removeItem(STORAGE_KEYS.PRICING_PLANS);
     localStorage.removeItem(STORAGE_KEYS.ACTIVITIES);
     localStorage.removeItem(STORAGE_KEYS.MEETINGS);
+
+    if (logoBackup) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.COMPANY_LOGO, logoBackup);
+        const newSettings = this.getSettings();
+        newSettings.companyLogo = logoBackup;
+        this.saveSettings(newSettings);
+      } catch {
+        // ignore
+      }
+    }
   }
 }
 

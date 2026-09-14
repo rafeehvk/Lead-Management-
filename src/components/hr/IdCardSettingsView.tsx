@@ -6,6 +6,7 @@ import {
   HrSettingsConfig,
 } from '../../types/hr';
 import { StaffIdCardRenderer } from './StaffIdCardRenderer';
+import { IdCardTemplateDragDropEditor } from './IdCardTemplateDragDropEditor';
 import { hrStorage } from '../../services/hrStorageService';
 import {
   Upload,
@@ -48,6 +49,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
     return settings.idCardSettings || hrStorage.getIdCardSettings();
   });
 
+  const [editorMode, setEditorMode] = useState<'drag_drop' | 'classic'>('drag_drop');
   const [activeTab, setActiveTab] = useState<'template' | 'photo' | 'fields' | 'back'>('template');
   const [activeSide, setActiveSide] = useState<'front' | 'back'>('front');
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>('photo');
@@ -407,8 +409,55 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Main Designer Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Mode Switcher Tabs */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl">
+          <button
+            onClick={() => setEditorMode('drag_drop')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+              editorMode === 'drag_drop'
+                ? 'bg-[#168A45] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Drag & Drop Template Designer</span>
+          </button>
+
+          <button
+            onClick={() => setEditorMode('classic')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+              editorMode === 'classic'
+                ? 'bg-white text-[#0B5D2A] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Palette className="w-4 h-4" />
+            <span>Theme Presets & Custom Graphics</span>
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-500 hidden sm:block">
+          {editorMode === 'drag_drop' ? (
+            <span className="text-emerald-700 font-semibold flex items-center space-x-1">
+              <span>Interactive Drag & Drop Canvas with Static, Dynamic & Photo Trays</span>
+            </span>
+          ) : (
+            <span>Upload custom background artwork and configure card presets</span>
+          )}
+        </div>
+      </div>
+
+      {editorMode === 'drag_drop' ? (
+        <IdCardTemplateDragDropEditor
+          template={template}
+          onChangeTemplate={setTemplate}
+          staffList={previewStaffList}
+          onSave={handleSave}
+        />
+      ) : (
+        /* Main Designer Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left / Center: Interactive Live Canvas & Quick Controls (5 cols on lg) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col items-center">
@@ -1627,6 +1676,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

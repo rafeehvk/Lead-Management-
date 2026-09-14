@@ -113,7 +113,7 @@ export const initialPricingPlans: PricingPlan[] = [
 
 export const initialSettings: Settings = {
   companyName: 'Casbiro Solutions Private Limited',
-  brandName: 'MYSAR ERP',
+  brandName: 'MYSAr',
   tagline: 'My Student Analysis Record (MYSAR) - Transforming Education Through Smart Digital Solutions',
   address: 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
   phone: '+91 7994 807 907 / +91 7994 806 906 / +91 7994 805 905',

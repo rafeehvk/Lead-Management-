@@ -21,10 +21,15 @@ import {
   BellRing,
   Lock,
   Video,
+  Printer,
+  History,
 } from 'lucide-react';
 import { Lead, LeadPriority, LeadStatus, User as UserType } from '../types';
 import { StatusBadge } from './StatusBadge';
+import { StatusDropdown } from './StatusDropdown';
 import { hasPermission } from '../utils/rbac';
+import { PrintLeadModal } from './PrintLeadModal';
+import { LeadHistoryLogModal } from './LeadHistoryLogModal';
 
 interface LeadsViewProps {
   leads: Lead[];
@@ -69,6 +74,8 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     currentUser.role === 'Salesperson' ? 'my' : 'all'
   );
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [leadToPrint, setLeadToPrint] = useState<Lead | null>(null);
+  const [leadForHistoryLog, setLeadForHistoryLog] = useState<Lead | null>(null);
 
   // Sync viewScope if currentUser changes
   useEffect(() => {
@@ -386,23 +393,11 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                         className="py-3.5 px-4 whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center space-x-1">
-                          <StatusBadge status={lead.status} />
-                          {canEditThisLead && (
-                            <select
-                              value={lead.status}
-                              onChange={(e) => onUpdateStatus(lead.id, e.target.value as LeadStatus)}
-                              className="text-[10px] bg-transparent border-0 text-transparent focus:ring-0 cursor-pointer w-4 h-4 -ml-4 opacity-0 hover:opacity-100"
-                              title="Quick Change Status"
-                            >
-                              {allStatuses.map((st) => (
-                                <option key={st} value={st} className="text-slate-800">
-                                  {st}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
+                        <StatusDropdown
+                          status={lead.status}
+                          onChange={canEditThisLead ? (newStatus) => onUpdateStatus(lead.id, newStatus) : undefined}
+                          disabled={!canEditThisLead}
+                        />
                       </td>
 
                       {/* Follow-up */}
@@ -434,6 +429,33 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-end space-x-1.5">
+                          {/* View Lead Details button */}
+                          <button
+                            onClick={() => setSelectedLead(lead)}
+                            title={`View Details for ${lead.instituteName}`}
+                            className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          {/* Lead History & Date-wise Status Log button */}
+                          <button
+                            onClick={() => setLeadForHistoryLog(lead)}
+                            title={`View History & Date-wise Status Log for ${lead.instituteName}`}
+                            className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
+                          >
+                            <History className="w-4 h-4" />
+                          </button>
+
+                          {/* Print Lead Summary button */}
+                          <button
+                            onClick={() => setLeadToPrint(lead)}
+                            title={`Print Summary Sheet for ${lead.instituteName}`}
+                            className="p-1.5 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+
                           {/* Gmail button */}
                           {onOpenGmailForLead && (
                             <button
@@ -553,9 +575,17 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             <div className="p-6 space-y-4 text-xs">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div>
-                  <span className="text-slate-500">Current Status:</span>
+                  <span className="text-slate-500 font-medium">Pipeline Status:</span>
                   <div className="mt-1">
-                    <StatusBadge status={selectedLead.status} />
+                    <StatusDropdown
+                      status={selectedLead.status}
+                      onChange={(newStatus) => {
+                        onUpdateStatus(selectedLead.id, newStatus);
+                        setSelectedLead((prev) => (prev ? { ...prev, status: newStatus } : null));
+                      }}
+                      disabled={!hasPermission.canEditLead(currentUser, selectedLead)}
+                      size="md"
+                    />
                   </div>
                 </div>
                 <div className="text-right">
@@ -643,6 +673,31 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   onClick={() => {
                     const l = selectedLead;
                     setSelectedLead(null);
+                    setLeadForHistoryLog(l);
+                  }}
+                  className="px-3.5 py-1.5 border border-emerald-200 text-[#0B5D2A] bg-[#EAF7EF] hover:bg-emerald-100 rounded-lg font-bold flex items-center space-x-1.5 transition-colors"
+                  title="View Lead History & Date-wise Status Log"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Status History & Log</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const l = selectedLead;
+                    setLeadToPrint(l);
+                  }}
+                  className="px-3.5 py-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 rounded-lg font-bold flex items-center space-x-1.5 transition-colors"
+                  title="Print Lead Summary Dossier"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Summary</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const l = selectedLead;
+                    setSelectedLead(null);
                     onAddFollowUp(l);
                   }}
                   className="px-3.5 py-1.5 border border-gray-200 text-slate-700 hover:bg-[#F7FAF8] rounded-lg font-semibold"
@@ -667,6 +722,30 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Print Lead Summary Modal */}
+      <PrintLeadModal
+        lead={leadToPrint}
+        isOpen={!!leadToPrint}
+        onClose={() => setLeadToPrint(null)}
+        currentUser={currentUser}
+      />
+
+      {/* Lead History & Date-wise Status Log Modal */}
+      {leadForHistoryLog && (
+        <LeadHistoryLogModal
+          lead={leadForHistoryLog}
+          isOpen={!!leadForHistoryLog}
+          onClose={() => setLeadForHistoryLog(null)}
+          currentUser={currentUser}
+          users={users}
+          onUpdateStatus={(leadId, status) => {
+            onUpdateStatus(leadId, status);
+            // also update local state if matches
+            setLeadForHistoryLog((prev) => (prev && prev.id === leadId ? { ...prev, status } : prev));
+          }}
+        />
       )}
     </div>
   );

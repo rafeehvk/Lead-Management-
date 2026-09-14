@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Lock,
   Eye,
@@ -26,7 +26,47 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   settings,
 }) => {
   // Use passed settings or fallback to current persistent settings
-  const effectiveSettings = settings || storage.getSettings();
+  const [effectiveSettings, setEffectiveSettings] = useState<Settings>(() => {
+    return settings || storage.getSettings();
+  });
+
+  const [activeLogo, setActiveLogo] = useState<string | undefined>(() => {
+    return storage.getLoginLogo() || settings?.loginLogo || storage.getCompanyLogo() || settings?.companyLogo || storage.getSettings()?.companyLogo;
+  });
+
+  // Re-sync logo and branding on mount, window focus, and storage events
+  useEffect(() => {
+    const syncBrand = () => {
+      const storedLoginLogo = storage.getLoginLogo();
+      const storedCompanyLogo = storage.getCompanyLogo();
+      const freshSettings = storage.getSettings();
+      const finalLogo =
+        storedLoginLogo ||
+        freshSettings?.loginLogo ||
+        settings?.loginLogo ||
+        storedCompanyLogo ||
+        freshSettings?.companyLogo ||
+        settings?.companyLogo;
+      setEffectiveSettings(settings || freshSettings);
+      setActiveLogo(finalLogo);
+    };
+
+    syncBrand();
+
+    window.addEventListener('mysar_login_logo_changed', syncBrand);
+    window.addEventListener('mysar_company_logo_changed', syncBrand);
+    window.addEventListener('mysar_settings_updated', syncBrand);
+    window.addEventListener('storage', syncBrand);
+    window.addEventListener('focus', syncBrand);
+
+    return () => {
+      window.removeEventListener('mysar_login_logo_changed', syncBrand);
+      window.removeEventListener('mysar_company_logo_changed', syncBrand);
+      window.removeEventListener('mysar_settings_updated', syncBrand);
+      window.removeEventListener('storage', syncBrand);
+      window.removeEventListener('focus', syncBrand);
+    };
+  }, [settings]);
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +105,37 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       {/* LEFT SECTION (Main Form & Brand Content) */}
       <div className="w-full lg:w-[76%] xl:w-[77%] min-h-screen flex flex-col justify-between relative z-10 px-6 sm:px-12 lg:px-16 py-6 md:py-8 bg-white">
+        {/* Top Header Bar with institutional branding & persistent logo */}
+        <header className="w-full flex items-center justify-between pb-2">
+          <div className="flex items-center space-x-3">
+            {activeLogo ? (
+              <div className="h-9 max-w-[160px] flex items-center">
+                <img
+                  src={activeLogo}
+                  alt={effectiveSettings?.companyName || 'Company Logo'}
+                  className="max-h-9 max-w-[160px] object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-[#235E3F] flex items-center justify-center text-white font-bold text-sm shadow-xs">
+                M
+              </div>
+            )}
+            <div>
+              <span className="text-xs font-black text-slate-800 tracking-tight block">
+                {effectiveSettings?.companyName || 'Casbiro Solutions Private Limited'}
+              </span>
+              <span className="text-[10px] text-slate-400 block font-medium">
+                {effectiveSettings?.brandName ? `${effectiveSettings.brandName} Cloud Enterprise` : 'MYSAR Cloud Enterprise'}
+              </span>
+            </div>
+          </div>
+          <div className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-full flex items-center space-x-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Secure Portal</span>
+          </div>
+        </header>
+
         {/* Center Content & Login Card */}
         <main className="flex-1 flex items-center justify-center py-8 lg:py-12">
           <div className="w-full max-w-[430px] space-y-6">
@@ -72,7 +143,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <div className="lg:hidden flex justify-center pb-2">
               <MysarBrandBadge
                 size="md"
-                logoUrl={effectiveSettings?.companyLogo}
+                logoUrl={activeLogo}
                 brandName={effectiveSettings?.brandName}
                 companyName={effectiveSettings?.companyName}
               />
@@ -82,16 +153,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xl shadow-slate-900/5 overflow-hidden">
               {/* Card Header */}
               <div className="px-7 pt-7 pb-5 border-b border-gray-100 bg-slate-50/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="inline-flex p-2.5 rounded-xl bg-[#EAF7EF] text-[#235E3F]">
-                    <Lock className="w-5 h-5" />
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  {activeLogo ? (
+                    <div className="h-10 max-w-[180px] flex items-center">
+                      <img
+                        src={activeLogo}
+                        alt={effectiveSettings?.companyName || 'Company Logo'}
+                        className="max-h-10 max-w-[180px] object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="inline-flex p-2.5 rounded-xl bg-[#EAF7EF] text-[#235E3F]">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                  )}
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Sign In
                   </span>
                 </div>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                  Sign in to {effectiveSettings?.brandName ? (effectiveSettings.brandName.includes('ERP') ? effectiveSettings.brandName : `${effectiveSettings.brandName} ERP`) : 'MYSAR ERP'}
+                  Sign in to {effectiveSettings?.brandName || 'MYSAr'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
                   Institutional ERP & Proposal Engine
@@ -194,7 +275,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Sign In to {effectiveSettings?.brandName ? (effectiveSettings.brandName.includes('ERP') ? effectiveSettings.brandName : `${effectiveSettings.brandName} ERP`) : 'MYSAR ERP'}</span>
+                      <span>Sign In to {effectiveSettings?.brandName || 'MYSAr'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -233,7 +314,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <div className="hidden lg:block absolute top-1/2 -translate-y-1/2 right-[24%] xl:right-[23%] translate-x-1/2 z-30 pointer-events-none">
         <MysarBrandBadge
           size="lg"
-          logoUrl={effectiveSettings?.companyLogo}
+          logoUrl={activeLogo}
           brandName={effectiveSettings?.brandName}
           companyName={effectiveSettings?.companyName}
         />

@@ -26,6 +26,8 @@ import {
   ArrowLeft,
   X,
   FileText,
+  FileCheck2,
+  Copy,
 } from 'lucide-react';
 import { Lead, Proposal, User } from '../types';
 import {
@@ -45,13 +47,19 @@ import {
   GmailUserProfile,
 } from '../services/gmailApiService';
 import { formatINR } from '../utils/pdfGenerator';
+import {
+  getProposalSignatureUrl,
+  copySignatureLinkToClipboard,
+} from '../utils/signatureUtils';
 
 interface GmailInboxViewProps {
   leads: Lead[];
   proposals: Proposal[];
   currentUser: User;
   initialLeadId?: string;
+  initialProposal?: Proposal | null;
   onOpenComposeWithLead?: (lead: Lead) => void;
+  onOpenSignatureModal?: (proposal: Proposal) => void;
 }
 
 // Preset Email Templates for Educational CRM
@@ -80,11 +88,50 @@ Casbiro Solutions Private Limited
 https://mysar.in`,
   },
   {
+    id: 'proposal_acceptance',
+    name: 'Proposal Acceptance & E-Signature Request',
+    subject: (lead?: Lead, prop?: Proposal) =>
+      `Action Required: Proposal Acceptance & Digital Signature [${prop?.proposalNumber || 'MYSAR-PROP'}] - ${lead?.instituteName || 'Campus'}`,
+    bodyText: (lead?: Lead, prop?: Proposal) => {
+      const signUrl = prop ? getProposalSignatureUrl(prop) : 'https://mysar.in';
+      return `Dear ${lead?.contactPerson || 'Respected Principal / Institutional Head'},
+
+Greetings from MYSAR by Casbiro Solutions!
+
+We are delighted to submit the official commercial proposal and institutional service agreement for deploying the MYSAR Institutional Management Suite across ${lead?.instituteName || 'your campus'}.
+
+Proposal & Commercial Overview:
+• Proposal Reference: ${prop?.proposalNumber || 'PROPOSAL-REF'}
+• Target Student Base: ${prop?.studentCount || 'Full Campus'} Students
+• Total Annual Investment: ${prop ? formatINR(prop.totalAmount) : 'As per quotation'} (${prop?.pricingType || 'Standard Plan'})
+• Contract Term: 5-Year Institutional Service Agreement
+• Agreed 3-Stage Milestone Payment Schedule:
+  1. Registration Fee: Payable at the time of registration (deducted from trial price)
+  2. Balance 60%: Payable after student onboarding
+  3. Balance 40%: Payable after two months
+
+DIGITAL ACCEPTANCE & ELECTRONIC SIGNATURE:
+To review the agreed deliverables and electronically sign the proposal acceptance form online, please access your institution's secure digital signing link below:
+
+👉 Official Digital Signature & Acceptance Link:
+${signUrl}
+
+Once signed, both parties will automatically receive a verified, legally valid copy of the executed contract.
+
+Warm regards,
+MYSAR Institutional Relations Team
+Casbiro Solutions Private Limited
+Kochi, Kerala | https://mysar.in`;
+    },
+  },
+  {
     id: 'proposal',
     name: 'Commercial Proposal & Quotation Delivery',
     subject: (lead?: Lead, prop?: Proposal) =>
       `Commercial Proposal [${prop?.proposalNumber || 'MYSAR-PROP'}] - MYSAR Institutional Suite for ${lead?.instituteName || 'Campus'}`,
-    bodyText: (lead?: Lead, prop?: Proposal) => `Dear ${lead?.contactPerson || 'Institutional Head'},
+    bodyText: (lead?: Lead, prop?: Proposal) => {
+      const signUrl = prop ? getProposalSignatureUrl(prop) : '';
+      return `Dear ${lead?.contactPerson || 'Institutional Head'},
 
 We are delighted to submit our customized commercial proposal for deploying the MYSAR Institutional Management Suite across ${lead?.instituteName || 'your campus'}.
 
@@ -92,12 +139,15 @@ Proposal Highlights:
 • Proposal Reference: ${prop?.proposalNumber || 'PROPOSAL-REF'}
 • Target Student Base: ${prop?.studentCount || 'Full Campus'} Students
 • Total Annual Investment: ${prop ? formatINR(prop.totalAmount) : 'As per quotation'} (${prop?.pricingType || 'Standard Plan'})
+• 3-Stage Payment Schedule: Registration Fee, 60% after onboarding, and 40% after two months
 
-Please find our complete 14-page formal commercial proposal attached for your board's review. We look forward to scheduling our formal contract finalization meeting.
+${signUrl ? `👉 Digital Signature & Acceptance Portal:\n${signUrl}\n(You may review the proposal and sign the acceptance form digitally online.)\n` : ''}
+Please find our complete formal commercial proposal attached for your board's review. We look forward to scheduling our formal contract finalization meeting.
 
 Warm regards,
 Sales & Implementation Director
-Casbiro Solutions Private Limited`,
+Casbiro Solutions Private Limited`;
+    },
   },
   {
     id: 'demo_followup',
@@ -124,6 +174,8 @@ export const GmailInboxView: React.FC<GmailInboxViewProps> = ({
   proposals,
   currentUser,
   initialLeadId,
+  initialProposal,
+  onOpenSignatureModal,
 }) => {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -149,12 +201,44 @@ export const GmailInboxView: React.FC<GmailInboxViewProps> = ({
   const [composeSubject, setComposeSubject] = useState<string>('');
   const [composeBody, setComposeBody] = useState<string>('');
   const [composeSelectedLead, setComposeSelectedLead] = useState<Lead | null>(null);
+  const [composeProposalId, setComposeProposalId] = useState<string>('');
+  const [copiedLinkSuccess, setCopiedLinkSuccess] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
   // Confirmation dialogs (Mandatory for destructive/send actions)
   const [confirmSendOpen, setConfirmSendOpen] = useState<boolean>(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+
+  // Active proposal for the email composition
+  const activeProposalForCompose = useMemo(() => {
+    if (composeProposalId) {
+      const found = proposals.find((p) => p.id === composeProposalId);
+      if (found) return found;
+    }
+    if (composeSelectedLead) {
+      const found = proposals.find((p) => p.leadId === composeSelectedLead.id);
+      if (found) return found;
+    }
+    return proposals[0] || null;
+  }, [composeProposalId, composeSelectedLead, proposals]);
+
+  // Handle incoming initialProposal from Proposals view
+  useEffect(() => {
+    if (initialProposal) {
+      const lead = leads.find((l) => l.id === initialProposal.leadId);
+      setComposeSelectedLead(lead || null);
+      setComposeProposalId(initialProposal.id);
+      setComposeTo(initialProposal.leadEmail || lead?.email || '');
+      setComposeSubject(
+        `Action Required: Proposal Acceptance & Digital Signature [${initialProposal.proposalNumber}] - ${initialProposal.instituteName}`
+      );
+      const tpl =
+        EMAIL_TEMPLATES.find((t) => t.id === 'proposal_acceptance') || EMAIL_TEMPLATES[1];
+      setComposeBody(tpl.bodyText(lead, initialProposal));
+      setIsComposeOpen(true);
+    }
+  }, [initialProposal, leads]);
 
   // Check auth state on load
   useEffect(() => {
@@ -291,11 +375,27 @@ export const GmailInboxView: React.FC<GmailInboxViewProps> = ({
     const tpl = EMAIL_TEMPLATES.find((t) => t.id === templateId);
     if (!tpl) return;
     const lead = composeSelectedLead || leads.find((l) => l.email === composeTo);
-    const prop = proposals.find((p) => p.leadId === lead?.id);
+    const prop = activeProposalForCompose || proposals.find((p) => p.leadId === lead?.id);
     const subj = typeof tpl.subject === 'function' ? tpl.subject(lead, prop) : tpl.subject;
     const body = tpl.bodyText(lead, prop);
     setComposeSubject(subj);
     setComposeBody(body);
+  };
+
+  // Insert digital signature acceptance link into compose message body
+  const handleInsertSignatureLink = (proposalToLink: Proposal) => {
+    const url = getProposalSignatureUrl(proposalToLink);
+    const snippet = `\n\n👉 Proposal Digital Signature & Acceptance Link:\n${url}\n(Please click to review the agreement scope, 5-year terms, 3-stage payment milestones, and complete official electronic acceptance online.)\n`;
+    setComposeBody((prev) => prev + snippet);
+  };
+
+  // Copy signature link to clipboard
+  const handleCopySignatureLink = async (proposalToLink: Proposal) => {
+    const success = await copySignatureLinkToClipboard(proposalToLink);
+    if (success) {
+      setCopiedLinkSuccess(true);
+      setTimeout(() => setCopiedLinkSuccess(false), 2500);
+    }
   };
 
   // Confirmation before sending
@@ -847,6 +947,109 @@ export const GmailInboxView: React.FC<GmailInboxViewProps> = ({
                   onChange={(e) => setComposeSubject(e.target.value)}
                   className="w-full px-3 py-2 bg-[#F7FAF8] border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#168A45] font-semibold text-slate-800"
                 />
+              </div>
+
+              {/* Proposal Acceptance & Digital Signature Link Attachment Widget */}
+              <div className="bg-[#EAF7EF]/70 border border-[#168A45]/30 rounded-xl p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <FileCheck2 className="w-4 h-4 text-[#168A45] shrink-0" />
+                    <div>
+                      <span className="font-bold text-slate-800 text-[11px]">
+                        Customer Acceptance & Digital Signature Link:
+                      </span>
+                      <div className="text-[10px] text-slate-600">
+                        Include a secure e-sign link for the school head to accept and sign online.
+                      </div>
+                    </div>
+                  </div>
+
+                  {proposals.length > 1 && (
+                    <div className="flex items-center space-x-1.5">
+                      <select
+                        value={activeProposalForCompose?.id || ''}
+                        onChange={(e) => setComposeProposalId(e.target.value)}
+                        className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-[10.5px] font-semibold text-slate-700 max-w-[200px] truncate"
+                      >
+                        {proposals.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.proposalNumber} ({p.instituteName})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {activeProposalForCompose && (
+                  <div className="bg-white border border-emerald-200 rounded-lg p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                    <div className="text-[11px] truncate">
+                      <span className="font-mono font-bold text-[#0B5D2A]">
+                        {activeProposalForCompose.proposalNumber}
+                      </span>
+                      <span className="text-slate-400 mx-1.5">•</span>
+                      <span className="text-slate-700 font-medium">
+                        {activeProposalForCompose.instituteName}
+                      </span>
+                      <span className="text-slate-400 mx-1.5">•</span>
+                      <span className="font-bold text-slate-900">
+                        {formatINR(activeProposalForCompose.totalAmount)}
+                      </span>
+                      {activeProposalForCompose.digitalSignature ? (
+                        <span className="ml-2 text-[9px] font-black uppercase tracking-wide bg-emerald-100 text-[#0B5D2A] px-1.5 py-0.5 rounded border border-emerald-300">
+                          ✓ Signed
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          Pending Signature
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 shrink-0 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleInsertSignatureLink(activeProposalForCompose)}
+                        className="px-2.5 py-1 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                        title="Append digital signature link to message body"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Insert Link in Message</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopySignatureLink(activeProposalForCompose)}
+                        className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                        title="Copy customer signature URL"
+                      >
+                        {copiedLinkSuccess ? (
+                          <>
+                            <Check className="w-3 h-3 text-[#168A45]" />
+                            <span className="text-[#168A45]">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 text-slate-500" />
+                            <span>Copy Link</span>
+                          </>
+                        )}
+                      </button>
+
+                      {onOpenSignatureModal && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSignatureModal(activeProposalForCompose)}
+                          className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-600 border border-gray-200 rounded-lg text-[10.5px] flex items-center gap-1 cursor-pointer"
+                          title="Preview Acceptance Portal"
+                        >
+                          <Eye className="w-3 h-3 text-[#168A45]" />
+                          <span>Preview Portal</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Message Body */}

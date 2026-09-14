@@ -41,6 +41,7 @@ export interface LeadActivity {
     proposalNumber?: string;
     proposalAmount?: number;
     statusBadge?: string;
+    version?: number;
   };
 }
 
@@ -90,6 +91,25 @@ export interface Lead {
 
 export type ProposalStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected' | 'Negotiating';
 
+export interface ProposalAgreementDetails {
+  agreementPeriod: string; // e.g. "5 Years"
+  registrationFee: number; // e.g. 30000
+  trialPrice: number; // e.g. 30 (per student)
+  trialAcademicYear: string; // e.g. "2026–2027 Academic Year"
+  planChosen: string; // e.g. "Institute Payment" or "School Premium with ID"
+  hasSpecialPrice?: boolean;
+  specialPrice?: number; // e.g. 65
+  specialPriceLabel?: string; // e.g. "Institute Subscription (Special Price)"
+  agreementClause?: string;
+  acceptanceClause?: string;
+  paymentSchedule?: string[];
+  paymentTerms: string[];
+  clientAuthorizedPerson?: string;
+  clientDesignation?: string;
+  companyAuthorizedPerson?: string;
+  companyDesignation?: string;
+}
+
 export interface ProposalPricingItem {
   id: string;
   pricingType: PricingType | string;
@@ -98,6 +118,77 @@ export interface ProposalPricingItem {
   totalAmount: number;
   description?: string;
   isPrimary?: boolean;
+}
+
+export interface ProposalVersionEntry {
+  version: number;
+  updatedAt: string;
+  updatedBy: string;
+  pricingType?: PricingType;
+  pricePerStudent?: number;
+  studentCount?: number;
+  totalAmount?: number;
+  changesSummary?: string;
+  notes?: string;
+}
+
+export type PaymentStageKey = 'registration' | 'onboarding' | 'two_months';
+export type PaymentStageStatus = 'Pending' | 'Partially Paid' | 'Paid' | 'Overdue';
+export type OverallPaymentStatus = 'Unpaid' | 'Partially Paid' | 'Fully Paid' | 'Overdue';
+
+export interface PaymentTransactionRecord {
+  id: string;
+  stageKey: PaymentStageKey;
+  amount: number;
+  paidDate: string;
+  paymentMode: string; // 'Bank Transfer' | 'NEFT/RTGS' | 'UPI' | 'Cheque' | 'Cash'
+  referenceNumber?: string;
+  receiptNumber?: string;
+  recordedBy?: string;
+  notes?: string;
+}
+
+export interface ProposalPaymentStage {
+  stageKey: PaymentStageKey;
+  stageName: string; // "Registration", "Onboarding", "2-Month Mark"
+  title: string; // "Stage 1: Registration Fee", "Stage 2: Student Onboarding (60%)", "Stage 3: 2-Month Mark (40%)"
+  description: string;
+  percentage?: number; // 60, 40 or undefined for fixed
+  targetAmount: number;
+  paidAmount: number;
+  status: PaymentStageStatus;
+  dueDate?: string;
+  paidDate?: string;
+  paymentMode?: string;
+  referenceNumber?: string;
+  notes?: string;
+}
+
+export interface ProposalPaymentTracking {
+  totalAgreedAmount: number;
+  totalPaidAmount: number;
+  balanceAmount: number;
+  overallPaymentStatus: OverallPaymentStatus;
+  stages: ProposalPaymentStage[];
+  transactions?: PaymentTransactionRecord[];
+  lastUpdated?: string;
+  paymentNotes?: string;
+}
+
+export interface ProposalDigitalSignature {
+  signerName: string;
+  signerDesignation: string;
+  signerEmail: string;
+  signerPhone?: string;
+  instituteName: string;
+  signatureImage: string; // Base64 PNG data URL or vector
+  signatureType: 'draw' | 'type' | 'upload';
+  signedAt: string; // ISO datetime
+  ipAddress?: string;
+  userAgent?: string;
+  verificationCode: string; // e.g. "MYSAR-ESIGN-84920"
+  acceptedTerms: boolean;
+  notes?: string;
 }
 
 export interface Proposal {
@@ -113,7 +204,12 @@ export interface Proposal {
   pricePerStudent: number;
   totalAmount: number;
   pricingItems?: ProposalPricingItem[];
+  agreementDetails?: ProposalAgreementDetails;
   proposalStatus: ProposalStatus;
+  version?: number;
+  versionHistory?: ProposalVersionEntry[];
+  paymentTracking?: ProposalPaymentTracking;
+  digitalSignature?: ProposalDigitalSignature;
   pdfFileId?: string;
   pdfUrl?: string;
   createdBy: string;
@@ -261,7 +357,10 @@ export interface Settings {
   companyName: string;
   brandName: string;
   tagline: string;
-  companyLogo?: string;
+  companyLogo?: string; // Master / General fallback logo
+  navbarLogo?: string; // Top-Left App Navigation / Header logo
+  documentLogo?: string; // Document, PDF proposal & print header logo
+  loginLogo?: string; // Login screen central emblem badge logo
   address: string;
   phone: string;
   email: string;

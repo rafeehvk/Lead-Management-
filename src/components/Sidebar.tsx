@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   Mail,
   Video,
-  LogOut,
   ChevronDown,
   ChevronRight,
   Briefcase,
@@ -23,12 +22,25 @@ import {
   Layers,
   Building2,
   Bell,
+  FileCheck,
+  Calendar,
+  History,
+  Laptop,
+  PackageCheck,
+  ShoppingBag,
+  ArrowRightLeft,
+  Wrench,
+  ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { hasPermission, ROLE_DEFINITIONS } from '../utils/rbac';
+import { documentExpiryStorage } from '../services/documentExpiryStorage';
+import { assetStorage } from '../services/assetStorageService';
 
 export type NavTab =
   | 'dashboard'
+  | 'lead-overview'
   | 'leads'
   | 'followups'
   | 'proposals'
@@ -43,7 +55,26 @@ export type NavTab =
   | 'hr-attendance'
   | 'hr-payroll'
   | 'hr-kpi'
-  | 'hr-settings';
+  | 'hr-settings'
+  | 'doc-expiry'
+  | 'doc-dashboard'
+  | 'doc-registry'
+  | 'doc-calendar'
+  | 'doc-reminders'
+  | 'doc-renewals'
+  | 'doc-types'
+  | 'assets'
+  | 'asset-overview'
+  | 'asset-register'
+  | 'asset-requests'
+  | 'asset-pos'
+  | 'asset-receiving'
+  | 'asset-movements'
+  | 'asset-maintenance'
+  | 'asset-warranties'
+  | 'asset-retirements'
+  | 'asset-reports'
+  | 'asset-settings';
 
 export type SettingsSubTab = 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations';
 
@@ -78,6 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleDef = ROLE_DEFINITIONS[currentUser.role] || ROLE_DEFINITIONS.Salesperson;
 
   const isLeadTabActive = [
+    'lead-overview',
     'leads',
     'followups',
     'proposals',
@@ -95,6 +127,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'hr-kpi',
     'hr-settings',
   ].includes(activeTab);
+
+  const isDocExpiryTabActive = [
+    'doc-expiry',
+    'doc-dashboard',
+    'doc-registry',
+    'doc-calendar',
+    'doc-reminders',
+    'doc-renewals',
+    'doc-types',
+  ].includes(activeTab);
+
+  const isAssetTabActive =
+    activeTab === 'assets' ||
+    [
+      'asset-overview',
+      'asset-register',
+      'asset-requests',
+      'asset-pos',
+      'asset-receiving',
+      'asset-movements',
+      'asset-maintenance',
+      'asset-warranties',
+      'asset-retirements',
+      'asset-reports',
+      'asset-settings',
+    ].includes(activeTab);
 
   const [isLeadManagementOpen, setIsLeadManagementOpen] = useState(() => {
     try {
@@ -114,6 +172,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   });
 
+  const [isDocExpiryOpen, setIsDocExpiryOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_doc_expiry_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(() => {
     try {
       const saved = localStorage.getItem('sidebar_settings_open');
@@ -122,6 +189,73 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return false;
     }
   });
+
+  const [isAssetManagementOpen, setIsAssetManagementOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_asset_mgmt_open');
+      return saved !== null ? saved === 'true' : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const [assetMetrics, setAssetMetrics] = useState(() => {
+    try {
+      return assetStorage.getMetrics();
+    } catch {
+      return { totalAssets: 0, inMaintenanceCount: 0 };
+    }
+  });
+
+  useEffect(() => {
+    if (isAssetTabActive) {
+      setIsAssetManagementOpen(true);
+    }
+  }, [isAssetTabActive]);
+
+  useEffect(() => {
+    const handleAssetChange = () => {
+      try {
+        setAssetMetrics(assetStorage.getMetrics());
+      } catch {}
+    };
+    window.addEventListener('mysar_asset_data_changed', handleAssetChange);
+    return () => window.removeEventListener('mysar_asset_data_changed', handleAssetChange);
+  }, []);
+
+  const [docMetrics, setDocMetrics] = useState(() => {
+    try {
+      return documentExpiryStorage.getDashboardMetrics();
+    } catch {
+      return {
+        expiredCount: 0,
+        expiringTodayCount: 0,
+        expiring7dCount: 0,
+        expiring30dCount: 0,
+        expiring90dCount: 0,
+        renewedCount: 0,
+        activeCount: 0,
+        totalDocuments: 0,
+        totalRenewalCostExposure: 0,
+      };
+    }
+  });
+
+  useEffect(() => {
+    if (isDocExpiryTabActive) {
+      setIsDocExpiryOpen(true);
+    }
+  }, [isDocExpiryTabActive]);
+
+  useEffect(() => {
+    const handleDocChange = () => {
+      try {
+        setDocMetrics(documentExpiryStorage.getDashboardMetrics());
+      } catch {}
+    };
+    window.addEventListener('mysar_doc_expiry_changed', handleDocChange);
+    return () => window.removeEventListener('mysar_doc_expiry_changed', handleDocChange);
+  }, []);
 
   const toggleLeadManagement = () => {
     setIsLeadManagementOpen((prev) => {
@@ -141,6 +275,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } catch {}
       return next;
     });
+  };
+
+  const toggleDocExpiry = () => {
+    setIsDocExpiryOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sidebar_doc_expiry_open', String(next));
+      } catch {}
+      return next;
+    });
+    if (!isDocExpiryTabActive) {
+      onTabChange('doc-dashboard');
+    }
+  };
+
+  const toggleAssetManagement = () => {
+    setIsAssetManagementOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sidebar_asset_mgmt_open', String(next));
+      } catch {}
+      return next;
+    });
+    if (!isAssetTabActive) {
+      onTabChange('asset-overview');
+    }
   };
 
   const toggleSettings = () => {
@@ -191,6 +351,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const leadManagementItems = [
+    {
+      id: 'lead-overview' as NavTab,
+      label: 'Lead Overview',
+      icon: LayoutDashboard,
+      badge: null,
+      badgeColor: undefined,
+    },
     {
       id: 'leads' as NavTab,
       label: 'Leads',
@@ -281,6 +448,134 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'hr-settings' as NavTab,
       label: 'HR Configuration',
+      icon: Sliders,
+      badge: null,
+      badgeColor: undefined,
+    },
+  ];
+
+  const docExpiryManagementItems = [
+    {
+      id: 'doc-dashboard' as NavTab,
+      label: 'Expiry Dashboard',
+      icon: LayoutDashboard,
+      badge: docMetrics.expiredCount > 0 ? `${docMetrics.expiredCount} Exp` : null,
+      badgeColor: 'bg-red-100 text-red-700 font-bold border border-red-200',
+    },
+    {
+      id: 'doc-registry' as NavTab,
+      label: 'Documents Registry',
+      icon: FileText,
+      badge: docMetrics.totalDocuments > 0 ? `${docMetrics.totalDocuments}` : null,
+      badgeColor: 'bg-[#EAF7EF] text-[#0B5D2A] font-bold border border-[#D9E5DD]',
+    },
+    {
+      id: 'doc-calendar' as NavTab,
+      label: 'Expiry Calendar',
+      icon: Calendar,
+      badge: docMetrics.expiring30dCount > 0 ? `${docMetrics.expiring30dCount} Due` : null,
+      badgeColor: 'bg-amber-100 text-amber-800 font-bold border border-amber-200',
+    },
+    {
+      id: 'doc-reminders' as NavTab,
+      label: 'Reminders & Notifications',
+      icon: Bell,
+      badge: '5 Channels',
+      badgeColor: 'bg-purple-50 text-purple-700 border border-purple-200',
+    },
+    {
+      id: 'doc-renewals' as NavTab,
+      label: 'Renewal History Ledger',
+      icon: History,
+      badge: docMetrics.renewedCount > 0 ? `${docMetrics.renewedCount}` : null,
+      badgeColor: 'bg-blue-50 text-blue-700 border border-blue-200',
+    },
+    {
+      id: 'doc-types' as NavTab,
+      label: 'Document & Expiry Types',
+      icon: Layers,
+      badge: null,
+      badgeColor: undefined,
+    },
+  ];
+
+  const assetManagementItems = [
+    {
+      id: 'asset-overview' as NavTab,
+      label: 'Asset Overview',
+      icon: LayoutDashboard,
+      badge: `${assetMetrics.totalAssets || 0}`,
+      badgeColor: 'bg-[#EAF7EF] text-[#0B5D2A] font-bold border border-[#D9E5DD]',
+    },
+    {
+      id: 'asset-register' as NavTab,
+      label: 'Asset Register',
+      icon: Laptop,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-requests' as NavTab,
+      label: 'Requisitions',
+      icon: FileCheck,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-pos' as NavTab,
+      label: 'Purchase Orders',
+      icon: ShoppingBag,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-receiving' as NavTab,
+      label: 'Goods Intake (GRN)',
+      icon: PackageCheck,
+      badge: 'Intake',
+      badgeColor: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+    },
+    {
+      id: 'asset-movements' as NavTab,
+      label: 'Movement Ledger',
+      icon: ArrowRightLeft,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-maintenance' as NavTab,
+      label: 'Maintenance & Repairs',
+      icon: Wrench,
+      badge:
+        (assetMetrics.inMaintenanceCount || 0) > 0
+          ? `${assetMetrics.inMaintenanceCount}`
+          : null,
+      badgeColor: 'bg-amber-100 text-amber-800 font-bold border border-amber-200',
+    },
+    {
+      id: 'asset-warranties' as NavTab,
+      label: 'Warranties & AMC',
+      icon: ShieldCheck,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-retirements' as NavTab,
+      label: 'Decommissioned',
+      icon: Trash2,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-reports' as NavTab,
+      label: 'Compliance Reports',
+      icon: BarChart3,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'asset-settings' as NavTab,
+      label: 'Asset Masters & Config',
       icon: Sliders,
       badge: null,
       badgeColor: undefined,
@@ -467,7 +762,169 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* 4. Group: Settings */}
+        {/* 4. Group: Document & Expiry Management */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={toggleDocExpiry}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              isDocExpiryTabActive
+                ? 'bg-slate-50 text-slate-900 border border-slate-200/80'
+                : 'text-slate-700 hover:bg-[#F7FAF8] hover:text-[#168A45]'
+            }`}
+            title="Toggle Document & Expiry Management Group"
+          >
+            <div className="flex items-center space-x-3">
+              <FileCheck
+                className={`w-4 h-4 ${
+                  isDocExpiryTabActive ? 'text-[#168A45]' : 'text-slate-400'
+                }`}
+              />
+              <span className="truncate">Document & Expiry</span>
+            </div>
+
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {docMetrics.expiredCount > 0 ? (
+                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-red-100 text-red-700 animate-pulse border border-red-200">
+                  {docMetrics.expiredCount} Exp
+                </span>
+              ) : docMetrics.expiringTodayCount > 0 || docMetrics.expiring7dCount > 0 ? (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                  {docMetrics.expiringTodayCount + docMetrics.expiring7dCount} Due
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {docMetrics.totalDocuments}
+                </span>
+              )}
+              {isDocExpiryOpen ? (
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              )}
+            </div>
+          </button>
+
+          {/* Document & Expiry Children */}
+          {isDocExpiryOpen && (
+            <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
+              {docExpiryManagementItems.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  activeTab === item.id ||
+                  (item.id === 'doc-dashboard' && activeTab === 'doc-expiry');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onTabChange(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#EAF7EF] text-[#0B5D2A] font-bold border border-[#D9E5DD] shadow-2xs'
+                        : 'text-slate-600 hover:bg-[#F7FAF8] hover:text-[#168A45]'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <Icon
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          isActive ? 'text-[#168A45]' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge !== null && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          item.badgeColor || 'bg-[#F7FAF8] text-slate-500 border border-gray-200'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 5. Group: Asset Management */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={toggleAssetManagement}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              isAssetTabActive
+                ? 'bg-slate-50 text-slate-900 border border-slate-200/80'
+                : 'text-slate-700 hover:bg-[#F7FAF8] hover:text-[#168A45]'
+            }`}
+            title="Toggle Asset Management Group"
+          >
+            <div className="flex items-center space-x-3">
+              <Laptop
+                className={`w-4 h-4 ${
+                  isAssetTabActive ? 'text-[#168A45]' : 'text-slate-400'
+                }`}
+              />
+              <span className="truncate">Asset Management</span>
+            </div>
+
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {(assetMetrics.totalAssets || 0) > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#EAF7EF] text-[#0B5D2A] border border-[#D9E5DD]">
+                  {assetMetrics.totalAssets}
+                </span>
+              )}
+              {isAssetManagementOpen ? (
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              )}
+            </div>
+          </button>
+
+          {/* Asset Management Children */}
+          {isAssetManagementOpen && (
+            <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
+              {assetManagementItems.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  activeTab === item.id ||
+                  (item.id === 'asset-overview' && activeTab === 'assets');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onTabChange(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[#EAF7EF] text-[#0B5D2A] font-bold border border-[#D9E5DD] shadow-2xs'
+                        : 'text-slate-600 hover:bg-[#F7FAF8] hover:text-[#168A45]'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <Icon
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          isActive ? 'text-[#168A45]' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge !== null && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          item.badgeColor || 'bg-[#F7FAF8] text-slate-500 border border-gray-200'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 6. Group: Settings */}
         <div className="pt-1">
           <button
             type="button"
@@ -540,33 +997,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom User Card & Sign Out */}
-      <div className="pt-3 border-t border-gray-200 space-y-2">
-        {/* User Card & Sign Out */}
-        <div className="bg-slate-50 border border-gray-200 rounded-xl p-2.5 flex items-center justify-between">
-          <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
-              {currentUser.name.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</div>
-              <div className="text-[10px] text-slate-400 font-mono truncate">
-                @{currentUser.userId || currentUser.id.toLowerCase()}
-              </div>
-            </div>
-          </div>
-          {onLogout && (
-            <button
-              type="button"
-              onClick={onLogout}
-              title="Sign Out of CRM"
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
+      {/* Bottom Footer */}
+      <div className="pt-3 border-t border-gray-200">
         <div className="px-2 text-center text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
           Casbiro Solutions &copy; {new Date().getFullYear()}
         </div>

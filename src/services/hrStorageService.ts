@@ -23,6 +23,7 @@ import {
   DepartmentMaster,
   IdCardTemplateSettings,
 } from '../types/hr';
+import { validateLeaveRequest } from '../utils/leaveValidation';
 import {
   initialPositions,
   initialApplicants,
@@ -1168,6 +1169,27 @@ class HrStorageService {
 
   public submitLeaveRequest(data: Partial<LeaveRequest>, actorName = 'Staff'): LeaveRequest {
     const requests = this.getLeaveRequests();
+    const balances = this.getLeaveBalances();
+    const staffList = this.getStaff();
+
+    // Enforce validation check against available leave balance
+    const validation = validateLeaveRequest({
+      staffId: data.staffId || '',
+      leaveType: data.leaveType || 'Casual Leave',
+      numberOfDays: data.numberOfDays || 1,
+      fromDate: data.fromDate,
+      toDate: data.toDate,
+      reason: data.reason,
+      balances,
+      pendingRequests: requests,
+      staffList,
+    });
+
+    if (!validation.canSubmit && !validation.category.isExemptFromQuota) {
+      const errMsg = validation.errors[0] || 'Requested leave duration exceeds employee available leave balance.';
+      throw new Error(errMsg);
+    }
+
     const count = requests.length + 1;
     const newReq: LeaveRequest = {
       id: `LR-2026-${String(count).padStart(3, '0')}`,
@@ -1205,14 +1227,28 @@ class HrStorageService {
     // If approved, deduct leave balance
     if (status === 'Approved') {
       const balances = this.getLeaveBalances();
-      const bal = balances.find((b) => b.staffId === req.staffId);
-      if (bal) {
-        if (req.leaveType === 'Casual Leave') bal.casualUsed += req.numberOfDays;
-        else if (req.leaveType === 'Sick Leave') bal.sickUsed += req.numberOfDays;
-        else if (req.leaveType === 'Annual Leave') bal.annualUsed += req.numberOfDays;
-        else if (req.leaveType === 'Emergency Leave') bal.emergencyUsed += req.numberOfDays;
-        this.setStorage(HR_STORAGE_KEYS.LEAVE_BALANCES, balances);
+      let bal = balances.find((b) => b.staffId === req.staffId);
+      if (!bal) {
+        bal = {
+          staffId: req.staffId,
+          staffName: req.staffName,
+          department: req.department,
+          annualTotal: 15,
+          annualUsed: 0,
+          casualTotal: 12,
+          casualUsed: 0,
+          sickTotal: 10,
+          sickUsed: 0,
+          emergencyTotal: 5,
+          emergencyUsed: 0,
+        };
+        balances.push(bal);
       }
+      if (req.leaveType === 'Casual Leave') bal.casualUsed = (bal.casualUsed || 0) + req.numberOfDays;
+      else if (req.leaveType === 'Sick Leave') bal.sickUsed = (bal.sickUsed || 0) + req.numberOfDays;
+      else if (req.leaveType === 'Annual Leave') bal.annualUsed = (bal.annualUsed || 0) + req.numberOfDays;
+      else if (req.leaveType === 'Emergency Leave') bal.emergencyUsed = (bal.emergencyUsed || 0) + req.numberOfDays;
+      this.setStorage(HR_STORAGE_KEYS.LEAVE_BALANCES, balances);
     }
 
     this.addActivity(approverName, 'Principal / HR', `Leave ${status}`, 'Leave', `${req.staffName} - ${req.leaveType}`);

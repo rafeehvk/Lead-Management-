@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Plus,
   Code2,
   RefreshCw,
   Search,
@@ -65,16 +64,17 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const roleDef = ROLE_DEFINITIONS[currentUser.role] || ROLE_DEFINITIONS.Salesperson;
+  const navLogo = settings?.navbarLogo || settings?.companyLogo;
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 sticky top-0 z-30 flex items-center justify-between gap-3">
       {/* Brand & Subtext */}
       <div className="flex items-center space-x-3 shrink-0">
-        {settings?.companyLogo ? (
+        {navLogo ? (
           <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 p-1 flex items-center justify-center overflow-hidden shadow-2xs">
             <img
-              src={settings.companyLogo}
-              alt={settings.brandName || 'Logo'}
+              src={navLogo}
+              alt={settings?.brandName || 'Logo'}
               className="max-h-full max-w-full object-contain"
             />
           </div>
@@ -86,11 +86,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-base md:text-lg font-bold text-slate-800 tracking-tight">
-              {settings?.brandName ? (settings.brandName.includes('ERP') ? settings.brandName : `${settings.brandName} ERP`) : 'MYSAR ERP'}
+              {settings?.brandName || 'MYSAr'}
             </h1>
-            <span className="hidden lg:inline-flex bg-[#EAF7EF] text-[#0B5D2A] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#D9E5DD]">
-              Sheets & GAS Sync
-            </span>
           </div>
           <p className="text-[11px] text-slate-500 font-medium">
             {settings?.companyName || 'Casbiro Solutions Private Limited'}
@@ -134,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notifications Bell with Badge */}
         <button
           onClick={onOpenNotifications}
-          title="Automated Follow-up Notifications"
+          title="All Notifications & Alerts"
           className="relative p-2 text-slate-600 hover:text-[#168A45] hover:bg-[#EAF7EF] rounded-lg border border-gray-200 transition-colors"
         >
           <Bell className="w-4 h-4" />
@@ -152,16 +149,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Code2 className="w-3.5 h-3.5 text-[#168A45]" />
           <span>GAS Hub</span>
-        </button>
-
-        {/* Add Lead Button */}
-        <button
-          onClick={onOpenNewLead}
-          className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-3 md:px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold flex items-center space-x-1 transition-all shadow-xs active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">+ Lead</span>
-          <span className="sm:hidden">+</span>
         </button>
 
         {/* Active User Switcher / RBAC Role Badge */}

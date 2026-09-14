@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { Proposal, Settings } from '../types';
 import { formatINR } from '../utils/pdfGenerator';
 import { getEffectiveProposalContent, DEFAULT_PROPOSAL_CONTENT } from '../utils/defaultProposalContent';
@@ -8,6 +9,7 @@ interface PrintableProposalDocumentProps {
   settings?: Settings;
   id?: string;
   showPageBadges?: boolean;
+  documentMode?: 'full' | 'agreementOnly';
 }
 
 // Decorative SVG Wave Curve for Page Top-Right
@@ -107,8 +109,9 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
   settings,
   id = 'mysar-proposal-printable-document',
   showPageBadges = true,
+  documentMode = 'full',
 }) => {
-  const companyLogo = settings?.companyLogo;
+  const companyLogo = settings?.documentLogo || settings?.companyLogo;
   const brandName = settings?.brandName || 'MYSAR';
   const companyName = settings?.companyName || 'Casbiro Solutions Private Limited';
   const content = getEffectiveProposalContent(settings);
@@ -142,6 +145,36 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
     '';
   const currentProposalNo = proposal.proposalNumber || proposal.id || '';
 
+  const agreement = proposal.agreementDetails || {
+    agreementPeriod: '5 Years',
+    registrationFee: 30000,
+    trialPrice: 30,
+    trialAcademicYear: '2026–2027 Academic Year',
+    planChosen: proposal.pricingType || 'Institute Payment',
+    hasSpecialPrice: true,
+    specialPrice: 65,
+    specialPriceLabel: 'Institute Subscription (Special Price)',
+    agreementClause: `The student subscription price quoted in this proposal is applicable for a period of 5 Years from the date of commencement of the agreement, subject to the terms and conditions specified in this proposal.\n\nThe quoted student price covers the agreed MYSAR services and features for the full five-year agreement period. Any services, features, requirements, or changes outside the agreed scope may be subject to additional charges.`,
+    acceptanceClause: `We hereby acknowledge that we have received and reviewed the proposal issued by ${companyName} (${brandName}) for ${proposal.instituteName || 'the Institution'} and confirm our acceptance of the proposed scope of work, technical deliverables, pricing, and terms specified herein.\n\nBy accepting this proposal, the institution authorizes ${companyName} (${brandName}) to proceed with implementation planning, campus infrastructure setup, smart ID card configuration, and operational rollout.`,
+    paymentSchedule: [
+      'Registration fee at the time of registration',
+      'Balance 60% after students onboarding, after two months balance 40% will pay.',
+    ],
+    paymentTerms: [
+      'Registration Fee will be included in the Trial Price and will be deducted from it.',
+      'The Trial Price is applicable only for the current academic year (2026–2027 Academic Year).',
+      'Payment shall be made according to the payment schedule specified in this proposal.',
+      'The student subscription price is based on a five (5) year agreement between the client/institution and Casbiro Solutions Private Limited (MYSAR).',
+      'Any applicable taxes, government charges, or additional services outside the agreed scope will be charged separately.',
+      'Any additional requirements or changes to the agreed scope may be subject to additional charges.',
+      'The terms and pricing specified in this proposal are subject to the agreed five-year contract period.',
+    ],
+    clientAuthorizedPerson: proposal.contactPerson || 'Authorized Signatory',
+    clientDesignation: 'Principal / Authorized Signatory',
+    companyAuthorizedPerson: 'Sakeer Ali V',
+    companyDesignation: 'Director & Authorized Signatory',
+  };
+
   const replacePlaceholders = (text: string) => {
     if (!text) return '';
     return text
@@ -152,7 +185,12 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       .replace(/\[DD\/MM\/YYYY\]/gi, formattedProposalDate || '[DD/MM/YYYY]')
       .replace(/\{\{STUDENT_COUNT\}\}/g, String(proposal.studentCount || 0))
       .replace(/\{\{COMPANY_NAME\}\}/g, companyName)
-      .replace(/\{\{BRAND_NAME\}\}/g, brandName);
+      .replace(/\{\{BRAND_NAME\}\}/g, brandName)
+      .replace(/\{\{AGREEMENT_PERIOD\}\}/g, agreement.agreementPeriod || '5 Years')
+      .replace(/\{\{REGISTRATION_FEE\}\}/g, formatINR(agreement.registrationFee ?? 30000))
+      .replace(/\{\{TRIAL_PRICE\}\}/g, String(agreement.trialPrice ?? 30))
+      .replace(/\{\{TRIAL_ACADEMIC_YEAR\}\}/g, agreement.trialAcademicYear || '2026–2027 Academic Year')
+      .replace(/\{\{SPECIAL_PRICE\}\}/g, String(agreement.specialPrice ?? 65));
   };
 
   // Multi-tier alternative packages for commercial table
@@ -200,23 +238,31 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
     ];
   })();
 
-  const pageNames = [
-    'Cover Page',
-    'Table of Contents',
-    '1. About Company',
-    '2. About MYSAR',
-    '3. Modules in MYSAR (Part 1)',
-    '3. Modules in MYSAR (Part 2)',
-    '3. Modules in MYSAR (Part 3)',
-    '4. Reports in MYSAR (Part 1)',
-    '4. Reports in MYSAR (Part 2)',
-    '5. Services from Team MYSAR (Part 1)',
-    '5. Services from Team MYSAR (Part 2)',
-    '6. Pricing & Commercial Options',
-    '7. Contact Information',
-    '8. Conclusion',
-    '9. Proposal Acceptance & Signatories',
-  ];
+  const totalPages = documentMode === 'agreementOnly' ? 2 : 16;
+
+  const pageNames = documentMode === 'agreementOnly'
+    ? [
+        '9. Agreement & Price Details',
+        '9. Payment Schedule, Terms & Signatures',
+      ]
+    : [
+        'Cover Page',
+        'Table of Contents',
+        '1. About Company',
+        '2. About MYSAR',
+        '3. Modules in MYSAR (Part 1)',
+        '3. Modules in MYSAR (Part 2)',
+        '3. Modules in MYSAR (Part 3)',
+        '4. Reports in MYSAR (Part 1)',
+        '4. Reports in MYSAR (Part 2)',
+        '5. Services from Team MYSAR (Part 1)',
+        '5. Services from Team MYSAR (Part 2)',
+        '6. Pricing & Commercial Options',
+        '7. Contact Information',
+        '8. Conclusion',
+        '9. Proposal Summary & Agreement Details',
+        '9. Payment Schedule, Terms & Signatures',
+      ];
 
   const renderPageBadge = (pageIdx: number) => {
     if (!showPageBadges) return null;
@@ -224,9 +270,9 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       <div className="no-print flex items-center justify-between text-xs font-semibold text-slate-500 py-2 px-1 w-[794px] max-w-full">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-[#168A45]"></span>
-          <span className="text-slate-700 font-bold">Page {pageIdx + 1} of 15</span>
+          <span className="text-slate-700 font-bold">Page {pageIdx + 1} of {totalPages}</span>
           <span className="text-slate-400">•</span>
-          <span className="text-slate-600">{pageNames[pageIdx]}</span>
+          <span className="text-slate-600">{pageNames[pageIdx] || ''}</span>
         </span>
         <span className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">A4 • 210 × 297 mm</span>
       </div>
@@ -238,9 +284,11 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       id={id}
       className="bg-transparent text-slate-800 font-sans w-full flex flex-col items-center space-y-10 print:space-y-0 print:w-full"
     >
-      {/* ========================================================================= */}
-      {/* PAGE 1: COVER PAGE */}
-      {/* ========================================================================= */}
+      {documentMode !== 'agreementOnly' && (
+        <>
+          {/* ========================================================================= */}
+          {/* PAGE 1: COVER PAGE */}
+          {/* ========================================================================= */}
       <div className="flex flex-col items-center">
         {renderPageBadge(0)}
         <div className="proposal-page proposal-page-card">
@@ -300,6 +348,9 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
               </div>
               <div className="text-xs text-white/80">
                 Ref: <span className="font-bold">{proposal.proposalNumber}</span>
+                <span className="ml-2 px-1.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-bold">
+                  v{proposal.version || 1}
+                </span>
               </div>
             </div>
 
@@ -341,7 +392,7 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
                 { num: '6', title: 'Pricing & Commercial Options', page: 12 },
                 { num: '7', title: 'Contact Information', page: 13 },
                 { num: '8', title: 'Conclusion', page: 14 },
-                { num: '9', title: 'Proposal Acceptance & Signatories', page: 15 },
+                { num: '9', title: 'Proposal Summary & Agreement Details', page: 15 },
               ].map((item) => (
                 <div key={item.num} className="flex items-center justify-between py-2 border-b border-gray-100">
                   <div className="flex items-center gap-4">
@@ -1015,146 +1066,478 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
           <PageFooter pageNumber={14} companyName={companyName} />
         </div>
       </div>
+        </>
+      )}
 
       {/* ========================================================================= */}
-      {/* PAGE 15: 9. PROPOSAL ACCEPTANCE & SIGNATORIES */}
+      {/* PAGE 15: 9. PROPOSAL SUMMARY, PRICE DETAILS & AGREEMENT PERIOD */}
       {/* ========================================================================= */}
       <div className="flex flex-col items-center">
-        {renderPageBadge(14)}
+        {renderPageBadge(documentMode === 'agreementOnly' ? 0 : 14)}
         <div className="proposal-page proposal-page-card">
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
           </div>
 
-          <div className="px-12 pt-2 pb-4 space-y-3 text-slate-700 text-xs leading-relaxed">
+          <div className="px-12 pt-3 pb-4 space-y-4 text-slate-800 text-xs leading-relaxed flex-1 flex flex-col justify-between">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                9. Proposal Acceptance & Signatories
+              <div className="text-[11px] font-bold text-[#168A45] tracking-wider uppercase">
+                Proposal for Implementation
+              </div>
+              <h2 className="text-2xl font-black text-[#0B5D2A] uppercase tracking-wide mt-0.5">
+                {proposal.instituteName}
               </h2>
-              <p className="text-slate-500 mt-0.5 text-xs">
-                Commercial authorization and formal agreement framework for {proposal.instituteName}
+            </div>
+
+            {/* 1. Proposal Summary */}
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                1. Proposal Summary
+              </h3>
+              <p className="text-[11px] text-slate-600 leading-relaxed text-justify">
+                This proposal is submitted by <strong className="text-slate-800">{companyName}</strong> to{' '}
+                <strong className="text-slate-800">{proposal.instituteName}</strong> for the implementation and provision of{' '}
+                <strong className="text-[#168A45]">{brandName} Smart RFID & Integrated Campus Management System</strong>.
+                The solution encompasses automated student and staff RFID attendance logging, instantaneous SMS and parent application alerts, digital identity cards, academic marksheets, automated fee collection workflows, and continuous maintenance infrastructure designed to modernize institutional operations.
               </p>
             </div>
 
-            {/* Commercial Terms Summary Box */}
-            <div className="bg-[#F7FAF8] border border-gray-200 rounded-xl p-3 text-xs">
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Commercial Scope & Investment Summary
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
-                <div>
-                  <div className="text-[10px] text-slate-400 font-medium">Selected Plan</div>
-                  <div className="font-bold text-slate-900 text-xs truncate">{proposal.pricingType || 'School Premium'}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-400 font-medium">Enrolled Students</div>
-                  <div className="font-bold text-slate-900 text-xs">{proposal.studentCount || 0} Students</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-400 font-medium">Rate per Student</div>
-                  <div className="font-bold text-[#168A45] text-xs">₹{proposal.pricePerStudent || 0} / year</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-400 font-medium">Total Annual Value</div>
-                  <div className="font-black text-[#0B5D2A] text-xs">{formatINR(proposal.totalAmount || 0)}</div>
-                </div>
+            {/* 2. Price Details */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                2. Price Details
+              </h3>
+              <div className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-2xs">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#168A45] text-white font-bold">
+                      <th className="py-2.5 px-4 text-left tracking-wide">Description</th>
+                      <th className="py-2.5 px-4 text-right w-48 tracking-wide">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium text-slate-800">
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-4 font-semibold text-slate-900">Registration Fee</td>
+                      <td className="py-2.5 px-4 text-right font-bold text-slate-900">
+                        {formatINR(agreement.registrationFee ?? 30000)}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-4 font-semibold text-slate-900">Trail Price</td>
+                      <td className="py-2.5 px-4 text-right font-bold text-slate-900">
+                        {agreement.trialPrice ?? 30}/ Student
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-4 font-semibold text-slate-900">
+                        {agreement.planChosen || proposal.pricingType || 'Institute Payment'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-bold text-[#168A45]">
+                        {proposal.pricePerStudent || 100}/ Student
+                      </td>
+                    </tr>
+                    {agreement.hasSpecialPrice !== false && (
+                      <tr className="bg-[#EAF7EF]/70 font-bold text-[#0B5D2A]">
+                        <td className="py-2.5 px-4">
+                          {agreement.specialPriceLabel || 'Institute Subscription (Special Price)'}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-black text-[#0B5D2A] text-sm">
+                          {agreement.specialPrice ?? 65}/ Student
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Proposal Acceptance Statement & Declaration */}
-            <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#168A45]" />
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  {content.signatoryTitle || 'Proposal Acceptance & Declaration'}
-                </h3>
-              </div>
-              <div className="text-[10.5px] text-slate-600 space-y-1.5 leading-relaxed">
-                {replacePlaceholders(
-                  content.signatoryAgreementText ||
-                    DEFAULT_PROPOSAL_CONTENT.signatoryAgreementText
-                )
-                  .split('\n\n')
-                  .map((paragraph, pIdx) => (
-                    <p key={pIdx} className="whitespace-pre-line">
-                      {paragraph}
+            {/* 3. Agreement Period */}
+            <div className="space-y-2 pt-1">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                3. Agreement Period
+              </h3>
+              <div className="bg-[#F7FAF8] border border-gray-200 rounded-lg p-3.5 space-y-2 text-[11px] text-slate-700 leading-relaxed text-justify">
+                {agreement.agreementClause ? (
+                  agreement.agreementClause.split('\n\n').map((clause, cIdx) => (
+                    <p key={cIdx}>{clause}</p>
+                  ))
+                ) : (
+                  <>
+                    <p>
+                      The student subscription price quoted in this proposal is applicable for a period of{' '}
+                      <strong className="text-slate-900">{agreement.agreementPeriod || 'five (5) years'}</strong> from
+                      the date of commencement of the agreement, subject to the terms and conditions specified in this proposal.
                     </p>
-                  ))}
+                    <p>
+                      The quoted student price covers the agreed {brandName} services and features for the full{' '}
+                      <strong className="text-slate-900">{agreement.agreementPeriod || 'five-year'}</strong> agreement
+                      period. Any services, features, requirements, or changes outside the agreed scope may be subject to
+                      additional charges.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Dual Signatories Block */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {/* Client Signature Box */}
-              <div className="bg-[#F7FAF8] border border-gray-300/90 rounded-xl p-3 flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[9.5px] font-bold rounded uppercase tracking-wider">
-                    {content.clientSignatoryLabel || 'Client Signature'}
+            {/* 4. Proposal Acceptance */}
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                  4. Proposal Acceptance
+                </h3>
+                <span className="text-[10px] font-bold text-[#168A45] bg-[#EAF7EF] border border-[#168A45]/30 px-2 py-0.5 rounded">
+                  Institutional Scope & Authorization
+                </span>
+              </div>
+
+              {/* Formal Acceptance Statement */}
+              <div className="bg-[#F7FAF8] border border-gray-200 rounded-lg p-3.5 space-y-2 text-[11px] text-slate-700 leading-relaxed text-justify">
+                {agreement.acceptanceClause ? (
+                  agreement.acceptanceClause.split('\n\n').map((clause, cIdx) => (
+                    <p key={cIdx}>{clause}</p>
+                  ))
+                ) : content.signatoryAgreementText ? (
+                  replacePlaceholders(content.signatoryAgreementText)
+                    .split('\n\n')
+                    .map((clause, cIdx) => <p key={cIdx}>{clause}</p>)
+                ) : (
+                  <>
+                    <p>
+                      We hereby acknowledge that we have received, reviewed, and fully understand the proposal issued by{' '}
+                      <strong className="text-slate-900">{companyName} ({brandName})</strong> for{' '}
+                      <strong className="text-slate-900">{proposal.instituteName}</strong>. The institution acknowledges and accepts the scope of work, technical deliverables, smart RFID attendance equipment, software modules, pricing structure, and terms and conditions specified in this proposal.
+                    </p>
+                    <p>
+                      By accepting this proposal, <strong className="text-slate-900">{proposal.instituteName}</strong> confirms its commitment in principle to implement the{' '}
+                      <strong className="text-[#168A45]">{brandName} Smart RFID & Integrated Campus Management System</strong> and authorizes{' '}
+                      <strong className="text-slate-900">{companyName}</strong> to proceed with technical onboarding, student ID card personalization, and campus rollout.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Acceptance Scope & Consensus Details Grid */}
+              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-2xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Commercial Scope & Plan
                   </div>
-                  <p className="text-xs font-black text-slate-900 truncate">
-                    {proposal.instituteName}
-                  </p>
-                  <p className="text-[10.5px] text-slate-600">
-                    <span className="font-semibold text-slate-700">Authorized Signatory: </span>
-                    {proposal.contactPerson || 'Principal / Chairman'}
-                  </p>
-                  <p className="text-[9.5px] text-slate-500">
-                    <span className="font-semibold text-slate-600">Designation: </span>
-                    {content.clientSignatoryDesignation || 'Principal / Authorized Trustee'}
-                  </p>
+                  <div className="text-xs font-bold text-slate-800 mt-0.5">
+                    {proposal.studentCount} Students • {agreement.planChosen || proposal.pricingType || 'Institute Payment'}
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 mt-0.5">
+                    Agreed Rate: <strong className="text-[#168A45]">₹{proposal.pricePerStudent || 100}</strong> / Student / Year
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-gray-200">
-                  <div className="h-9 border-b border-dashed border-slate-400 flex items-end justify-between pb-0.5">
-                    <span className="text-[9px] text-slate-400 italic">Signature</span>
-                    <span className="text-[8.5px] text-slate-400 font-medium">[ Institution Official Seal ]</span>
+                <div className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-2xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Agreement Period
                   </div>
-                  <div className="flex justify-between items-center text-[9px] text-slate-600">
-                    <span>Date: ______________</span>
-                    <span>Place: ____________</span>
+                  <div className="text-xs font-bold text-slate-800 mt-0.5">
+                    {agreement.agreementPeriod || '5 Years'} Duration
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 mt-0.5">
+                    Commences from formal agreement execution date
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-2xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Proposal Reference
+                  </div>
+                  <div className="text-xs font-bold font-mono text-[#0B5D2A] mt-0.5">
+                    {proposal.proposalNumber}
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 mt-0.5">
+                    Date of Issue: <span className="font-medium text-slate-700">{formattedProposalDate}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-2xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Client Authorized Person
+                  </div>
+                  <div className="text-xs font-bold text-slate-800 mt-0.5 truncate">
+                    {agreement.clientAuthorizedPerson || proposal.contactPerson || 'Authorized Signatory'}
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 mt-0.5 truncate">
+                    {agreement.clientDesignation || 'Principal / Authorized Signatory'}
                   </div>
                 </div>
               </div>
 
-              {/* Authorized Signatory (Casbiro Solutions) Box */}
-              <div className="bg-[#F7FAF8] border border-[#168A45]/40 rounded-xl p-3 flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center px-2 py-0.5 bg-[#EAF7EF] text-[#0B5D2A] text-[9.5px] font-bold rounded uppercase tracking-wider border border-[#D9E5DD]">
-                    {content.companySignatoryLabel || 'Authorized Signatory'}
-                  </div>
-                  <p className="text-xs font-black text-slate-900 truncate">
-                    {companyName}
-                  </p>
-                  <p className="text-[10.5px] text-slate-600">
-                    <span className="font-semibold text-slate-700">Representative: </span>
-                    {proposal.createdBy || content.companySignatoryName || 'Authorized Signatory'}
-                  </p>
-                  <p className="text-[9.5px] text-slate-500">
-                    <span className="font-semibold text-slate-600">Designation: </span>
-                    {content.companySignatoryDesignation || 'Director & Authorized Signatory'}
-                  </p>
+              {/* Next Step / Formal Execution Box */}
+              <div className="bg-[#EAF7EF]/70 border border-[#168A45]/30 rounded-lg p-2.5 text-[11px] text-[#0B5D2A] leading-relaxed">
+                <div className="font-bold flex items-center space-x-1.5 mb-0.5 text-xs text-[#0B5D2A]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#168A45] shrink-0" />
+                  <span>Mutual Consensus & Execution Next Step</span>
                 </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-gray-200">
-                  <div className="h-9 border-b border-dashed border-[#168A45]/70 flex items-end justify-between pb-0.5">
-                    <span className="text-[9px] text-[#168A45] font-semibold italic">Authorized Signature</span>
-                    <span className="text-[8.5px] text-[#168A45]/80 font-medium">[ Casbiro Official Seal ]</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[9px] text-slate-600">
-                    <span>Date: {proposal.proposalDate || '______________'}</span>
-                    <span>Kochi, Kerala</span>
-                  </div>
-                </div>
+                <p className="text-[10.5px] text-slate-700 leading-normal">
+                  This proposal acceptance serves as the mutual understanding of project terms. Formal binding execution, payment milestones, and institutional authorization seals are completed in the <strong className="text-slate-900">Payment Terms</strong> and <strong className="text-slate-900">Dual Acceptance Signatories</strong> on the following page.
+                </p>
               </div>
             </div>
 
-            <p className="text-[9.5px] text-slate-400 text-center italic pt-1">
-              This proposal constitutes a formal agreement framework upon signature by authorized representatives of both parties.
-            </p>
+            <div className="mt-auto pt-2">
+              <p className="text-[10px] text-slate-400 text-center italic">
+                Continued on next page for Payment Schedule, Detailed Payment Terms and Dual Acceptance Signatories.
+              </p>
+            </div>
           </div>
 
-          <PageFooter pageNumber={15} companyName={companyName} />
+          <PageFooter
+            pageNumber={documentMode === 'agreementOnly' ? 1 : 15}
+            companyName={companyName}
+          />
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PAGE 16: 9. PAYMENT SCHEDULE, TERMS & DUAL SIGNATURES */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col items-center">
+        {renderPageBadge(documentMode === 'agreementOnly' ? 1 : 15)}
+        <div className="proposal-page proposal-page-card">
+          <TopRightWaves />
+          <div className="pt-7 px-12 pb-1 shrink-0">
+            <MysarLogo companyLogo={companyLogo} brandName={brandName} />
+          </div>
+
+          <div className="px-12 pt-3 pb-4 space-y-3 text-slate-800 text-xs leading-relaxed flex-1 flex flex-col justify-between">
+            <div>
+              <div className="text-[11px] font-bold text-[#168A45] tracking-wider uppercase">
+                Proposal for Implementation
+              </div>
+              <h2 className="text-2xl font-black text-[#0B5D2A] uppercase tracking-wide mt-0.5">
+                {proposal.instituteName}
+              </h2>
+            </div>
+
+            {/* 5. Payment Schedule */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                  5. Payment Schedule
+                </h3>
+                <span className="text-[10px] font-bold text-[#168A45] bg-[#EAF7EF] border border-[#168A45]/30 px-2 py-0.5 rounded">
+                  Milestone-Based Invoicing
+                </span>
+              </div>
+
+              <div className="bg-[#F7FAF8] border border-gray-200 rounded-lg p-2.5 space-y-2">
+                {/* 3 Milestone Summary Cards */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white border border-gray-200 rounded-md p-2 shadow-2xs">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[9px] font-black uppercase text-[#168A45] bg-[#EAF7EF] px-1.5 py-0.5 rounded">
+                        Milestone 1
+                      </span>
+                      <span className="text-[9.5px] font-semibold text-slate-400">At Registration</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-900">Registration Fee</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      Payable at the time of registration
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-md p-2 shadow-2xs">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[9px] font-black uppercase text-[#168A45] bg-[#EAF7EF] px-1.5 py-0.5 rounded">
+                        Milestone 2
+                      </span>
+                      <span className="text-[9.5px] font-semibold text-slate-400">Onboarding</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-900">Balance 60%</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      Payable after students onboarding
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-md p-2 shadow-2xs">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[9px] font-black uppercase text-[#168A45] bg-[#EAF7EF] px-1.5 py-0.5 rounded">
+                        Milestone 3
+                      </span>
+                      <span className="text-[9.5px] font-semibold text-slate-400">After 2 Months</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-900">Balance 40%</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      Payable after two months
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ordered Default / Custom Clauses */}
+                <div className="bg-white border border-gray-200/80 rounded-md px-3 py-2">
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-800 leading-relaxed">
+                    {(agreement.paymentSchedule && agreement.paymentSchedule.length > 0
+                      ? agreement.paymentSchedule
+                      : [
+                          'Registration fee at the time of registration',
+                          'Balance 60% after students onboarding, after two months balance 40% will pay.',
+                        ]
+                    ).map((scheduleItem, sIdx) => (
+                      <li key={sIdx} className="pl-0.5">
+                        <span className="font-semibold text-slate-800">{scheduleItem}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Payment Terms */}
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                6. Payment Terms
+              </h3>
+              <div className="bg-white border border-gray-200 rounded-lg p-3">
+                <ol className="list-decimal list-inside space-y-1 text-[10.5px] text-slate-700 leading-relaxed text-justify">
+                  {(agreement.paymentTerms && agreement.paymentTerms.length > 0
+                    ? agreement.paymentTerms
+                    : [
+                        'Registration Fee will be included in the Trial Price and will be deducted from it.',
+                        `The Trial Price is applicable only for the current academic year (${agreement.trialAcademicYear || '2026–2027 Academic Year'}).`,
+                        'Payment shall be made according to the payment schedule specified in this proposal.',
+                        `The student subscription price is based on a ${agreement.agreementPeriod || 'five (5)'} year agreement between the client/institution and ${companyName || 'Casbiro Solutions Private Limited'} (${brandName || 'MYSAR'}).`,
+                        'Any applicable taxes, government charges, or additional services outside the agreed scope will be charged separately.',
+                        'Any additional requirements or changes to the agreed scope may be subject to additional charges.',
+                        `The terms and pricing specified in this proposal are subject to the agreed ${agreement.agreementPeriod || 'five-year'} contract period.`,
+                      ]
+                  ).map((term, tIdx) => (
+                    <li key={tIdx} className="pl-1">
+                      <span className="text-slate-800">{term}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            {/* 7. Dual Signatures & Execution */}
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                7. Dual Signatures & Execution
+              </h3>
+              <p className="text-[10.5px] text-slate-600 leading-relaxed">
+                By signing below, both parties acknowledge and accept the terms, pricing, and agreement period specified in this proposal.
+              </p>
+
+              {/* Dual Signature Boxes matching the official Casbiro Document */}
+              <div className="grid grid-cols-2 gap-4 pt-0.5">
+                {/* For XYZ Higher Secondary School */}
+                <div className="bg-[#F7FAF8] border border-gray-300 rounded-xl p-3 flex flex-col justify-between h-40 shadow-2xs">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      For Institution
+                    </div>
+                    <div className="text-xs font-black text-slate-900 uppercase truncate">
+                      {proposal.instituteName}
+                    </div>
+                    <div className="text-[10.5px] text-slate-700 pt-0.5">
+                      <span className="font-semibold text-slate-500">Name: </span>
+                      <span className="font-bold text-slate-800">
+                        {agreement.clientAuthorizedPerson || proposal.contactPerson || 'Authorized Signatory'}
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-700">
+                      <span className="font-semibold text-slate-500">Designation: </span>
+                      <span className="text-slate-800">
+                        {agreement.clientDesignation || 'Principal / Authorized Signatory'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-1.5 border-t border-gray-200">
+                    {proposal.digitalSignature ? (
+                      <div>
+                        <div className="h-9 flex items-center justify-between">
+                          <img
+                            src={proposal.digitalSignature.signatureImage}
+                            alt="Institutional Signature"
+                            className="h-8 max-w-[130px] object-contain"
+                          />
+                          <span className="text-[8px] font-black uppercase text-[#0B5D2A] bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                            ✓ E-Signed
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[8.5px] text-slate-600 pt-0.5 border-t border-gray-100">
+                          <span>
+                            Date: {new Date(proposal.digitalSignature.signedAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <span className="font-mono text-slate-400 text-[8px]">
+                            {proposal.digitalSignature.verificationCode}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h-7 border-b border-dashed border-slate-400 flex items-end justify-between pb-0.5">
+                          <span className="text-[9px] text-slate-400 italic">Signature</span>
+                          <span className="text-[8.5px] text-slate-400 font-medium">[ Official Seal ]</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-slate-600 pt-0.5">
+                          <span>Date: ______________</span>
+                          <span>Place: ____________</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* For Casbiro Solutions Private Limited */}
+                <div className="bg-[#F7FAF8] border border-[#168A45]/50 rounded-xl p-3 flex flex-col justify-between h-40 shadow-2xs">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold text-[#168A45] uppercase tracking-wider">
+                      For Service Provider
+                    </div>
+                    <div className="text-xs font-black text-slate-900 uppercase truncate">
+                      {companyName || 'Casbiro Solutions Private Limited'}
+                    </div>
+                    <div className="text-[10.5px] text-slate-700 pt-0.5">
+                      <span className="font-semibold text-slate-500">Name: </span>
+                      <span className="font-bold text-slate-800">
+                        {agreement.companyAuthorizedPerson || 'Sakeer Ali V'}
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-700">
+                      <span className="font-semibold text-slate-500">Designation: </span>
+                      <span className="text-slate-800">
+                        {agreement.companyDesignation || 'Director & Authorized Signatory'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-1.5 border-t border-gray-200">
+                    <div className="h-7 border-b border-dashed border-[#168A45]/70 flex items-end justify-between pb-0.5">
+                      <span className="text-[9px] text-[#168A45] font-semibold italic">Authorized Signature</span>
+                      <span className="text-[8.5px] text-[#168A45]/80 font-medium">[ Casbiro Official Seal ]</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] text-slate-600 pt-0.5">
+                      <span>Date: {proposal.proposalDate || '28 April 2026'}</span>
+                      <span>Kochi, Kerala</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-1">
+              <p className="text-[9.5px] text-slate-400 text-center italic">
+                This document serves as the formal binding agreement between the parties upon signing.
+              </p>
+            </div>
+          </div>
+
+          <PageFooter
+            pageNumber={documentMode === 'agreementOnly' ? 2 : 16}
+            companyName={companyName}
+          />
         </div>
       </div>
     </div>

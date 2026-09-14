@@ -1,6 +1,6 @@
 {
   "name": "MYSAR ERP",
-  "description": "Professional ERP and Proposal Generator for Casbiro Solutions Private Limited (MYSAR) with Google Meet demo scheduling, Gmail communications, Google Sheets sync, and PDF generation.",
+  "description": "Professional ERP for Casbiro Solutions Private Limited (MYSAR) with CRM, HR Management, Asset Management, Document & Expiry Management with multi-channel reminders and audit trails, Google Meet demo scheduling, Gmail communications, and Proposal generation.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

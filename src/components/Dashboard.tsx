@@ -12,8 +12,6 @@ import {
   ArrowRight,
   Clock,
   Send,
-  Bell,
-  Mail,
   AlertTriangle,
   Calendar,
   Phone,
@@ -22,7 +20,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { DashboardMetrics, Lead, FollowUp, Proposal, User as UserType } from '../types';
-import { notificationService } from '../services/notificationService';
 
 interface DashboardProps {
   metrics: DashboardMetrics;
@@ -154,49 +151,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return targetDate < today && f.status !== 'Completed';
   });
 
-  // Check urgent notifications for follow-up reminders
-  const urgentNotifications = notificationService.getDueFollowUpNotifications(
-    followUps,
-    leads,
-    [currentUser]
-  );
-
   return (
     <div className="space-y-6 pb-10">
-      {/* Automated Email Follow-up Alert Banner */}
-      {urgentNotifications.length > 0 && (
-        <div className="bg-gradient-to-r from-[#EAF7EF] via-white to-[#EAF7EF] border border-[#D9E5DD] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-bold shrink-0 shadow-2xs">
-              <Bell className="w-5 h-5 animate-bounce" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h4 className="text-sm font-bold text-slate-800">
-                  Automated Follow-up Email Reminders
-                </h4>
-                <span className="bg-[#168A45] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                  {urgentNotifications.length} Due / Approaching
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-0.5">
-                Send automated Gmail reminders to assigned sales representatives with direct lead details & notes.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 shrink-0">
-            <button
-              onClick={onOpenNotifications}
-              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-2xs transition-colors"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Review & Send Alerts</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* KPI Cards Arranged in Two Balanced Rows */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">

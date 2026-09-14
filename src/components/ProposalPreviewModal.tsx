@@ -11,10 +11,21 @@ import {
   CheckCircle2,
   ZoomIn,
   ZoomOut,
+  CreditCard,
+  FileText,
+  FileCheck2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Proposal, Settings } from '../types';
 import { generatePdfFromElement, printProposalDocument, formatINR } from '../utils/pdfGenerator';
 import { PrintableProposalDocument } from './PrintableProposalDocument';
+import { ProposalPaymentDashboard } from './ProposalPaymentDashboard';
+import { getProposalPaymentTracking, getPaymentBadgeClass } from '../utils/paymentScheduleUtils';
+import {
+  getProposalSignatureUrl,
+  copySignatureLinkToClipboard,
+} from '../utils/signatureUtils';
 
 interface ProposalPreviewModalProps {
   isOpen: boolean;
@@ -23,6 +34,9 @@ interface ProposalPreviewModalProps {
   settings: Settings;
   onEdit: () => void;
   onSendEmail?: (proposal: Proposal, emailTo?: string) => void;
+  onUpdateProposal?: (updated: Proposal) => void;
+  onOpenSignatureModal?: (proposal: Proposal) => void;
+  initialMode?: 'full' | 'agreementOnly' | 'payment';
 }
 
 export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
@@ -32,7 +46,11 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   settings,
   onEdit,
   onSendEmail,
+  onUpdateProposal,
+  onOpenSignatureModal,
+  initialMode = 'full',
 }) => {
+  const [documentMode, setDocumentMode] = useState<'full' | 'agreementOnly' | 'payment'>(initialMode);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -42,6 +60,12 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   const [emailBody, setEmailBody] = useState('');
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
   const [zoom, setZoom] = useState(100);
+
+  useEffect(() => {
+    if (initialMode) {
+      setDocumentMode(initialMode);
+    }
+  }, [initialMode, proposal?.id]);
 
   useEffect(() => {
     if (proposal) {
@@ -64,15 +88,20 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
 
   if (!isOpen || !proposal) return null;
 
+  const paymentTracking = getProposalPaymentTracking(proposal);
+
   const handleDownloadPdf = async () => {
+    // If currently in payment mode, switch to full before generating or download agreement
+    const exportTargetMode = documentMode === 'agreementOnly' ? 'agreementOnly' : 'full';
     setIsExporting(true);
     setExportProgress('Starting PDF export...');
     setExportSuccess(false);
     try {
       const sanitizedName = (proposal.instituteName || 'Proposal').replace(/[^a-zA-Z0-9]/g, '_');
+      const prefix = exportTargetMode === 'agreementOnly' ? 'MYSAR_Agreement_Contract' : 'MYSAR_Proposal';
       await generatePdfFromElement(
         'mysar-proposal-printable-document',
-        `MYSAR_Proposal_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`,
+        `${prefix}_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`,
         (msg) => {
           setExportProgress(msg);
         }
@@ -144,78 +173,153 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
               M
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-slate-900 text-sm sm:text-base truncate max-w-xs sm:max-w-md">
                   {proposal.instituteName}
                 </span>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-[#0B5D2A] font-bold border border-emerald-200">
                   {proposal.proposalNumber}
                 </span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
+                  v{proposal.version || 1}
+                </span>
+                {/* Payment Status Pill in Header */}
+                <button
+                  type="button"
+                  onClick={() => setDocumentMode('payment')}
+                  title="View 3-Stage Payment Status Dashboard"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] border transition cursor-pointer hover:shadow-2xs ${getPaymentBadgeClass(
+                    paymentTracking.overallPaymentStatus
+                  )}`}
+                >
+                  <CreditCard className="w-3 h-3" />
+                  <span>Payment: {paymentTracking.overallPaymentStatus}</span>
+                  <span className="font-mono font-bold">
+                    ({formatINR(paymentTracking.totalPaidAmount)} / {formatINR(paymentTracking.totalAgreedAmount)})
+                  </span>
+                </button>
               </div>
               <p className="text-[11px] text-slate-500 hidden sm:block">
-                15 Pages Official A4 Document • Standard Margins & Vector Typography
+                {documentMode === 'payment'
+                  ? 'Agreed 3-Stage Milestone Payment Schedule & Settlement Tracking'
+                  : documentMode === 'agreementOnly'
+                  ? '2 Pages Formal Agreement & Signatures • Binding Casbiro Document'
+                  : '16 Pages Official A4 Document • Complete ERP Scope & Signatures'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
-            {/* Quick Section Jump Selector */}
-            <select
-              onChange={(e) => handleJumpToSection(Number(e.target.value))}
-              defaultValue="0"
-              className="text-xs bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-700 rounded-lg px-2.5 py-1.5 font-medium cursor-pointer focus:outline-none focus:border-[#168A45]"
-              title="Jump directly to section"
-            >
-              <option value="0">Page 1 • Cover Page</option>
-              <option value="1">Page 2 • Table of Contents</option>
-              <option value="2">Page 3 • 1. About Company</option>
-              <option value="3">Page 4 • 2. About MYSAR</option>
-              <option value="4">Page 5 • 3. Modules (Part 1)</option>
-              <option value="5">Page 6 • 3. Modules (Part 2)</option>
-              <option value="6">Page 7 • 3. Modules (Part 3)</option>
-              <option value="7">Page 8 • 4. Reports (Part 1)</option>
-              <option value="8">Page 9 • 4. Reports (Part 2)</option>
-              <option value="9">Page 10 • 5. Services (Part 1)</option>
-              <option value="10">Page 11 • 5. Services (Part 2)</option>
-              <option value="11">Page 12 • 6. Pricing & Options</option>
-              <option value="12">Page 13 • 7. Contact Information</option>
-              <option value="13">Page 14 • 8. Conclusion</option>
-              <option value="14">Page 15 • 9. Acceptance & Signatories</option>
-            </select>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+            {/* Document Mode Selector: Full 16-page vs 2-page Agreement vs Payment Status */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <button
-                onClick={handleZoomOut}
-                disabled={zoom <= 60}
-                title="Zoom Out"
-                className="p-1.5 text-slate-600 hover:text-slate-900 disabled:opacity-40 hover:bg-white rounded transition"
+                type="button"
+                onClick={() => setDocumentMode('full')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                  documentMode === 'full'
+                    ? 'bg-[#168A45] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <ZoomOut className="w-3.5 h-3.5" />
+                Full Proposal (16 Pages)
               </button>
               <button
-                onClick={handleResetZoom}
-                title="Reset to 100%"
-                className="px-2 text-[11px] font-bold text-slate-700 min-w-[42px] text-center hover:bg-white rounded transition"
+                type="button"
+                onClick={() => setDocumentMode('agreementOnly')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                  documentMode === 'agreementOnly'
+                    ? 'bg-[#168A45] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                {zoom}%
+                Agreement (2 Pages)
               </button>
               <button
-                onClick={handleZoomIn}
-                disabled={zoom >= 140}
-                title="Zoom In"
-                className="p-1.5 text-slate-600 hover:text-slate-900 disabled:opacity-40 hover:bg-white rounded transition"
+                type="button"
+                onClick={() => setDocumentMode('payment')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  documentMode === 'payment'
+                    ? 'bg-[#168A45] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Payment Status</span>
               </button>
             </div>
 
+            {/* Quick Section Jump Selector (only in document mode) */}
+            {documentMode !== 'payment' && (
+              <select
+                onChange={(e) => handleJumpToSection(Number(e.target.value))}
+                defaultValue="0"
+                className="text-xs bg-slate-50 hover:bg-slate-100 border border-gray-200 text-slate-700 rounded-lg px-2.5 py-1.5 font-medium cursor-pointer focus:outline-none focus:border-[#168A45]"
+                title="Jump directly to section"
+              >
+                {documentMode === 'full' ? (
+                  <>
+                    <option value="0">Page 1 • Cover Page</option>
+                    <option value="1">Page 2 • Table of Contents</option>
+                    <option value="2">Page 3 • 1. About Company</option>
+                    <option value="3">Page 4 • 2. About MYSAR</option>
+                    <option value="4">Page 5 • 3. Modules (Part 1)</option>
+                    <option value="5">Page 6 • 3. Modules (Part 2)</option>
+                    <option value="6">Page 7 • 3. Modules (Part 3)</option>
+                    <option value="7">Page 8 • 4. Reports (Part 1)</option>
+                    <option value="8">Page 9 • 4. Reports (Part 2)</option>
+                    <option value="9">Page 10 • 5. Services (Part 1)</option>
+                    <option value="10">Page 11 • 5. Services (Part 2)</option>
+                    <option value="11">Page 12 • 6. Pricing & Options</option>
+                    <option value="12">Page 13 • 7. Contact Information</option>
+                    <option value="13">Page 14 • 8. Conclusion</option>
+                    <option value="14">Page 15 • 9. Agreement & Price Details</option>
+                    <option value="15">Page 16 • 10. Payment Terms & Signatures</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="0">Page 1 • Agreement & Pricing Details</option>
+                    <option value="1">Page 2 • Payment Terms & Signatures</option>
+                  </>
+                )}
+              </select>
+            )}
+
+            {/* Zoom Controls (only in document mode) */}
+            {documentMode !== 'payment' && (
+              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                <button
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 60}
+                  title="Zoom Out"
+                  className="p-1.5 text-slate-600 hover:text-slate-900 disabled:opacity-40 hover:bg-white rounded transition"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleResetZoom}
+                  title="Reset to 100%"
+                  className="px-2 text-[11px] font-bold text-slate-700 min-w-[42px] text-center hover:bg-white rounded transition"
+                >
+                  {zoom}%
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 140}
+                  title="Zoom In"
+                  className="p-1.5 text-slate-600 hover:text-slate-900 disabled:opacity-40 hover:bg-white rounded transition"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             <button
               onClick={onEdit}
-              className="bg-white hover:bg-slate-50 text-slate-700 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
+              title={`Edit proposal and create v${(proposal.version || 1) + 1}`}
+              className="bg-white hover:bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
             >
-              <Edit className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">Edit</span>
+              <Edit className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden sm:inline">Edit (v{(proposal.version || 1) + 1})</span>
             </button>
 
             <button
@@ -374,18 +478,29 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
             </div>
           )}
 
-          {/* 15-PAGE OFFICIAL MYSAR PROPOSAL DOCUMENT WITH ZOOM CONTAINER */}
-          <div
-            className="transition-transform duration-150 origin-top flex flex-col items-center"
-            style={{ transform: `scale(${zoom / 100})` }}
-          >
-            <PrintableProposalDocument
-              proposal={proposal}
-              settings={settings}
-              id="mysar-proposal-printable-document"
-              showPageBadges={true}
-            />
-          </div>
+          {/* Render Payment Status Dashboard or Printable Proposal Document */}
+          {documentMode === 'payment' ? (
+            <div className="w-full pb-10 animate-in fade-in duration-200">
+              <ProposalPaymentDashboard
+                proposal={proposal}
+                onUpdateProposal={onUpdateProposal}
+              />
+            </div>
+          ) : (
+            /* OFFICIAL MYSAR PROPOSAL & AGREEMENT DOCUMENT WITH ZOOM CONTAINER */
+            <div
+              className="transition-transform duration-150 origin-top flex flex-col items-center"
+              style={{ transform: `scale(${zoom / 100})` }}
+            >
+              <PrintableProposalDocument
+                proposal={proposal}
+                settings={settings}
+                id="mysar-proposal-printable-document"
+                showPageBadges={true}
+                documentMode={documentMode}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -458,6 +458,7 @@ export type LeaveType =
   | 'Sick Leave'
   | 'Emergency Leave'
   | 'Maternity Leave'
+  | 'Paternity Leave'
   | 'Unpaid Leave'
   | 'Other';
 
@@ -486,6 +487,7 @@ export interface LeaveRequest {
 export interface LeaveBalance {
   staffId: string;
   staffName: string;
+  department?: string;
   annualTotal: number;
   annualUsed: number;
   casualTotal: number;
@@ -494,6 +496,16 @@ export interface LeaveBalance {
   sickUsed: number;
   emergencyTotal: number;
   emergencyUsed: number;
+  // Optional convenience aliases
+  casualAllowed?: number;
+  sickAllowed?: number;
+  annualAllowed?: number;
+  totalAllowed?: number;
+  maternityTotal?: number;
+  maternityUsed?: number;
+  paternityTotal?: number;
+  paternityUsed?: number;
+  id?: string;
 }
 
 export type PayrollStatus = 'Draft' | 'Processing' | 'Processed' | 'Approved' | 'Paid';
@@ -581,10 +593,13 @@ export interface StaffPerformanceEvaluation {
   evaluatedDate: string;
 }
 
+export type IdCardFieldCategory = 'static_text' | 'dynamic_field' | 'image_placeholder';
+
 export interface IdCardFieldConfig {
   id: string; // e.g. 'photo', 'fullName', 'staffId', 'department', 'position', 'bloodGroup', 'emergencyPhone', 'joiningDate', 'validUntil', 'workLocation', 'qrCode', 'barcode', 'signature', 'custom_...'
   label: string;
-  type: 'photo' | 'text' | 'qrcode' | 'barcode' | 'signature' | 'badge';
+  type: 'photo' | 'text' | 'qrcode' | 'barcode' | 'signature' | 'badge' | 'image';
+  category?: IdCardFieldCategory;
   visible: boolean;
   x: number; // percentage (0 to 100)
   y: number; // percentage (0 to 100)
@@ -593,10 +608,16 @@ export interface IdCardFieldConfig {
   fontSize?: number; // font size in px (e.g. 12)
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';
   color?: string; // hex code
+  backgroundColor?: string; // background color for badges/pills
+  borderRadius?: number; // border radius in px
+  letterSpacing?: string;
+  textTransform?: 'none' | 'uppercase' | 'capitalize' | 'lowercase';
   textAlign?: 'left' | 'center' | 'right';
   showLabel?: boolean; // e.g. whether to show prefix
   customPrefix?: string; // e.g. "ID: " or "Blood: "
   customValue?: string; // static value if not bound to staff object
+  dynamicBindingKey?: string; // e.g. 'fullName', 'staffId', etc.
+  placeholderLabel?: string; // label shown on photo/image placeholder
   shape?: 'circle' | 'rounded' | 'square'; // for photo
   borderWidth?: number;
   borderColor?: string;

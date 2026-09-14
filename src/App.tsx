@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
+import { ErpManagementDashboard } from './components/dashboard/ErpManagementDashboard';
 import { LeadsView } from './components/LeadsView';
 import { FollowUpsView } from './components/FollowUpsView';
 import { ProposalsView } from './components/ProposalsView';
@@ -13,10 +14,12 @@ import { NewLeadModal } from './components/NewLeadModal';
 import { CreateProposalModal } from './components/CreateProposalModal';
 import { ProposalPreviewModal } from './components/ProposalPreviewModal';
 import { GoogleAppsScriptModal } from './components/GoogleAppsScriptModal';
-import { FollowUpNotificationModal } from './components/FollowUpNotificationModal';
+import { AllNotificationsModal } from './components/AllNotificationsModal';
 import { LoginPage } from './components/LoginPage';
 import { storage } from './services/storageService';
 import { notificationService } from './services/notificationService';
+import { documentExpiryStorage } from './services/documentExpiryStorage';
+import { calculateDaysRemaining } from './types/documentExpiry';
 import {
   Lead,
   Proposal,
@@ -37,6 +40,12 @@ import { PayrollManagementView } from './components/hr/PayrollManagementView';
 import { KpiManagementView } from './components/hr/KpiManagementView';
 import { HrSettingsView } from './components/hr/HrSettingsView';
 import { hrStorage } from './services/hrStorageService';
+
+// Document & Expiry Management Module
+import { DocumentExpiryView } from './components/documentExpiry/DocumentExpiryView';
+
+// Asset Management Module
+import { AssetModule } from './components/assets/AssetModule';
 import {
   Position,
   Applicant,
@@ -88,9 +97,11 @@ export default function App() {
 
   const [isCreateProposalOpen, setIsCreateProposalOpen] = useState(false);
   const [proposalTargetLead, setProposalTargetLead] = useState<Lead | null>(null);
+  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
 
   const [isPreviewProposalOpen, setIsPreviewProposalOpen] = useState(false);
   const [previewProposal, setPreviewProposal] = useState<Proposal | null>(null);
+  const [previewProposalInitialMode, setPreviewProposalInitialMode] = useState<'full' | 'agreementOnly' | 'payment'>('full');
 
   const [isGasHubOpen, setIsGasHubOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -157,6 +168,21 @@ export default function App() {
 
   useEffect(() => {
     refreshAllData();
+
+    const handleLogoOrSettingsChange = () => {
+      const refreshedSettings = storage.getSettings();
+      setSettings(refreshedSettings);
+    };
+
+    window.addEventListener('mysar_company_logo_changed', handleLogoOrSettingsChange);
+    window.addEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
+    window.addEventListener('storage', handleLogoOrSettingsChange);
+
+    return () => {
+      window.removeEventListener('mysar_company_logo_changed', handleLogoOrSettingsChange);
+      window.removeEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
+      window.removeEventListener('storage', handleLogoOrSettingsChange);
+    };
   }, []);
 
   const handleSwitchUser = (user: User) => {
@@ -166,6 +192,7 @@ export default function App() {
 
   const handleLogout = () => {
     storage.clearSession();
+    setSettings(storage.getSettings());
     setCurrentUser(null);
   };
 
@@ -174,14 +201,60 @@ export default function App() {
     return notificationService.getDueFollowUpNotifications(followUps, leads, users);
   }, [followUps, leads, users]);
 
-  // Notifications relevant for current user count
-  const activeUserNotifications = useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Salesperson') {
-      return dueNotifications.filter((n) => n.salespersonName === currentUser.name);
+  // Unified active notifications count across all ERP modules (Leads, HR, Documents, Proposals)
+  const totalActiveNotificationsCount = useMemo(() => {
+    if (!currentUser) return 0;
+    const today = new Date().toISOString().split('T')[0];
+    let readIds = new Set<string>();
+    try {
+      const saved = localStorage.getItem('mysar_read_notifications_v1');
+      if (saved) readIds = new Set(JSON.parse(saved));
+    } catch {}
+
+    let count = 0;
+
+    // 1. Lead due follow-ups (Automated email + scheduled)
+    const dueFollowUps = notificationService.getDueFollowUpNotifications(followUps, leads, users);
+    dueFollowUps.forEach((n) => {
+      if (currentUser.role === 'Salesperson' && n.salespersonName !== currentUser.name) return;
+      if (!readIds.has(`lead-email-${n.id}`)) count++;
+    });
+
+    followUps.forEach((f) => {
+      if (f.status === 'Completed' || f.status === 'Cancelled') return;
+      if (currentUser.role === 'Salesperson' && f.staff !== currentUser.name) return;
+      const targetDate = f.nextFollowUpDate || f.followUpDate;
+      if (targetDate && targetDate < today && !readIds.has(`lead-fup-od-${f.id}`)) {
+        count++;
+      }
+    });
+
+    // 2. HR pending leave requests
+    if (currentUser.role !== 'Salesperson') {
+      try {
+        const pendingLeaves = hrStorage.getLeaveRequests().filter((lr) => lr.status === 'Pending');
+        pendingLeaves.forEach((leave) => {
+          if (!readIds.has(`hr-leave-${leave.id}`)) count++;
+        });
+      } catch {}
     }
-    return dueNotifications;
-  }, [dueNotifications, currentUser]);
+
+    // 3. Document expirations (expired or <= 7 days)
+    if (currentUser.role !== 'Salesperson') {
+      try {
+        const docs = documentExpiryStorage.getDocuments();
+        docs.forEach((d) => {
+          const days = calculateDaysRemaining(d.expiryDate, today);
+          if (days <= 7) {
+            const id = days < 0 ? `doc-exp-${d.id}` : `doc-7d-${d.id}`;
+            if (!readIds.has(id)) count++;
+          }
+        });
+      } catch {}
+    }
+
+    return count;
+  }, [currentUser, followUps, leads, users]);
 
   // --- Lead Operations ---
   const handleSaveLead = (leadData: Partial<Lead>) => {
@@ -212,22 +285,72 @@ export default function App() {
 
   // --- Proposal Operations ---
   const handleStartProposalFromLead = (lead: Lead) => {
+    setEditingProposal(null);
     setProposalTargetLead(lead);
     setIsCreateProposalOpen(true);
   };
 
+  const handleStartEditProposal = (proposal: Proposal) => {
+    setEditingProposal(proposal);
+    const matchedLead = leads.find((l) => l.id === proposal.leadId) || null;
+    setProposalTargetLead(matchedLead);
+    setIsPreviewProposalOpen(false);
+    setIsCreateProposalOpen(true);
+  };
+
   const handleGenerateProposalSubmit = (proposalData: any) => {
-    const created = storage.createProposal(proposalData);
-    refreshAllData();
-    setIsCreateProposalOpen(false);
-    // Automatically open preview!
-    setPreviewProposal(created);
+    if (proposalData.editingProposalId || editingProposal) {
+      const targetId = proposalData.editingProposalId || editingProposal?.id;
+      const updated = storage.saveEditedProposal(
+        targetId,
+        {
+          instituteName: proposalData.instituteName,
+          contactPerson: proposalData.contactPerson,
+          leadEmail: proposalData.leadEmail,
+          studentCount: proposalData.studentCount,
+          pricingType: proposalData.pricingType,
+          pricePerStudent: proposalData.pricePerStudent,
+          totalAmount: proposalData.totalAmount,
+          pricingItems: proposalData.pricingItems,
+          agreementDetails: proposalData.agreementDetails,
+          notes: proposalData.notes,
+          revisionNotes: proposalData.revisionNotes,
+        },
+        currentUser.name
+      );
+      refreshAllData();
+      setIsCreateProposalOpen(false);
+      setEditingProposal(null);
+      setProposalTargetLead(null);
+      setPreviewProposal(updated);
+      setIsPreviewProposalOpen(true);
+    } else {
+      const created = storage.createProposal(proposalData);
+      refreshAllData();
+      setIsCreateProposalOpen(false);
+      setEditingProposal(null);
+      setProposalTargetLead(null);
+      // Automatically open preview!
+      setPreviewProposal(created);
+      setIsPreviewProposalOpen(true);
+    }
+  };
+
+  const handleOpenProposalPreview = (
+    proposal: Proposal,
+    mode: 'full' | 'agreementOnly' | 'payment' = 'full'
+  ) => {
+    setPreviewProposal(proposal);
+    setPreviewProposalInitialMode(mode);
     setIsPreviewProposalOpen(true);
   };
 
-  const handleOpenProposalPreview = (proposal: Proposal) => {
-    setPreviewProposal(proposal);
-    setIsPreviewProposalOpen(true);
+  const handleUpdateProposal = (updatedProposal: Proposal) => {
+    storage.updateProposal(updatedProposal, currentUser?.name);
+    refreshAllData();
+    if (previewProposal && previewProposal.id === updatedProposal.id) {
+      setPreviewProposal(updatedProposal);
+    }
   };
 
   const handleUpdateProposalStatus = (id: string, status: ProposalStatus) => {
@@ -278,7 +401,11 @@ export default function App() {
   // --- Settings & Reset ---
   const handleSaveSettings = (newSettings: Settings) => {
     storage.saveSettings(newSettings);
-    setSettings(newSettings);
+    storage.saveCompanyLogo(newSettings.companyLogo);
+    storage.saveNavbarLogo(newSettings.navbarLogo);
+    storage.saveDocumentLogo(newSettings.documentLogo);
+    storage.saveLoginLogo(newSettings.loginLogo);
+    setSettings(storage.getSettings());
     refreshAllData();
   };
 
@@ -497,7 +624,7 @@ export default function App() {
         onSwitchUser={handleSwitchUser}
         onUpdateUser={handleUpdateUser}
         onLogout={handleLogout}
-        notificationsCount={activeUserNotifications.length}
+        notificationsCount={totalActiveNotificationsCount}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         settings={settings}
       />
@@ -530,6 +657,27 @@ export default function App() {
         {/* Dynamic Workspace Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-65px)]">
           {activeTab === 'dashboard' && (
+            <ErpManagementDashboard
+              currentUser={currentUser}
+              onNavigateToTab={(tab) => {
+                if (tab === 'gashub') {
+                  setIsGasHubOpen(true);
+                } else {
+                  setActiveTab(tab);
+                }
+              }}
+              onOpenNewLeadModal={() => {
+                setEditingLead(null);
+                setIsNewLeadOpen(true);
+              }}
+              onNavigateToLeadDetail={(leadId) => {
+                setActiveTab('leads');
+              }}
+              onLogout={handleLogout}
+            />
+          )}
+
+          {activeTab === 'lead-overview' && (
             <Dashboard
               metrics={metrics}
               leads={leads}
@@ -602,6 +750,7 @@ export default function App() {
               proposals={proposals}
               settings={settings}
               onOpenPreview={handleOpenProposalPreview}
+              onEditProposal={handleStartEditProposal}
               onDeleteProposal={handleDeleteProposal}
               onUpdateStatus={handleUpdateProposalStatus}
               onExportCsv={() => handleExportCsv('Proposals')}
@@ -613,6 +762,7 @@ export default function App() {
                 setProposalTargetLead(leads.length > 0 ? leads[0] : null);
                 setIsCreateProposalOpen(true);
               }}
+              onUpdateProposal={handleUpdateProposal}
             />
           )}
 
@@ -769,6 +919,93 @@ export default function App() {
               }}
             />
           )}
+
+          {/* Document & Expiry Management View */}
+          {[
+            'doc-expiry',
+            'doc-dashboard',
+            'doc-registry',
+            'doc-calendar',
+            'doc-reminders',
+            'doc-renewals',
+            'doc-types',
+          ].includes(activeTab) && (
+            <DocumentExpiryView
+              currentUserName={currentUser?.name || 'Administrator'}
+              activeSubTab={
+                activeTab === 'doc-registry'
+                  ? 'documents'
+                  : activeTab === 'doc-calendar'
+                  ? 'calendar'
+                  : activeTab === 'doc-reminders'
+                  ? 'reminders'
+                  : activeTab === 'doc-renewals'
+                  ? 'renewals'
+                  : activeTab === 'doc-types'
+                  ? 'types'
+                  : 'dashboard'
+              }
+              onSubTabChange={(subTab) => {
+                const map: Record<string, NavTab> = {
+                  dashboard: 'doc-dashboard',
+                  documents: 'doc-registry',
+                  calendar: 'doc-calendar',
+                  reminders: 'doc-reminders',
+                  renewals: 'doc-renewals',
+                  types: 'doc-types',
+                };
+                setActiveTab(map[subTab] || 'doc-dashboard');
+              }}
+            />
+          )}
+
+          {/* Asset Management Module */}
+          {(activeTab === 'assets' || activeTab.startsWith('asset-')) && (
+            <AssetModule
+              actorName={currentUser?.name || 'Administrator'}
+              initialSubTab={
+                activeTab === 'asset-register'
+                  ? 'register'
+                  : activeTab === 'asset-requests'
+                  ? 'requests'
+                  : activeTab === 'asset-pos'
+                  ? 'pos'
+                  : activeTab === 'asset-receiving'
+                  ? 'receiving'
+                  : activeTab === 'asset-movements'
+                  ? 'movements'
+                  : activeTab === 'asset-maintenance'
+                  ? 'maintenance'
+                  : activeTab === 'asset-warranties'
+                  ? 'warranties'
+                  : activeTab === 'asset-retirements'
+                  ? 'retirements'
+                  : activeTab === 'asset-reports'
+                  ? 'reports'
+                  : activeTab === 'asset-settings'
+                  ? 'settings'
+                  : 'overview'
+              }
+              onSubTabChange={(subTab) => {
+                const map: Record<string, NavTab> = {
+                  overview: 'asset-overview',
+                  register: 'asset-register',
+                  requests: 'asset-requests',
+                  pos: 'asset-pos',
+                  receiving: 'asset-receiving',
+                  movements: 'asset-movements',
+                  maintenance: 'asset-maintenance',
+                  warranties: 'asset-warranties',
+                  retirements: 'asset-retirements',
+                  reports: 'asset-reports',
+                  settings: 'asset-settings',
+                };
+                if (map[subTab]) {
+                  setActiveTab(map[subTab]);
+                }
+              }}
+            />
+          )}
         </main>
       </div>
 
@@ -794,8 +1031,10 @@ export default function App() {
         onClose={() => {
           setIsCreateProposalOpen(false);
           setProposalTargetLead(null);
+          setEditingProposal(null);
         }}
         lead={proposalTargetLead}
+        editingProposal={editingProposal}
         leads={leads}
         settings={settings}
         currentUser={currentUser}
@@ -811,24 +1050,11 @@ export default function App() {
         }}
         proposal={previewProposal}
         settings={settings}
+        initialMode={previewProposalInitialMode}
+        onUpdateProposal={handleUpdateProposal}
         onEdit={() => {
-          setIsPreviewProposalOpen(false);
           if (previewProposal) {
-            const matchedLead = leads.find((l) => l.id === previewProposal.leadId) || {
-              id: previewProposal.leadId || '',
-              leadDate: previewProposal.proposalDate || new Date().toISOString().split('T')[0],
-              instituteName: previewProposal.instituteName,
-              contactPerson: previewProposal.contactPerson,
-              studentCount: previewProposal.studentCount,
-              priority: 'High',
-              status: 'Proposal Sent',
-              assignedTo: previewProposal.createdBy || currentUser.name,
-              remarks: previewProposal.notes || '',
-              createdBy: previewProposal.createdBy || currentUser.name,
-              createdDate: previewProposal.createdDate || new Date().toISOString().split('T')[0],
-            };
-            setProposalTargetLead(matchedLead);
-            setIsCreateProposalOpen(true);
+            handleStartEditProposal(previewProposal);
           }
         }}
         onSendEmail={(p, emailTo) => {
@@ -853,18 +1079,33 @@ export default function App() {
         onExportCsv={handleExportCsv}
       />
 
-      {/* 5. Automated Follow-up Notification Modal */}
-      <FollowUpNotificationModal
-        isOpen={isNotificationModalOpen}
-        onClose={() => setIsNotificationModalOpen(false)}
-        notifications={dueNotifications}
-        currentUser={currentUser}
-        onNotificationSent={refreshAllData}
-        onSelectLead={(leadId) => {
-          setIsNotificationModalOpen(false);
-          setActiveTab('leads');
-        }}
-      />
+      {/* 5. Unified All Notifications & Alerts Center Modal */}
+      {currentUser && (
+        <AllNotificationsModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => setIsNotificationModalOpen(false)}
+          currentUser={currentUser}
+          leads={leads}
+          followUps={followUps}
+          proposals={proposals}
+          users={users}
+          onRefreshAllData={refreshAllData}
+          onNavigateToTab={(tab) => {
+            setIsNotificationModalOpen(false);
+            setActiveTab(tab);
+          }}
+          onSelectLead={(leadId) => {
+            setIsNotificationModalOpen(false);
+            const matched = leads.find((l) => l.id === leadId);
+            if (matched) {
+              setEditingLead(matched);
+              setIsNewLeadOpen(true);
+            } else {
+              setActiveTab('leads');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

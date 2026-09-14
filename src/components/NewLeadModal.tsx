@@ -15,6 +15,7 @@ import {
   Sparkles,
   ExternalLink,
   ChevronRight,
+  Save,
 } from 'lucide-react';
 import { Lead, LeadPriority, LeadStatus, User as UserType } from '../types';
 import { StatusBadge } from './StatusBadge';
@@ -172,6 +173,16 @@ export const NewLeadModal: React.FC<NewLeadModalProps> = ({
                 <span>Create Proposal</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-xs font-bold rounded-lg transition-all shadow-xs active:scale-98"
+              title="Save Lead details"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isEditing ? 'Save Changes' : 'Save Lead'}</span>
+            </button>
 
             <button
               type="button"
@@ -451,9 +462,10 @@ export const NewLeadModal: React.FC<NewLeadModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-sm font-bold rounded-lg transition-all shadow-xs active:scale-98"
+                  className="px-6 py-2.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-sm font-bold rounded-lg transition-all shadow-xs active:scale-98 inline-flex items-center gap-2"
                 >
-                  {isEditing ? 'Save Lead Changes' : 'Create Institutional Lead'}
+                  <Save className="w-4 h-4" />
+                  <span>{isEditing ? 'Save Lead Changes' : 'Save Lead'}</span>
                 </button>
               </div>
             </form>
