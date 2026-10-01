@@ -21,6 +21,8 @@ import {
   AppointmentStatus,
   InterviewEvaluation,
   DepartmentMaster,
+  DepartmentRole,
+  RoleMenuPermission,
   IdCardTemplateSettings,
 } from '../types/hr';
 import { validateLeaveRequest } from '../utils/leaveValidation';
@@ -40,6 +42,7 @@ import {
   initialHrSettings,
   initialHrActivityLogs,
   initialDepartmentsMaster,
+  initialDepartmentRoles,
   initialIdCardSettings,
 } from '../data/hrMockData';
 
@@ -51,6 +54,7 @@ const HR_STORAGE_KEYS = {
   APPOINTMENT_LETTERS: 'mysar_hr_appointment_letters_v1',
   STAFF: 'mysar_hr_staff_v1',
   DEPARTMENTS: 'mysar_hr_departments_master_v1',
+  DEPARTMENT_ROLES: 'mysar_department_roles_matrix_v1',
   ATTENDANCE: 'mysar_hr_attendance_v1',
   LEAVE_REQUESTS: 'mysar_hr_leave_requests_v1',
   LEAVE_BALANCES: 'mysar_hr_leave_balances_v1',
@@ -172,6 +176,7 @@ class HrStorageService {
       remainingVacancies: Math.max(0, vacancies - filled),
       employmentType: posData.employmentType || 'Full Time',
       description: posData.description || '',
+      requirements: posData.requirements || [],
       responsibilities: posData.responsibilities || [],
       qualifications: posData.qualifications || [],
       experienceRequired: posData.experienceRequired || '1-3 years',
@@ -234,6 +239,7 @@ class HrStorageService {
       status: appData.status || 'Active',
       notes: appData.notes || '',
       expectedSalary: appData.expectedSalary || 35000,
+      noticePeriod: appData.noticePeriod || 'Immediate',
     };
 
     applicants.unshift(newApplicant);
@@ -344,10 +350,50 @@ class HrStorageService {
   }
 
   public generateOfferLetter(data: Partial<OfferLetter>, actorName = 'Admin'): OfferLetter {
+    return this.saveOfferLetter(data, actorName);
+  }
+
+  public saveOfferLetter(data: Partial<OfferLetter>, actorName = 'Admin'): OfferLetter {
     const offers = this.getOfferLetters();
+    const basic = data.basicSalary ?? 30000;
+    const allowances = data.allowances ?? 15000;
+    const grossSalary = basic + allowances;
+
+    if (data.id) {
+      const index = offers.findIndex((o) => o.id === data.id);
+      if (index !== -1) {
+        const existing = offers[index];
+        const updatedOffer: OfferLetter = {
+          ...existing,
+          ...data,
+          basicSalary: basic,
+          allowances,
+          grossSalary,
+        };
+        offers[index] = updatedOffer;
+        this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, offers);
+
+        if (updatedOffer.applicantId) {
+          const apps = this.getApplicants();
+          const app = apps.find((a) => a.id === updatedOffer.applicantId);
+          if (app) {
+            app.offerLetterId = updatedOffer.id;
+            this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
+          }
+        }
+
+        this.addActivity(
+          actorName,
+          'HR Admin',
+          'Updated Offer Letter',
+          'Recruitment',
+          `${updatedOffer.offerNumber} for ${updatedOffer.applicantName}`
+        );
+        return updatedOffer;
+      }
+    }
+
     const count = offers.length + 1;
-    const basic = data.basicSalary || 30000;
-    const allowances = data.allowances || 15000;
     const newOffer: OfferLetter = {
       id: `OFFER-2026-${String(count).padStart(3, '0')}`,
       offerNumber: `CAS-OFFER-2026-${String(count).padStart(3, '0')}`,
@@ -362,31 +408,65 @@ class HrStorageService {
       basicSalary: basic,
       allowances,
       allowanceItems: data.allowanceItems,
-      grossSalary: basic + allowances,
+      grossSalary,
       workingHours: data.workingHours || '8:15 AM – 4:00 PM (Monday to Friday)',
       benefits: data.benefits || ['EPF & Gratuity', 'Medical Coverage', 'Performance Bonus'],
       termsAndConditions: data.termsAndConditions || 'Subject to document verification and 6-month probation period.',
       expiryDate: data.expiryDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-      issueDate: new Date().toISOString().split('T')[0],
-      status: 'Sent',
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Sent',
+      businessOrProduct: data.businessOrProduct || 'MYSAR / Casbiro',
+      reportingTo: data.reportingTo || 'Department Head / Operations Lead',
+      workLocation: data.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
+      reportingTime: data.reportingTime || '09:30 AM',
+      reportingPerson: data.reportingPerson || 'Department Head / HR Operations',
+      trainingPeriod: data.trainingPeriod || '30 Days',
+      probationPeriod: data.probationPeriod || '6 Months',
+      noticePeriod: data.noticePeriod || '30 Days',
+      employeeAddress: data.employeeAddress || 'Door No. 12/48A, Green Valley Avenue',
+      cityStatePin: data.cityStatePin || 'Kakkanad, Ernakulam, Kerala – 682030',
+      hra: data.hra,
+      conveyanceAllowance: data.conveyanceAllowance,
+      communicationAllowance: data.communicationAllowance,
+      specialAllowance: data.specialAllowance,
+      otherAllowance: data.otherAllowance,
+      pfDeduction: data.pfDeduction,
+      ptDeduction: data.ptDeduction,
+      tdsDeduction: data.tdsDeduction,
+      otherDeductions: data.otherDeductions,
     };
 
     offers.unshift(newOffer);
     this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, offers);
 
-    // Link with applicant
+    // Link with applicant and update stage if needed
     if (newOffer.applicantId) {
       const apps = this.getApplicants();
       const app = apps.find((a) => a.id === newOffer.applicantId);
       if (app) {
         app.offerLetterId = newOffer.id;
-        app.stage = 'Offer Sent';
+        if (app.stage === 'Selected' || app.stage === 'Applied' || app.stage === 'Shortlisted' || app.stage === 'Interviewed') {
+          app.stage = 'Offer Sent';
+        }
         this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
       }
     }
 
     this.addActivity(actorName, 'HR Admin', 'Generated Offer Letter', 'Recruitment', `${newOffer.offerNumber} for ${newOffer.applicantName}`);
     return newOffer;
+  }
+
+  public deleteOfferLetter(id: string, actorName = 'Admin'): void {
+    const offers = this.getOfferLetters().filter((o) => o.id !== id);
+    this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, offers);
+
+    const apps = this.getApplicants();
+    const app = apps.find((a) => a.offerLetterId === id);
+    if (app) {
+      app.offerLetterId = undefined;
+      this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
+    }
+    this.addActivity(actorName, 'HR Admin', 'Deleted Offer Letter', 'Recruitment', id);
   }
 
   public updateOfferStatus(id: string, status: OfferStatus, actorName = 'Admin'): void {
@@ -421,10 +501,50 @@ class HrStorageService {
   }
 
   public generateAppointmentLetter(data: Partial<AppointmentLetter>, actorName = 'Admin'): AppointmentLetter {
+    return this.saveAppointmentLetter(data, actorName);
+  }
+
+  public saveAppointmentLetter(data: Partial<AppointmentLetter>, actorName = 'Admin'): AppointmentLetter {
     const appts = this.getAppointmentLetters();
+    const basic = data.basicSalary ?? 30000;
+    const allowances = data.allowances ?? 15000;
+    const grossSalary = basic + allowances;
+
+    if (data.id) {
+      const index = appts.findIndex((a) => a.id === data.id);
+      if (index !== -1) {
+        const existing = appts[index];
+        const updatedAppt: AppointmentLetter = {
+          ...existing,
+          ...data,
+          basicSalary: basic,
+          allowances,
+          grossSalary,
+        };
+        appts[index] = updatedAppt;
+        this.setStorage(HR_STORAGE_KEYS.APPOINTMENT_LETTERS, appts);
+
+        if (updatedAppt.applicantId) {
+          const apps = this.getApplicants();
+          const app = apps.find((a) => a.id === updatedAppt.applicantId);
+          if (app) {
+            app.appointmentLetterId = updatedAppt.id;
+            this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
+          }
+        }
+
+        this.addActivity(
+          actorName,
+          'HR Admin',
+          'Updated Appointment Letter',
+          'Recruitment',
+          `${updatedAppt.appointmentNumber} for ${updatedAppt.employeeName}`
+        );
+        return updatedAppt;
+      }
+    }
+
     const count = appts.length + 1;
-    const basic = data.basicSalary || 30000;
-    const allowances = data.allowances || 15000;
     const proposedEmpId = data.employeeId || `EMP-2026-${String(this.getStaff().length + 1).padStart(3, '0')}`;
 
     const newAppt: AppointmentLetter = {
@@ -441,14 +561,14 @@ class HrStorageService {
       basicSalary: basic,
       allowances,
       allowanceItems: data.allowanceItems,
-      grossSalary: basic + allowances,
+      grossSalary,
       probationPeriod: data.probationPeriod || '6 Months',
       workingHours: data.workingHours || '8:15 AM – 4:00 PM',
-      workplace: data.workplace || 'Kochi Campus',
+      workplace: data.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
       responsibilities: data.responsibilities || ['Fulfill institutional duties and classroom mentorship.'],
       termsAndConditions: data.termsAndConditions || 'Formal appointment subject to institutional service rules.',
-      issueDate: new Date().toISOString().split('T')[0],
-      status: 'Generated',
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'Generated',
     };
 
     appts.unshift(newAppt);
@@ -460,13 +580,28 @@ class HrStorageService {
       const app = apps.find((a) => a.id === newAppt.applicantId);
       if (app) {
         app.appointmentLetterId = newAppt.id;
-        app.stage = 'Appointment';
+        if (app.stage !== 'Joined') {
+          app.stage = 'Appointment';
+        }
         this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
       }
     }
 
     this.addActivity(actorName, 'HR Admin', 'Generated Appointment Letter', 'Recruitment', `${newAppt.appointmentNumber} for ${newAppt.employeeName}`);
     return newAppt;
+  }
+
+  public deleteAppointmentLetter(id: string, actorName = 'Admin'): void {
+    const appts = this.getAppointmentLetters().filter((a) => a.id !== id);
+    this.setStorage(HR_STORAGE_KEYS.APPOINTMENT_LETTERS, appts);
+
+    const apps = this.getApplicants();
+    const app = apps.find((a) => a.appointmentLetterId === id);
+    if (app) {
+      app.appointmentLetterId = undefined;
+      this.setStorage(HR_STORAGE_KEYS.APPLICANTS, apps);
+    }
+    this.addActivity(actorName, 'HR Admin', 'Deleted Appointment Letter', 'Recruitment', id);
   }
 
   public updateAppointmentStatus(id: string, status: AppointmentStatus, actorName = 'Admin'): void {
@@ -628,7 +763,26 @@ class HrStorageService {
 
   // --- DEPARTMENT MASTER ---
   public getDepartmentsMaster(): DepartmentMaster[] {
-    return this.getStorage<DepartmentMaster[]>(HR_STORAGE_KEYS.DEPARTMENTS, initialDepartmentsMaster);
+    const list = this.getStorage<DepartmentMaster[]>(HR_STORAGE_KEYS.DEPARTMENTS, initialDepartmentsMaster);
+    // Ensure all departments have allowedMenuIds populated
+    let modified = false;
+    const sanitized = list.map((d) => {
+      if (!d.allowedMenuIds || d.allowedMenuIds.length === 0) {
+        const foundInitial = initialDepartmentsMaster.find(
+          (init) => init.departmentCode === d.departmentCode || init.id === d.id
+        );
+        if (foundInitial?.allowedMenuIds) {
+          modified = true;
+          return { ...d, allowedMenuIds: foundInitial.allowedMenuIds };
+        }
+      }
+      return d;
+    });
+
+    if (modified) {
+      this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, sanitized);
+    }
+    return sanitized;
   }
 
   public saveDepartment(data: Partial<DepartmentMaster>, actorName = 'Admin'): DepartmentMaster {
@@ -640,6 +794,7 @@ class HrStorageService {
           ...depts[idx],
           ...data,
           departmentCode: (data.departmentCode || depts[idx].departmentCode).toUpperCase().trim(),
+          allowedMenuIds: data.allowedMenuIds !== undefined ? data.allowedMenuIds : depts[idx].allowedMenuIds,
         };
         depts[idx] = updated;
         this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, depts);
@@ -659,6 +814,7 @@ class HrStorageService {
       description: data.description || '',
       status: data.status || 'Active',
       createdDate: new Date().toISOString().split('T')[0],
+      allowedMenuIds: data.allowedMenuIds || [],
     };
 
     depts.push(newDept);
@@ -1426,6 +1582,173 @@ class HrStorageService {
     this.addActivity(actorName, 'Admin', 'Updated Staff ID Card Template & Fields', 'Settings', settings.templateName);
   }
 
+  // --- DEPARTMENT ROLES & GRANULAR PERMISSIONS ---
+  public getDepartmentRoles(): DepartmentRole[] {
+    return this.getStorage<DepartmentRole[]>(
+      HR_STORAGE_KEYS.DEPARTMENT_ROLES,
+      initialDepartmentRoles
+    );
+  }
+
+  public getDepartmentRolesByDepartment(deptCodeOrName: string): DepartmentRole[] {
+    const roles = this.getDepartmentRoles();
+    const clean = (deptCodeOrName || '').trim().toLowerCase();
+    return roles.filter(
+      (r) =>
+        r.departmentCode.toLowerCase() === clean ||
+        r.departmentName.toLowerCase() === clean
+    );
+  }
+
+  public saveDepartmentRole(roleData: Partial<DepartmentRole>, actorName = 'Admin'): DepartmentRole {
+    const roles = this.getDepartmentRoles();
+    if (roleData.id) {
+      const idx = roles.findIndex((r) => r.id === roleData.id);
+      if (idx !== -1) {
+        const updated: DepartmentRole = {
+          ...roles[idx],
+          ...roleData,
+          departmentCode: (roleData.departmentCode || roles[idx].departmentCode).trim(),
+          departmentName: roleData.departmentName || roles[idx].departmentName,
+          roleTitle: roleData.roleTitle || roles[idx].roleTitle,
+          accessLevel: roleData.accessLevel || roles[idx].accessLevel,
+          capabilities: {
+            ...roles[idx].capabilities,
+            ...(roleData.capabilities || {}),
+          },
+        };
+        roles[idx] = updated;
+        this.setStorage(HR_STORAGE_KEYS.DEPARTMENT_ROLES, roles);
+        this.addActivity(
+          actorName,
+          'HR Admin',
+          'Updated Department Role',
+          'Settings',
+          `${updated.departmentName} (${updated.departmentCode}) - ${updated.roleTitle}`
+        );
+        return updated;
+      }
+    }
+
+    const count = roles.length + 1;
+    const deptCode = (roleData.departmentCode || '101').trim();
+    const newRole: DepartmentRole = {
+      id: roleData.id || `ROLE-${deptCode}-${String(count).padStart(2, '0')}`,
+      departmentCode: deptCode,
+      departmentName: roleData.departmentName || 'Academic',
+      roleTitle: roleData.roleTitle || 'New Department Role',
+      accessLevel: roleData.accessLevel || 'Operational (Entry & Edit)',
+      reportingTo: roleData.reportingTo || 'Department Head',
+      description: roleData.description || 'Department specific responsibilities and operational tasks.',
+      keyResponsibilities: roleData.keyResponsibilities || [
+        'Execute assigned departmental workflows',
+        'Maintain accurate logs and reports',
+      ],
+      capabilities: roleData.capabilities || {
+        canApproveLeaves: false,
+        canEvaluateInterviews: false,
+        canIssueLetters: false,
+        canAccessPayroll: false,
+        canReviewKpi: false,
+        canApproveRequisitions: false,
+      },
+      headcount: roleData.headcount || 1,
+      menuPermissions: roleData.menuPermissions,
+    };
+
+    roles.push(newRole);
+    this.setStorage(HR_STORAGE_KEYS.DEPARTMENT_ROLES, roles);
+    this.addActivity(
+      actorName,
+      'HR Admin',
+      'Created Department Role',
+      'Settings',
+      `${newRole.departmentName} (${newRole.departmentCode}) - ${newRole.roleTitle}`
+    );
+    return newRole;
+  }
+
+  public deleteDepartmentRole(id: string, actorName = 'Admin'): boolean {
+    const roles = this.getDepartmentRoles();
+    const target = roles.find((r) => r.id === id);
+    if (!target) return false;
+
+    const filtered = roles.filter((r) => r.id !== id);
+    this.setStorage(HR_STORAGE_KEYS.DEPARTMENT_ROLES, filtered);
+    this.addActivity(
+      actorName,
+      'HR Admin',
+      'Deleted Department Role',
+      'Settings',
+      `${target.departmentName} - ${target.roleTitle}`
+    );
+    return true;
+  }
+
+  public getDepartmentRolePermissions(
+    departmentCode: string,
+    roleId: string
+  ): Record<string, RoleMenuPermission> {
+    const settings = this.getHrSettings();
+    const cleanDept = (departmentCode || '').trim();
+    
+    // Check hrSettings departmentRolePermissions mapping
+    if (settings.departmentRolePermissions?.[cleanDept]?.[roleId]) {
+      return settings.departmentRolePermissions[cleanDept][roleId];
+    }
+
+    // Check directly in the stored role object
+    const roles = this.getDepartmentRoles();
+    const role = roles.find((r) => r.id === roleId);
+    if (role?.menuPermissions && Object.keys(role.menuPermissions).length > 0) {
+      return role.menuPermissions;
+    }
+
+    // Fallback to rolePermissions from settings or default
+    return settings.rolePermissions || {};
+  }
+
+  public saveDepartmentRolePermissions(
+    departmentCode: string,
+    roleId: string,
+    permissions: Record<string, RoleMenuPermission>,
+    actorName = 'Admin'
+  ): void {
+    const cleanDept = (departmentCode || '').trim();
+
+    // 1. Update in HrSettingsConfig
+    const settings = this.getHrSettings();
+    if (!settings.departmentRolePermissions) {
+      settings.departmentRolePermissions = {};
+    }
+    if (!settings.departmentRolePermissions[cleanDept]) {
+      settings.departmentRolePermissions[cleanDept] = {};
+    }
+    settings.departmentRolePermissions[cleanDept][roleId] = permissions;
+    this.setStorage(HR_STORAGE_KEYS.SETTINGS, settings);
+
+    // 2. Also update in the DepartmentRole object in DEPARTMENT_ROLES
+    const roles = this.getDepartmentRoles();
+    const role = roles.find((r) => r.id === roleId);
+    if (role) {
+      role.menuPermissions = permissions;
+      this.setStorage(HR_STORAGE_KEYS.DEPARTMENT_ROLES, roles);
+    }
+
+    this.addActivity(
+      actorName,
+      'HR Admin',
+      'Updated Granular Permissions for Department Role',
+      'Settings',
+      `Dept ${cleanDept} - Role ${role?.roleTitle || roleId}`
+    );
+  }
+
+  public getAllDepartmentRolePermissions(): Record<string, Record<string, Record<string, RoleMenuPermission>>> {
+    const settings = this.getHrSettings();
+    return settings.departmentRolePermissions || {};
+  }
+
   // --- RESET TO DEMO ---
   public resetHrData(): void {
     localStorage.removeItem(HR_STORAGE_KEYS.POSITIONS);
@@ -1434,6 +1757,8 @@ class HrStorageService {
     localStorage.removeItem(HR_STORAGE_KEYS.OFFER_LETTERS);
     localStorage.removeItem(HR_STORAGE_KEYS.APPOINTMENT_LETTERS);
     localStorage.removeItem(HR_STORAGE_KEYS.STAFF);
+    localStorage.removeItem(HR_STORAGE_KEYS.DEPARTMENTS);
+    localStorage.removeItem(HR_STORAGE_KEYS.DEPARTMENT_ROLES);
     localStorage.removeItem(HR_STORAGE_KEYS.ATTENDANCE);
     localStorage.removeItem(HR_STORAGE_KEYS.LEAVE_REQUESTS);
     localStorage.removeItem(HR_STORAGE_KEYS.LEAVE_BALANCES);

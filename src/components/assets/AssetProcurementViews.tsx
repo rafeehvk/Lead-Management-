@@ -24,6 +24,9 @@ import {
 } from '../../types/asset';
 import { assetStorage } from '../../services/assetStorageService';
 import { hrStorage } from '../../services/hrStorageService';
+import { DocumentPrintPdfModal } from '../common/DocumentPrintPdfModal';
+import { convertAssetPoToDoc } from '../../utils/documentConversionHelpers';
+import { ThemedDocumentData } from '../finance/themes/ThemedDocumentRenderer';
 
 // ==========================================
 // 1. ASSET REQUESTS VIEW (Section 4)
@@ -295,8 +298,17 @@ export const PurchaseOrdersView: React.FC<{
 }> = ({ onReceivePO, actorName = 'Admin' }) => {
   const [pos, setPos] = useState<PurchaseOrder[]>(() => assetStorage.getPurchaseOrders());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [activeDocData, setActiveDocData] = useState<ThemedDocumentData | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const vendors = assetStorage.getVendors();
   const categories = assetStorage.getCategories();
+
+  const openPoDocViewer = (po: PurchaseOrder, fullScreen = false) => {
+    setActiveDocData(convertAssetPoToDoc(po));
+    setIsFullScreen(fullScreen);
+    setIsDocModalOpen(true);
+  };
 
   // PO Form
   const [vendorId, setVendorId] = useState(vendors[0]?.id || '');
@@ -418,11 +430,13 @@ export const PurchaseOrdersView: React.FC<{
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
                       <button
-                        onClick={() => window.print()}
-                        className="text-slate-500 hover:text-slate-900 p-1"
-                        title="Print PO Document"
+                        type="button"
+                        onClick={() => openPoDocViewer(po, false)}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                        title="Open Document View with Print/PDF dialogue and full-screen layout optimization"
                       >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Print/PDF</span>
                       </button>
                       {po.status !== 'Completed' && onReceivePO && (
                         <button
@@ -553,6 +567,15 @@ export const PurchaseOrdersView: React.FC<{
           </div>
         </div>
       )}
+
+      {/* PO Document Print/PDF Modal */}
+      <DocumentPrintPdfModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+        documentData={activeDocData}
+        category="asset"
+        initialFullScreen={isFullScreen}
+      />
     </div>
   );
 };

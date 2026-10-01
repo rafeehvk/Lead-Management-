@@ -28,6 +28,9 @@ import {
   ExternalLink,
   Eye,
   ArrowRight,
+  Receipt,
+  MapPin,
+  Phone,
 } from 'lucide-react';
 import { Settings, User, UserRole, ProposalContentConfig, Lead } from '../types';
 import { hasPermission } from '../utils/rbac';
@@ -37,8 +40,10 @@ import { PricingMasterManager } from './PricingMasterManager';
 import { TeamRbacManager } from './TeamRbacManager';
 import { ProposalContentManager } from './ProposalContentManager';
 import { CsvLeadImporter } from './CsvLeadImporter';
+import { InvoiceThemeSettingsManager } from './finance/themes/InvoiceThemeSettingsManager';
 
-export type LogoSlot = 'master' | 'navbar' | 'document' | 'login';
+export type LogoSlot = 'master' | 'invoice' | 'navbar' | 'document' | 'login';
+export type SettingsTabType = 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations' | 'themes';
 
 interface SettingsViewProps {
   settings: Settings;
@@ -52,8 +57,8 @@ interface SettingsViewProps {
   onResetDemo: () => void;
   onBulkImportLeads?: (leadsData: Array<Partial<Lead>>) => { successCount: number; createdLeads: Lead[]; errors: string[] };
   onNavigateToLeads?: () => void;
-  initialTab?: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations';
-  onTabChange?: (tab: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations') => void;
+  initialTab?: SettingsTabType;
+  onTabChange?: (tab: SettingsTabType) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -71,7 +76,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   initialTab = 'pricing',
   onTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations'>(initialTab);
+  const [activeTab, setActiveTab] = useState<SettingsTabType>(initialTab);
 
   React.useEffect(() => {
     if (initialTab) {
@@ -79,7 +84,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   }, [initialTab]);
 
-  const handleSubTabSelect = (tab: 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations') => {
+  const handleSubTabSelect = (tab: SettingsTabType) => {
     setActiveTab(tab);
     if (onTabChange) {
       onTabChange(tab);
@@ -89,12 +94,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [selectedLogoSlot, setSelectedLogoSlot] = useState<LogoSlot>('master');
   const [formData, setFormData] = useState<Settings>(() => {
     const persistentLogo = storage.getCompanyLogo();
+    const pInv = storage.getInvoiceLogo();
     const pNav = storage.getNavbarLogo();
     const pDoc = storage.getDocumentLogo();
     const pLogin = storage.getLoginLogo();
     return {
       ...settings,
       companyLogo: settings.companyLogo || persistentLogo,
+      invoiceLogo: settings.invoiceLogo || pInv,
       navbarLogo: settings.navbarLogo || pNav,
       documentLogo: settings.documentLogo || pDoc,
       loginLogo: settings.loginLogo || pLogin,
@@ -110,12 +117,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Keep formData in sync when settings prop updates
   React.useEffect(() => {
     const persistentLogo = storage.getCompanyLogo();
+    const pInv = storage.getInvoiceLogo();
     const pNav = storage.getNavbarLogo();
     const pDoc = storage.getDocumentLogo();
     const pLogin = storage.getLoginLogo();
     setFormData((prev) => ({
       ...settings,
       companyLogo: settings.companyLogo || persistentLogo || prev.companyLogo,
+      invoiceLogo: settings.invoiceLogo || pInv || prev.invoiceLogo,
       navbarLogo: settings.navbarLogo || pNav || prev.navbarLogo,
       documentLogo: settings.documentLogo || pDoc || prev.documentLogo,
       loginLogo: settings.loginLogo || pLogin || prev.loginLogo,
@@ -148,6 +157,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         updatedSettings.companyLogo = optimizedDataUrl;
         storage.saveCompanyLogo(optimizedDataUrl);
         slotName = 'Master Company Logo';
+      } else if (targetSlot === 'invoice') {
+        updatedSettings.invoiceLogo = optimizedDataUrl;
+        storage.saveInvoiceLogo(optimizedDataUrl);
+        slotName = 'Invoice & Billing Logo';
       } else if (targetSlot === 'navbar') {
         updatedSettings.navbarLogo = optimizedDataUrl;
         storage.saveNavbarLogo(optimizedDataUrl);
@@ -201,6 +214,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     let confirmMsg = 'Are you sure you want to remove this logo?';
     if (targetSlot === 'master') {
       confirmMsg = 'Remove Master Company Logo? Views without custom logos will revert to default system glyphs.';
+    } else if (targetSlot === 'invoice') {
+      confirmMsg = 'Reset Invoice & Billing logo to inherit from the Master Company Logo?';
     } else if (targetSlot === 'navbar') {
       confirmMsg = 'Reset App Navigation logo to inherit from the Master Company Logo?';
     } else if (targetSlot === 'document') {
@@ -221,6 +236,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       updatedSettings.companyLogo = undefined;
       storage.saveCompanyLogo(undefined);
       setLogoStatusMessage('Master company logo removed.');
+    } else if (targetSlot === 'invoice') {
+      updatedSettings.invoiceLogo = undefined;
+      storage.saveInvoiceLogo(undefined);
+      setLogoStatusMessage('Invoice & Billing logo reset to use Master logo.');
     } else if (targetSlot === 'navbar') {
       updatedSettings.navbarLogo = undefined;
       storage.saveNavbarLogo(undefined);
@@ -251,29 +270,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       alert('Please upload a Master Company Logo first before copying to all placements.');
       return;
     }
-    if (!confirm('Copy the Master Company Logo to all 3 placements (App Navbar, Document/PDF, and Login Screen)?')) {
+    if (!confirm('Copy the Master Company Logo to all placements (Invoices & Bills, App Navbar, Document/PDF, and Login Screen)?')) {
       return;
     }
 
     const updatedSettings: Settings = {
       ...formData,
+      invoiceLogo: master,
       navbarLogo: master,
       documentLogo: master,
       loginLogo: master,
     };
 
     setFormData(updatedSettings);
+    storage.saveInvoiceLogo(master);
     storage.saveNavbarLogo(master);
     storage.saveDocumentLogo(master);
     storage.saveLoginLogo(master);
     onSaveSettings(updatedSettings);
 
-    setLogoStatusMessage('Master logo copied to App Navbar, Documents & PDF, and Login Screen!');
+    setLogoStatusMessage('Master logo copied to Invoices & Bills, App Navbar, Documents & PDF, and Login Screen!');
     setTimeout(() => setLogoStatusMessage(null), 4000);
   };
 
   const handleManualSaveLogo = () => {
     storage.saveCompanyLogo(formData.companyLogo);
+    storage.saveInvoiceLogo(formData.invoiceLogo);
     storage.saveNavbarLogo(formData.navbarLogo);
     storage.saveDocumentLogo(formData.documentLogo);
     storage.saveLoginLogo(formData.loginLogo);
@@ -289,6 +311,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
     if (formData.companyLogo) storage.saveCompanyLogo(formData.companyLogo);
+    if (formData.invoiceLogo) storage.saveInvoiceLogo(formData.invoiceLogo);
     if (formData.navbarLogo) storage.saveNavbarLogo(formData.navbarLogo);
     if (formData.documentLogo) storage.saveDocumentLogo(formData.documentLogo);
     if (formData.loginLogo) storage.saveLoginLogo(formData.loginLogo);
@@ -336,14 +359,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="flex items-center space-x-2.5">
             <button
               onClick={() => {
-                if (confirm('Reset all leads, proposals, pricing plans, and settings back to initial demo data?')) {
+                const confirmed = window.confirm(
+                  'GO LIVE / CLEAR ALL DUMMY DATA\n\n' +
+                  'This action will clear all dummy data across all modules:\n' +
+                  '• CRM Leads & Proposals\n' +
+                  '• HR Staff, Recruitment, Attendance & Payroll records\n' +
+                  '• Assets & Movement records\n' +
+                  '• Document Expiry tracking records\n' +
+                  '• ERP Transactions, Orders, Invoices & Journals\n\n' +
+                  'PRESERVED: Company Profile, Admin User Accounts & Logins, Master Department Structure, Tax Rates, Pricing Plans, and Form Templates.\n\n' +
+                  'Are you ready to clear all dummy data and set the system into live production?'
+                );
+                if (confirmed) {
                   onResetDemo();
                 }
               }}
-              className="bg-white hover:bg-red-50 text-red-700 border border-red-200 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
+              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset All Demo Data</span>
+              <span>Clear All Dummy Data & Go Live</span>
             </button>
           </div>
         )}
@@ -444,6 +478,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <Bell className="w-4 h-4" />
           <span>Integrations & Automation</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleSubTabSelect('themes')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+            activeTab === 'themes'
+              ? 'bg-[#168A45] text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-gray-200'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-300" />
+          <span>Invoice & Voucher Themes</span>
+        </button>
       </div>
 
       {/* TAB 1: PRICING TYPE / PLAN MASTER */}
@@ -465,13 +512,186 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* TAB 2: COMPANY & BRANDING */}
       {activeTab === 'company' && (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-5">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-gray-100">
-              <Building2 className="w-4 h-4 text-[#168A45]" />
-              Company & Branding Profile
-            </h3>
+          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#168A45]" />
+                Company & Branding Profile
+              </h3>
+              <span className="text-[11px] font-semibold text-[#0B5D2A] bg-[#EAF7EF] border border-[#D9E5DD] px-2.5 py-1 rounded-full flex items-center gap-1.5 w-fit">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#168A45]" />
+                <span>Synchronized with Invoices, Bills, Vouchers & Reports</span>
+              </span>
+            </div>
 
-            {/* SEPARATE LOGO SELECTION & MANAGEMENT */}
+            {/* 1. PROMINENT OFFICIAL COMPANY NAME & REGISTERED ADDRESS SECTION */}
+            <div className="bg-linear-to-r from-emerald-50/70 via-[#F7FAF8] to-slate-50 border border-[#D9E5DD] rounded-xl p-4.5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-emerald-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#168A45]" />
+                    Official Registered Company Name & Address
+                  </span>
+                  <span className="text-[10px] font-bold text-[#0B5D2A] bg-[#EAF7EF] border border-[#D9E5DD] px-2 py-0.5 rounded-full">
+                    Invoice & Document Header Live
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500">
+                  Visible on all printable tax invoices, bills, proposals, challans & vouchers
+                </span>
+              </div>
+
+              {/* Official Letterhead & Invoicing Address Live Summary Badge */}
+              <div className="p-3.5 bg-white border border-emerald-200/80 rounded-xl shadow-2xs">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-base font-black text-slate-900 tracking-tight">
+                        {formData.companyName || 'Casbiro Solutions Private Limited'}
+                      </span>
+                      {formData.brandName && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Brand: {formData.brandName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-700 flex items-start gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#168A45] shrink-0 mt-0.5" />
+                      <span className="font-medium">{formData.address || 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021'}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium pt-0.5">
+                      <span><b>GSTIN:</b> {formData.gstNumber || '32AABCC8921F1ZX'}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-[#168A45]" />{formData.phone || '+91 7994 807 907'}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-[#168A45]" />{formData.email || 'billing@casbiro.com'}</span>
+                      {formData.website && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-[#168A45]" />{formData.website}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[10px] text-slate-600 space-y-1 self-start">
+                    <div className="font-bold text-slate-800 flex items-center gap-1">
+                      <Receipt className="w-3.5 h-3.5 text-[#168A45]" />
+                      <span>Invoice Header Live</span>
+                    </div>
+                    <div>Logo: <b>{formData.invoiceLogo ? 'Dedicated Invoice Logo' : formData.companyLogo ? 'Master Logo' : 'Default Glyph'}</b></div>
+                    <div>Jurisdiction: <b>Kerala, India (Code 32)</b></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable Form Inputs for Company Name & Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs pt-1">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Parent Company Legal Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!canManage}
+                    value={formData.companyName}
+                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                    placeholder="e.g. Casbiro Solutions Private Limited"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Official entity name on invoices & tax filings</span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Product / Trading Brand Name
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!canManage}
+                    value={formData.brandName}
+                    onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
+                    placeholder="e.g. MYSAr"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Commercial brand displayed prominently</span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    GST / Tax ID Number
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!canManage}
+                    value={formData.gstNumber}
+                    onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+                    placeholder="e.g. 32AABCC8921F1ZX"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Mandatory for GST invoices and B2B bills</span>
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Registered Office Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    disabled={!canManage}
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Full physical registered address, building, street, city, state, pincode"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45] resize-none"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Printed in full on the top letterhead of all sales invoices, purchase bills, and quotations</span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Official Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!canManage}
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="e.g. +91 7994 807 907"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Official Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    disabled={!canManage}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="e.g. billing@casbiro.com"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Company Website URL
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!canManage}
+                    value={formData.website || ''}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="e.g. https://mysar.in"
+                    className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#168A45] focus:border-[#168A45]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. SEPARATE LOGO SELECTION & MANAGEMENT (INVOICE LOGO, MASTER LOGO, ETC.) */}
             <div className="bg-[#F7FAF8] border border-[#D9E5DD] rounded-xl p-4.5 space-y-4">
               {logoStatusMessage && (
                 <div className="bg-[#EAF7EF] border border-[#168A45] text-[#0B5D2A] text-xs font-bold px-3.5 py-2.5 rounded-lg flex items-center space-x-2 animate-in fade-in duration-150">
@@ -525,7 +745,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               {/* SEPARATE LOGO SELECTION TABS */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1">
                 {/* 1. Master Logo Tab */}
                 <button
                   type="button"
@@ -554,28 +774,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     )}
                   </div>
                   <div className="text-[10px] text-slate-500 line-clamp-1">
-                    Universal default fallback
+                    Universal fallback logo
                   </div>
                 </button>
 
-                {/* 2. App Navbar Tab */}
+                {/* 2. Invoice & Billing Logo Tab */}
                 <button
                   type="button"
-                  onClick={() => setSelectedLogoSlot('navbar')}
+                  onClick={() => setSelectedLogoSlot('invoice')}
                   className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    selectedLogoSlot === 'navbar'
+                    selectedLogoSlot === 'invoice'
                       ? 'bg-white border-[#168A45] ring-2 ring-[#168A45]/30 shadow-xs'
                       : 'bg-white/70 hover:bg-white border-gray-200'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedLogoSlot === 'navbar' ? 'bg-[#EAF7EF] text-[#168A45]' : 'bg-slate-100 text-slate-500'}`}>
-                        <Compass className="w-3.5 h-3.5" />
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedLogoSlot === 'invoice' ? 'bg-[#EAF7EF] text-[#168A45]' : 'bg-slate-100 text-slate-500'}`}>
+                        <Receipt className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-xs font-bold text-slate-800">App Navbar</span>
+                      <span className="text-xs font-bold text-slate-800">Invoice Logo</span>
                     </div>
-                    {formData.navbarLogo ? (
+                    {formData.invoiceLogo ? (
                       <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
                         Custom
                       </span>
@@ -586,7 +806,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     )}
                   </div>
                   <div className="text-[10px] text-slate-500 line-clamp-1">
-                    Top-left navigation bar
+                    Invoices, bills & vouchers
                   </div>
                 </button>
 
@@ -622,7 +842,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </button>
 
-                {/* 4. Login Emblem Tab */}
+                {/* 4. App Navbar Tab */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedLogoSlot('navbar')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    selectedLogoSlot === 'navbar'
+                      ? 'bg-white border-[#168A45] ring-2 ring-[#168A45]/30 shadow-xs'
+                      : 'bg-white/70 hover:bg-white border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${selectedLogoSlot === 'navbar' ? 'bg-[#EAF7EF] text-[#168A45]' : 'bg-slate-100 text-slate-500'}`}>
+                        <Compass className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">App Navbar</span>
+                    </div>
+                    {formData.navbarLogo ? (
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                        Custom
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                        Uses Master
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 line-clamp-1">
+                    Top-left navigation bar
+                  </div>
+                </button>
+
+                {/* 5. Login Emblem Tab */}
                 <button
                   type="button"
                   onClick={() => setSelectedLogoSlot('login')}
@@ -664,11 +916,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {selectedLogoSlot === 'master' && <Globe className="w-4 h-4 text-[#168A45]" />}
+                        {selectedLogoSlot === 'invoice' && <Receipt className="w-4 h-4 text-[#168A45]" />}
                         {selectedLogoSlot === 'navbar' && <Compass className="w-4 h-4 text-[#168A45]" />}
                         {selectedLogoSlot === 'document' && <FileText className="w-4 h-4 text-[#168A45]" />}
                         {selectedLogoSlot === 'login' && <LogIn className="w-4 h-4 text-[#168A45]" />}
                         <span className="text-xs font-bold text-slate-800">
                           {selectedLogoSlot === 'master' && 'Configuring: Master Company Logo'}
+                          {selectedLogoSlot === 'invoice' && 'Configuring: Invoice & Billing Logo (Tax Invoices, Bills & Vouchers)'}
                           {selectedLogoSlot === 'navbar' && 'Configuring: App Navigation Bar Logo'}
                           {selectedLogoSlot === 'document' && 'Configuring: Document & PDF Proposal Logo'}
                           {selectedLogoSlot === 'login' && 'Configuring: Login Screen Emblem Badge'}
@@ -686,6 +940,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             >
                               <Trash2 className="w-3 h-3" />
                               <span>Remove</span>
+                            </button>
+                          )}
+                          {selectedLogoSlot === 'invoice' && formData.invoiceLogo && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLogo('invoice')}
+                              className="text-[11px] text-slate-600 hover:text-red-600 hover:bg-slate-100 px-2 py-1 rounded-md border border-gray-200 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Revert to using Master Company Logo"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Revert to Master</span>
                             </button>
                           )}
                           {selectedLogoSlot === 'navbar' && formData.navbarLogo && (
@@ -726,7 +991,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
 
                     <p className="text-[11px] text-slate-500">
-                      {selectedLogoSlot === 'master' && 'The universal fallback logo. Used on navbar, documents, and login screen unless a dedicated logo is specified below.'}
+                      {selectedLogoSlot === 'master' && 'The universal fallback logo. Used on navbar, invoices, documents, and login screen unless a dedicated logo is specified below.'}
+                      {selectedLogoSlot === 'invoice' && 'Printed directly on official Sales Tax Invoices, Purchase Bills, Delivery Challans, and Vouchers across the Finance & Accounting module.'}
                       {selectedLogoSlot === 'navbar' && 'Displayed at the top-left navigation bar. Ideal for compact horizontal logos or square badges (36-48px height) with transparent backgrounds.'}
                       {selectedLogoSlot === 'document' && 'High-resolution logo printed on official PDF proposals, institutional reports, and executive summary documents.'}
                       {selectedLogoSlot === 'login' && 'Emblem badge displayed at the center of the authentication login screen and mobile portal.'}
@@ -743,6 +1009,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         ) : (
                           <div className="text-[11px] text-slate-400">
                             No master logo uploaded yet. Default MYSAR glyph is in use.
+                          </div>
+                        )
+                      ) : selectedLogoSlot === 'invoice' ? (
+                        formData.invoiceLogo ? (
+                          <div className="text-[11px] text-[#168A45] font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Dedicated Invoice & Billing logo active</span>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <span>↳ Inheriting from Master Company Logo</span>
+                            {formData.companyLogo && (
+                              <span className="text-emerald-700 font-bold">({formData.brandName || 'Configured'})</span>
+                            )}
                           </div>
                         )
                       ) : selectedLogoSlot === 'navbar' ? (
@@ -835,6 +1115,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </div>
                         <div className="text-xs font-bold text-slate-800">
                           {selectedLogoSlot === 'master' && (formData.companyLogo ? 'Click or drag to replace Master Logo' : 'Upload Master Company Logo')}
+                          {selectedLogoSlot === 'invoice' && (formData.invoiceLogo ? 'Click or drag to replace Invoice Logo' : 'Upload Dedicated Invoice & Billing Logo')}
                           {selectedLogoSlot === 'navbar' && (formData.navbarLogo ? 'Click or drag to replace App Navbar Logo' : 'Upload Dedicated App Navbar Logo')}
                           {selectedLogoSlot === 'document' && (formData.documentLogo ? 'Click or drag to replace Document Logo' : 'Upload Dedicated Document & PDF Logo')}
                           {selectedLogoSlot === 'login' && (formData.loginLogo ? 'Click or drag to replace Login Emblem' : 'Upload Dedicated Login Screen Emblem')}
@@ -858,7 +1139,95 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </span>
                   </div>
 
-                  {/* 1. App Top-Left Navbar Preview */}
+                  {/* 1. Tax Invoice & Voucher Header Preview */}
+                  {(() => {
+                    const activeInvoiceLogo = formData.invoiceLogo || formData.companyLogo;
+                    const isSelected = selectedLogoSlot === 'invoice';
+                    return (
+                      <div
+                        onClick={() => setSelectedLogoSlot('invoice')}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragTargetSlot('invoice');
+                        }}
+                        onDragLeave={() => setDragTargetSlot(null)}
+                        onDrop={(e) => handleDropLogo(e, 'invoice')}
+                        className={`bg-white border rounded-xl p-3 shadow-2xs cursor-pointer transition-all ${
+                          dragTargetSlot === 'invoice'
+                            ? 'border-[#168A45] bg-[#EAF7EF] ring-2 ring-[#168A45]'
+                            : isSelected
+                            ? 'border-[#168A45] ring-2 ring-[#168A45]/40 bg-emerald-50/20'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="text-[10px] font-semibold text-slate-500 mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Receipt className="w-3.5 h-3.5 text-[#168A45]" />
+                            <span className="font-bold text-slate-700">Tax Invoice & Voucher Header Preview</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {formData.invoiceLogo ? (
+                              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                                Custom Logo
+                              </span>
+                            ) : (
+                              <span className="text-[9px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded">
+                                Uses Master
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                triggerUploadForSlot('invoice');
+                              }}
+                              className="text-[9px] text-[#168A45] font-bold hover:underline ml-1"
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-50/90 border border-slate-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            {activeInvoiceLogo ? (
+                              <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 p-1 flex items-center justify-center overflow-hidden shadow-2xs shrink-0">
+                                <img
+                                  src={activeInvoiceLogo}
+                                  alt="Invoice Logo preview"
+                                  className="max-h-full max-w-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-[#168A45] flex items-center justify-center text-white font-extrabold text-lg shadow-sm shrink-0">
+                                {formData.brandName ? formData.brandName.charAt(0) : 'M'}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-black text-slate-900 truncate">
+                                {formData.companyName || 'Casbiro Solutions Private Limited'}
+                              </div>
+                              {formData.brandName && formData.brandName !== formData.companyName && (
+                                <div className="text-[10px] font-bold text-[#168A45] tracking-wide uppercase">
+                                  {formData.brandName}
+                                </div>
+                              )}
+                              <p className="text-[10px] text-slate-600 line-clamp-1 mt-0.5">
+                                {formData.address || 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021'}
+                              </p>
+                              <div className="text-[9px] text-slate-500 font-mono mt-0.5 flex flex-wrap gap-x-2">
+                                <span>GSTIN: <b>{formData.gstNumber || '32AABCC8921F1ZX'}</b></span>
+                                <span>Phone: {formData.phone || '+91 7994 807 907'}</span>
+                                {formData.email && <span>Email: {formData.email}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 2. App Top-Left Navbar Preview */}
                   {(() => {
                     const activeNavbarLogo = formData.navbarLogo || formData.companyLogo;
                     const isSelected = selectedLogoSlot === 'navbar';
@@ -934,7 +1303,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     );
                   })()}
 
-                  {/* 2. PDF & Document Header Preview */}
+                  {/* 3. PDF & Document Header Preview */}
                   {(() => {
                     const activeDocumentLogo = formData.documentLogo || formData.companyLogo;
                     const isSelected = selectedLogoSlot === 'document';
@@ -1001,8 +1370,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             <div className="text-xs font-black text-white tracking-wide truncate">
                               {formData.brandName || 'MYSAR'}
                             </div>
-                            <div className="text-[10px] text-white/80 truncate">
+                            <div className="text-[10px] text-white/90 truncate">
                               {formData.companyName || 'Casbiro Solutions Private Limited'}
+                            </div>
+                            <div className="text-[9px] text-white/80 truncate">
+                              {formData.address || 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021'}
                             </div>
                           </div>
                         </div>
@@ -1010,7 +1382,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     );
                   })()}
 
-                  {/* 3. Login Screen Emblem Badge Preview */}
+                  {/* 4. Login Screen Emblem Badge Preview */}
                   {(() => {
                     const activeLoginLogo = formData.loginLogo || formData.companyLogo;
                     const isSelected = selectedLogoSlot === 'login';
@@ -1086,73 +1458,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     );
                   })()}
                 </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Parent Company Name
-                </label>
-                <input
-                  type="text"
-                  disabled={!canManage}
-                  value={formData.companyName}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                  className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Product Brand Name
-                </label>
-                <input
-                  type="text"
-                  disabled={!canManage}
-                  value={formData.brandName}
-                  onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
-                  className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  GST / Tax ID Number
-                </label>
-                <input
-                  type="text"
-                  disabled={!canManage}
-                  value={formData.gstNumber}
-                  onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-                  className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Official Contact Phone
-                </label>
-                <input
-                  type="text"
-                  disabled={!canManage}
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">
-                  Registered Office Address
-                </label>
-                <input
-                  type="text"
-                  disabled={!canManage}
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full bg-[#F7FAF8] disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:bg-white focus:border-[#168A45]"
-                />
               </div>
             </div>
           </div>
@@ -1303,6 +1608,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB 7: INVOICE & VOUCHER THEMES (MY BILLBOOK STYLE) */}
+      {activeTab === 'themes' && (
+        <InvoiceThemeSettingsManager />
       )}
     </div>
   );

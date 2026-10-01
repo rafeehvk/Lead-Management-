@@ -27,6 +27,7 @@ export interface Position {
   remainingVacancies: number;
   employmentType: EmploymentType;
   description: string;
+  requirements?: string[];
   responsibilities: string[];
   qualifications: string[];
   experienceRequired: string;
@@ -156,6 +157,27 @@ export interface OfferLetter {
   issueDate: string;
   status: OfferStatus;
   notes?: string;
+  businessOrProduct?: string;
+  reportingTo?: string;
+  workLocation?: string;
+  reportingTime?: string;
+  reportingPerson?: string;
+  trainingPeriod?: string;
+  trainingStartDate?: string;
+  trainingEndDate?: string;
+  probationPeriod?: string;
+  noticePeriod?: string;
+  employeeAddress?: string;
+  cityStatePin?: string;
+  hra?: number;
+  conveyanceAllowance?: number;
+  communicationAllowance?: number;
+  specialAllowance?: number;
+  otherAllowance?: number;
+  pfDeduction?: number;
+  ptDeduction?: number;
+  tdsDeduction?: number;
+  otherDeductions?: number;
 }
 
 export type AppointmentStatus = 'Draft' | 'Generated' | 'Sent' | 'Signed' | 'Completed';
@@ -305,6 +327,7 @@ export interface DepartmentMaster {
   description?: string;
   status: 'Active' | 'Inactive';
   createdDate?: string;
+  allowedMenuIds?: string[]; // Accessible menu IDs from SIDE_MENU_DEFINITIONS for department members
 }
 
 export interface StaffBankPayroll {
@@ -681,7 +704,39 @@ export interface HrSettingsConfig {
     standardHraPercent: number; // e.g. 40
   };
   idCardSettings?: IdCardTemplateSettings;
+  rolePermissions?: Record<string, RoleMenuPermission>;
+  departmentRolePermissions?: Record<string, Record<string, Record<string, RoleMenuPermission>>>; // [departmentCode][roleId][menuId] -> RoleMenuPermission
 }
+
+export interface DepartmentRole {
+  id: string;
+  departmentCode: string;
+  departmentName: string;
+  roleTitle: string;
+  accessLevel: 'Super Admin (Full Control)' | 'Department Manager' | 'Operational (Entry & Edit)' | 'View Only (Read-Only)';
+  reportingTo: string;
+  description: string;
+  keyResponsibilities: string[];
+  capabilities: {
+    canApproveLeaves: boolean;
+    canEvaluateInterviews: boolean;
+    canIssueLetters: boolean;
+    canAccessPayroll: boolean;
+    canReviewKpi: boolean;
+    canApproveRequisitions: boolean;
+  };
+  headcount?: number;
+  menuPermissions?: Record<string, RoleMenuPermission>;
+}
+
+export interface RoleMenuPermission {
+  view: boolean;
+  entry: boolean;
+  edit: boolean;
+  delete: boolean;
+}
+
+export type RolePermissionsMap = Record<string, RoleMenuPermission>;
 
 export interface HrActivityLog {
   id: string;

@@ -1,7 +1,6 @@
 import {
   Lead,
   Proposal,
-  ProposalDigitalSignature,
   ProposalVersionEntry,
   ProposalAgreementDetails,
   FollowUp,
@@ -37,6 +36,7 @@ const STORAGE_KEYS = {
   COMPANY_LOGO: 'mysar_persistent_company_logo_v1',
   NAVBAR_LOGO: 'mysar_persistent_navbar_logo_v1',
   DOCUMENT_LOGO: 'mysar_persistent_document_logo_v1',
+  INVOICE_LOGO: 'mysar_persistent_invoice_logo_v1',
   LOGIN_LOGO: 'mysar_persistent_login_logo_v1',
 };
 
@@ -568,59 +568,6 @@ class StorageService {
       }
     }
     return proposal;
-  }
-
-  public signProposal(
-    proposalId: string,
-    signature: ProposalDigitalSignature,
-    actorName?: string
-  ): Proposal {
-    const proposals = this.getProposals();
-    const index = proposals.findIndex((p) => p.id === proposalId);
-    if (index === -1) {
-      throw new Error(`Proposal ${proposalId} not found`);
-    }
-
-    const current = proposals[index];
-    const updatedAgreement: ProposalAgreementDetails = {
-      ...(current.agreementDetails || ({} as any)),
-      clientAuthorizedPerson: signature.signerName,
-      clientDesignation: signature.signerDesignation,
-    };
-
-    const updatedProposal: Proposal = {
-      ...current,
-      proposalStatus: 'Approved',
-      digitalSignature: signature,
-      agreementDetails: updatedAgreement,
-    };
-
-    proposals[index] = updatedProposal;
-    this.setStorage(STORAGE_KEYS.PROPOSALS, proposals);
-
-    // Update lead status to 'Closed Won' and record activity
-    if (updatedProposal.leadId) {
-      this.updateLeadStatus(updatedProposal.leadId, 'Closed Won', actorName || signature.signerName);
-      const todayStr = new Date().toISOString().split('T')[0];
-      const timeStr = new Date().toTimeString().split(' ')[0];
-      this.saveActivity({
-        leadId: updatedProposal.leadId,
-        type: 'proposal',
-        title: `Proposal Digitally Signed & Accepted (${updatedProposal.proposalNumber})`,
-        description: `Customer acceptance form completed and digitally signed by ${signature.signerName} (${signature.signerDesignation}). Verification: ${signature.verificationCode}.`,
-        actor: actorName || signature.signerName,
-        timestamp: `${todayStr} ${timeStr}`,
-        metadata: {
-          proposalNumber: updatedProposal.proposalNumber,
-          verificationCode: signature.verificationCode,
-          signerName: signature.signerName,
-          signerDesignation: signature.signerDesignation,
-          statusBadge: 'Approved',
-        },
-      });
-    }
-
-    return updatedProposal;
   }
 
   public saveEditedProposal(
@@ -1320,6 +1267,47 @@ class StorageService {
     }
   }
 
+  // --- SEPARATE LOGO PERSISTENCE: INVOICE & BILLS PRINT LOGO ---
+  public getInvoiceLogo(): string | undefined {
+    try {
+      const logo = localStorage.getItem(STORAGE_KEYS.INVOICE_LOGO);
+      if (logo && logo.trim().length > 0) {
+        return logo;
+      }
+      const settings = this.getStorage<Settings>(STORAGE_KEYS.SETTINGS, initialSettings);
+      if (settings?.invoiceLogo && settings.invoiceLogo.trim().length > 0) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.INVOICE_LOGO, settings.invoiceLogo);
+        } catch {}
+        return settings.invoiceLogo;
+      }
+    } catch (e) {
+      console.warn('Failed reading persistent invoice logo', e);
+    }
+    return undefined;
+  }
+
+  public saveInvoiceLogo(logo?: string): void {
+    try {
+      if (logo && logo.trim().length > 0) {
+        localStorage.setItem(STORAGE_KEYS.INVOICE_LOGO, logo);
+        const settings = this.getSettings();
+        settings.invoiceLogo = logo;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.INVOICE_LOGO);
+        const settings = this.getSettings();
+        settings.invoiceLogo = undefined;
+        this.setStorage(STORAGE_KEYS.SETTINGS, settings);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_invoice_logo_changed', { detail: logo || null }));
+      }
+    } catch (e) {
+      console.error('Failed to save invoice logo', e);
+    }
+  }
+
   // --- SEPARATE LOGO PERSISTENCE: LOGIN EMBLEM LOGO ---
   public getLoginLogo(): string | undefined {
     try {
@@ -1388,6 +1376,12 @@ class StorageService {
       if (pDoc) settings.documentLogo = pDoc;
     }
 
+    // Restore invoice logo if present
+    if (!settings.invoiceLogo) {
+      const pInv = this.getInvoiceLogo();
+      if (pInv) settings.invoiceLogo = pInv;
+    }
+
     // Restore login logo if present
     if (!settings.loginLogo) {
       const pLogin = this.getLoginLogo();
@@ -1433,6 +1427,17 @@ class StorageService {
       } catch {}
     }
 
+    // Mirror invoice logo
+    if (settings.invoiceLogo && settings.invoiceLogo.trim().length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.INVOICE_LOGO, settings.invoiceLogo);
+      } catch {}
+    } else if (settings.invoiceLogo === undefined) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.INVOICE_LOGO);
+      } catch {}
+    }
+
     // Mirror login logo
     if (settings.loginLogo && settings.loginLogo.trim().length > 0) {
       try {
@@ -1450,6 +1455,7 @@ class StorageService {
       window.dispatchEvent(new CustomEvent('mysar_company_logo_changed', { detail: settings.companyLogo || null }));
       window.dispatchEvent(new CustomEvent('mysar_navbar_logo_changed', { detail: settings.navbarLogo || null }));
       window.dispatchEvent(new CustomEvent('mysar_document_logo_changed', { detail: settings.documentLogo || null }));
+      window.dispatchEvent(new CustomEvent('mysar_invoice_logo_changed', { detail: settings.invoiceLogo || null }));
       window.dispatchEvent(new CustomEvent('mysar_login_logo_changed', { detail: settings.loginLogo || null }));
       window.dispatchEvent(new CustomEvent('mysar_settings_updated', { detail: settings }));
     }

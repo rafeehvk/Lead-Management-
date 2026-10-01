@@ -1450,43 +1450,14 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
                   </div>
 
                   <div className="space-y-1 pt-1.5 border-t border-gray-200">
-                    {proposal.digitalSignature ? (
-                      <div>
-                        <div className="h-9 flex items-center justify-between">
-                          <img
-                            src={proposal.digitalSignature.signatureImage}
-                            alt="Institutional Signature"
-                            className="h-8 max-w-[130px] object-contain"
-                          />
-                          <span className="text-[8px] font-black uppercase text-[#0B5D2A] bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
-                            ✓ E-Signed
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-[8.5px] text-slate-600 pt-0.5 border-t border-gray-100">
-                          <span>
-                            Date: {new Date(proposal.digitalSignature.signedAt).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </span>
-                          <span className="font-mono text-slate-400 text-[8px]">
-                            {proposal.digitalSignature.verificationCode}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="h-7 border-b border-dashed border-slate-400 flex items-end justify-between pb-0.5">
-                          <span className="text-[9px] text-slate-400 italic">Signature</span>
-                          <span className="text-[8.5px] text-slate-400 font-medium">[ Official Seal ]</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-slate-600 pt-0.5">
-                          <span>Date: ______________</span>
-                          <span>Place: ____________</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="h-7 border-b border-dashed border-slate-400 flex items-end justify-between pb-0.5">
+                      <span className="text-[9px] text-slate-400 italic">Signature</span>
+                      <span className="text-[8.5px] text-slate-400 font-medium">[ Official Seal ]</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] text-slate-600 pt-0.5">
+                      <span>Date: ______________</span>
+                      <span>Place: ____________</span>
+                    </div>
                   </div>
                 </div>
 

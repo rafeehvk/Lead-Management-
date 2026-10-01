@@ -20,6 +20,7 @@ import { ActionRequiredSection } from './ActionRequiredSection';
 import { LeadManagementSection } from './LeadManagementSection';
 import { HrManagementSection } from './HrManagementSection';
 import { DocumentExpirySection } from './DocumentExpirySection';
+import { OperationsCommercialSection } from './OperationsCommercialSection';
 import { QuickActionsBar } from './QuickActionsBar';
 import { AlertNotificationDrawer } from './AlertNotificationDrawer';
 import { QuickReportModal } from './QuickReportModal';
@@ -556,6 +557,9 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
         onScheduleFollowUp={() => onNavigateToTab('followups')}
         onGenerateReport={() => setIsReportModalOpen(true)}
       />
+
+      {/* 5b. COMMERCIAL & SUPPLY CHAIN OPERATIONS (SALES, PURCHASE & INVENTORY) */}
+      <OperationsCommercialSection onNavigateToTab={onNavigateToTab} />
 
       {/* 6. MODULE 1: LEAD MANAGEMENT SECTION */}
       <LeadManagementSection

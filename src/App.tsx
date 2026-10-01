@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ShieldAlert, RotateCcw, ArrowRight } from 'lucide-react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ErpManagementDashboard } from './components/dashboard/ErpManagementDashboard';
+import { OperationsDashboardView } from './components/dashboard/OperationsDashboardView';
 import { LeadsView } from './components/LeadsView';
 import { FollowUpsView } from './components/FollowUpsView';
 import { ProposalsView } from './components/ProposalsView';
@@ -46,6 +48,16 @@ import { DocumentExpiryView } from './components/documentExpiry/DocumentExpiryVi
 
 // Asset Management Module
 import { AssetModule } from './components/assets/AssetModule';
+
+// Finance & Budgeting Module
+import { FinanceDashboardView } from './components/finance/FinanceDashboardView';
+
+// Dedicated Modules: Party Management, Sales, Purchase, Inventory
+import { PartyManagementModule } from './components/parties/PartyManagementModule';
+import { SalesModule } from './components/sales/SalesModule';
+import { PurchaseModule } from './components/purchase/PurchaseModule';
+import { InventoryModule } from './components/inventory/InventoryModule';
+import { dataPurgeService } from './services/dataPurgeService';
 import {
   Position,
   Applicant,
@@ -69,6 +81,7 @@ import {
   InterviewEvaluation,
   OfferStatus,
   AppointmentStatus,
+  DepartmentMaster,
 } from './types/hr';
 
 export default function App() {
@@ -76,7 +89,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilterForLeads, setStatusFilterForLeads] = useState<string>('All');
   const [followUpsActiveTab, setFollowUpsActiveTab] = useState<'today' | 'upcoming' | 'overdue' | 'all'>('today');
-  const [settingsSubTab, setSettingsSubTab] = useState<'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations'>('pricing');
+  const [settingsSubTab, setSettingsSubTab] = useState<'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations' | 'themes'>('pricing');
 
   // Core Data States
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -90,6 +103,65 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     return storage.getSessionUser();
   });
+
+  // Department-based access control & module authorization
+  const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() =>
+    hrStorage.getDepartmentsMaster()
+  );
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('mysar_simulated_department');
+    } catch {}
+
+    const handleDeptChange = () => {
+      setDepartmentsList(hrStorage.getDepartmentsMaster());
+    };
+    window.addEventListener('mysar_department_permissions_changed', handleDeptChange);
+    return () => {
+      window.removeEventListener('mysar_department_permissions_changed', handleDeptChange);
+    };
+  }, []);
+
+  const activeUserDept = useMemo(() => {
+    if (currentUser?.role === 'Admin') {
+      return null; // Admins have unrestricted access to all modules
+    }
+    if (currentUser?.departmentCode) {
+      return (
+        departmentsList.find(
+          (d) => d.departmentCode.toUpperCase() === currentUser.departmentCode?.toUpperCase()
+        ) || null
+      );
+    }
+    if (currentUser?.department) {
+      return (
+        departmentsList.find(
+          (d) =>
+            d.departmentName.toLowerCase() === currentUser.department?.toLowerCase() ||
+            d.departmentCode.toLowerCase() === currentUser.department?.toLowerCase()
+        ) || null
+      );
+    }
+    return null;
+  }, [departmentsList, currentUser]);
+
+  const isCurrentTabAuthorized = useMemo(() => {
+    if (!activeUserDept) return true;
+    const allowed = activeUserDept.allowedMenuIds || [];
+    return allowed.includes(activeTab);
+  }, [activeUserDept, activeTab]);
+
+  useEffect(() => {
+    if (activeUserDept && !isCurrentTabAuthorized) {
+      const allowed = activeUserDept.allowedMenuIds || [];
+      if (allowed.includes('dashboard')) {
+        setActiveTab('dashboard');
+      } else if (allowed.length > 0) {
+        setActiveTab(allowed[0] as NavTab);
+      }
+    }
+  }, [activeUserDept, isCurrentTabAuthorized]);
 
   // Modal States
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
@@ -167,6 +239,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    dataPurgeService.ensureLiveProductionState();
     refreshAllData();
 
     const handleLogoOrSettingsChange = () => {
@@ -425,8 +498,10 @@ export default function App() {
   };
 
   const handleResetDemo = () => {
+    dataPurgeService.purgeAllDummyData({ actorName: currentUser?.name || 'Admin' });
     storage.resetAllToDemo();
     refreshAllData();
+    refreshHrData();
   };
 
   // --- CSV Export Helper ---
@@ -494,7 +569,7 @@ export default function App() {
   };
 
   const handleGenerateOfferLetter = (offer: Partial<OfferLetter>) => {
-    hrStorage.generateOfferLetter(offer, currentUser?.name || 'HR Admin');
+    hrStorage.saveOfferLetter(offer, currentUser?.name || 'HR Admin');
     refreshHrData();
   };
 
@@ -503,13 +578,23 @@ export default function App() {
     refreshHrData();
   };
 
+  const handleDeleteOfferLetter = (id: string) => {
+    hrStorage.deleteOfferLetter(id, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
   const handleGenerateAppointmentLetter = (appt: Partial<AppointmentLetter>) => {
-    hrStorage.generateAppointmentLetter(appt, currentUser?.name || 'HR Admin');
+    hrStorage.saveAppointmentLetter(appt, currentUser?.name || 'HR Admin');
     refreshHrData();
   };
 
   const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
     hrStorage.updateAppointmentStatus(id, status, currentUser?.name || 'HR Admin');
+    refreshHrData();
+  };
+
+  const handleDeleteAppointmentLetter = (id: string) => {
+    hrStorage.deleteAppointmentLetter(id, currentUser?.name || 'HR Admin');
     refreshHrData();
   };
 
@@ -656,6 +741,64 @@ export default function App() {
 
         {/* Dynamic Workspace Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-65px)]">
+          {!isCurrentTabAuthorized && (
+            <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl border border-rose-200 shadow-xl space-y-6 text-center animate-in zoom-in-95">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <div>
+                <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
+                  Access Restricted by Department Policy
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-3">
+                  Module Not Authorized
+                </h3>
+                <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto">
+                  Your current department <strong className="text-slate-900">[{activeUserDept?.departmentCode}] {activeUserDept?.departmentName}</strong> does not have permission to access the <code className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded text-rose-700 font-bold">{activeTab}</code> module.
+                </p>
+              </div>
+
+              {activeUserDept?.allowedMenuIds && activeUserDept.allowedMenuIds.length > 0 && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    Authorized Modules for {activeUserDept.departmentName} ({activeUserDept.allowedMenuIds.length}):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeUserDept.allowedMenuIds.map((mId) => (
+                      <button
+                        key={mId}
+                        onClick={() => setActiveTab(mId as NavTab)}
+                        className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-lg border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
+                      >
+                        {mId}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-5 py-2.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
+                >
+                  <span>Go to Executive Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('hr-settings')}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  HR Configuration
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isCurrentTabAuthorized && (
+            <>
           {activeTab === 'dashboard' && (
             <ErpManagementDashboard
               currentUser={currentUser}
@@ -674,6 +817,17 @@ export default function App() {
                 setActiveTab('leads');
               }}
               onLogout={handleLogout}
+            />
+          )}
+
+          {/* Operations & Supply Chain Tri-Pillar Dashboard */}
+          {activeTab === 'operations-dashboard' && (
+            <OperationsDashboardView
+              initialSection="all"
+              onNavigateToTab={(tab) => {
+                setActiveTab(tab as NavTab);
+              }}
+              currentUserName={currentUser?.name || 'Operations Director'}
             />
           )}
 
@@ -832,23 +986,63 @@ export default function App() {
               payroll={hrPayroll}
               performance={hrPerformance}
               activityLogs={hrActivityLogs}
-              onNavigate={(tab) => setActiveTab(tab as NavTab)}
+              onNavigate={(tab, subTab) => {
+                if (tab === 'hr-recruitment') {
+                  if (subTab === 'applicants') setActiveTab('hr-recruitment-applicants');
+                  else if (subTab === 'interview') setActiveTab('hr-recruitment-interviews');
+                  else if (subTab === 'offers') setActiveTab('hr-recruitment-offers');
+                  else if (subTab === 'appointments') setActiveTab('hr-recruitment-appointments');
+                  else setActiveTab('hr-recruitment-positions');
+                } else {
+                  setActiveTab(tab as NavTab);
+                }
+              }}
               onOpenAddStaff={() => setActiveTab('hr-staff')}
-              onOpenCreatePosition={() => setActiveTab('hr-recruitment')}
-              onOpenNewInterview={() => setActiveTab('hr-recruitment')}
+              onOpenCreatePosition={() => setActiveTab('hr-recruitment-positions')}
+              onOpenNewInterview={() => setActiveTab('hr-recruitment-interviews')}
               onOpenMarkAttendance={() => setActiveTab('hr-attendance')}
               onOpenLeaveApproval={() => setActiveTab('hr-attendance')}
               onOpenProcessPayroll={() => setActiveTab('hr-payroll')}
             />
           )}
 
-          {activeTab === 'hr-recruitment' && (
+          {[
+            'hr-recruitment',
+            'hr-recruitment-positions',
+            'hr-recruitment-applicants',
+            'hr-recruitment-interviews',
+            'hr-recruitment-offers',
+            'hr-recruitment-appointments',
+          ].includes(activeTab) && (
             <RecruitmentView
               positions={hrPositions}
               applicants={hrApplicants}
               interviews={hrInterviews}
               offerLetters={hrOffers}
               appointmentLetters={hrAppointments}
+              initialSubTab={
+                activeTab === 'hr-recruitment-applicants'
+                  ? 'applicants'
+                  : activeTab === 'hr-recruitment-interviews'
+                  ? 'interview'
+                  : activeTab === 'hr-recruitment-offers'
+                  ? 'offers'
+                  : activeTab === 'hr-recruitment-appointments'
+                  ? 'appointments'
+                  : 'positions'
+              }
+              onSubTabChange={(sub) => {
+                const subMap: Record<string, NavTab> = {
+                  positions: 'hr-recruitment-positions',
+                  applicants: 'hr-recruitment-applicants',
+                  interview: 'hr-recruitment-interviews',
+                  offers: 'hr-recruitment-offers',
+                  appointments: 'hr-recruitment-appointments',
+                };
+                if (subMap[sub]) {
+                  setActiveTab(subMap[sub]);
+                }
+              }}
               onSavePosition={handleSavePosition}
               onDeletePosition={handleDeletePosition}
               onSaveApplicant={handleSaveApplicant}
@@ -858,8 +1052,10 @@ export default function App() {
               onSaveInterviewEvaluation={handleSaveInterviewEvaluation}
               onGenerateOffer={handleGenerateOfferLetter}
               onUpdateOfferStatus={handleUpdateOfferStatus}
+              onDeleteOffer={handleDeleteOfferLetter}
               onGenerateAppointment={handleGenerateAppointmentLetter}
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+              onDeleteAppointment={handleDeleteAppointmentLetter}
               onConvertApplicantToStaff={handleConvertApplicantToStaff}
             />
           )}
@@ -873,6 +1069,7 @@ export default function App() {
               onSaveStaff={handleSaveStaff}
               onDeleteStaff={handleDeleteStaff}
               onClearAllDummyData={handleClearAllDummyData}
+              onNavigateToHrConfiguration={() => setActiveTab('hr-settings')}
             />
           )}
 
@@ -917,6 +1114,7 @@ export default function App() {
                 hrStorage.resetHrData();
                 refreshHrData();
               }}
+              initialSection="access-matrix"
             />
           )}
 
@@ -1005,6 +1203,199 @@ export default function App() {
                 }
               }}
             />
+          )}
+
+          {/* Party Management Module */}
+          {(activeTab === 'party-management' ||
+            activeTab === 'party-directory' ||
+            activeTab === 'party-ledger' ||
+            activeTab === 'finance-parties' ||
+            activeTab === 'finance-party-ledger') && (
+            <PartyManagementModule
+              currentTab={
+                activeTab === 'party-ledger' || activeTab === 'finance-party-ledger'
+                  ? 'ledger'
+                  : 'directory'
+              }
+              onTabChange={(tab) => {
+                setActiveTab(tab);
+              }}
+            />
+          )}
+
+          {/* Sales Module */}
+          {(activeTab === 'sales' ||
+            activeTab.startsWith('sales-') ||
+            activeTab === 'finance-sales' ||
+            activeTab === 'finance-sales-ar') && (
+            <SalesModule
+              currentTab={
+                activeTab === 'sales-dashboard' || activeTab === 'sales'
+                  ? 'dashboard'
+                  : activeTab === 'sales-quotation'
+                  ? 'quotation'
+                  : activeTab === 'sales-order'
+                  ? 'order'
+                  : activeTab === 'sales-invoice'
+                  ? 'invoice'
+                  : activeTab === 'sales-return-request'
+                  ? 'return-request'
+                  : activeTab === 'sales-return'
+                  ? 'return'
+                  : activeTab === 'sales-quotation-report'
+                  ? 'report-quotation'
+                  : activeTab === 'sales-order-report'
+                  ? 'report-order'
+                  : activeTab === 'sales-invoice-report'
+                  ? 'report-invoice'
+                  : activeTab === 'sales-return-request-report'
+                  ? 'report-return-request'
+                  : activeTab === 'sales-return-report'
+                  ? 'report-return'
+                  : activeTab === 'sales-ar' || activeTab === 'finance-sales-ar'
+                  ? 'ar-ledger'
+                  : activeTab === 'sales-receipts'
+                  ? 'receipts'
+                  : 'dashboard'
+              }
+              currentUserName={currentUser?.name || 'Sales Manager'}
+              userRole={currentUser?.role || 'Admin'}
+              onTabChange={(tab) => {
+                setActiveTab(tab as NavTab);
+              }}
+            />
+          )}
+
+          {/* Purchase Module */}
+          {(activeTab === 'purchase' ||
+            activeTab.startsWith('purchase-') ||
+            activeTab === 'goods-receipt' ||
+            activeTab === 'goods-receipt-report' ||
+            activeTab === 'finance-purchase') && (
+            <PurchaseModule
+              currentTab={
+                activeTab === 'purchase-dashboard' || activeTab === 'purchase'
+                  ? 'dashboard'
+                  : activeTab === 'purchase-request'
+                  ? 'request'
+                  : activeTab === 'purchase-quotation'
+                  ? 'quotation'
+                  : activeTab === 'purchase-quotation-comparison'
+                  ? 'comparison'
+                  : activeTab === 'purchase-order'
+                  ? 'order'
+                  : activeTab === 'goods-receipt'
+                  ? 'goods-receipt'
+                  : activeTab === 'purchase-invoice'
+                  ? 'invoice'
+                  : activeTab === 'purchase-return-request'
+                  ? 'return-request'
+                  : activeTab === 'purchase-return'
+                  ? 'return'
+                  : activeTab === 'purchase-request-report'
+                  ? 'report-request'
+                  : activeTab === 'purchase-quotation-report'
+                  ? 'report-quotation'
+                  : activeTab === 'purchase-quotation-comparison-report'
+                  ? 'report-comparison'
+                  : activeTab === 'purchase-order-report'
+                  ? 'report-order'
+                  : activeTab === 'goods-receipt-report'
+                  ? 'report-goods-receipt'
+                  : activeTab === 'purchase-invoice-report'
+                  ? 'report-invoice'
+                  : activeTab === 'purchase-return-request-report'
+                  ? 'report-return-request'
+                  : activeTab === 'purchase-return-report'
+                  ? 'report-return'
+                  : activeTab === 'purchase-payments'
+                  ? 'payments'
+                  : activeTab === 'purchase-advances'
+                  ? 'advances'
+                  : 'dashboard'
+              }
+              currentUserName={currentUser?.name || 'Purchase Manager'}
+              userRole={currentUser?.role || 'Admin'}
+              onTabChange={(tab) => {
+                setActiveTab(tab as NavTab);
+              }}
+            />
+          )}
+
+          {/* Item Master & Inventory Module */}
+          {(activeTab === 'inventory' ||
+            activeTab === 'inventory-dashboard' ||
+            activeTab === 'inventory-items' ||
+            activeTab === 'inventory-valuation' ||
+            activeTab === 'inventory-movements' ||
+            activeTab === 'item-master' ||
+            activeTab === 'finance-item-master') && (
+            <InventoryModule
+              currentTab={
+                activeTab === 'inventory-dashboard' || activeTab === 'inventory'
+                  ? 'dashboard'
+                  : activeTab === 'inventory-valuation'
+                  ? 'valuation'
+                  : activeTab === 'inventory-movements'
+                  ? 'movements'
+                  : 'items'
+              }
+              currentUserName={currentUser?.name || 'Inventory Controller'}
+              userRole={currentUser?.role || 'Admin'}
+              onTabChange={(tab) => {
+                setActiveTab(tab as NavTab);
+              }}
+            />
+          )}
+
+          {/* Finance & Budgeting Module (Excluding Party, Sales, Purchase, Inventory) */}
+          {(activeTab === 'finance' || activeTab.startsWith('finance-')) &&
+            ![
+              'finance-parties',
+              'finance-party-ledger',
+              'finance-sales',
+              'finance-sales-ar',
+              'finance-purchase',
+              'finance-item-master',
+            ].includes(activeTab) && (
+            <FinanceDashboardView
+              currentUserName={currentUser?.name || 'Finance Officer'}
+              userRole={currentUser?.role || 'Admin'}
+              initialSubTab={
+                activeTab === 'finance-planner'
+                  ? 'planner'
+                  : activeTab === 'finance-ledger'
+                  ? 'ledger'
+                  : activeTab === 'finance-projections'
+                  ? 'projections'
+                  : activeTab === 'finance-gl'
+                  ? 'gl'
+                  : activeTab === 'finance-cash-bank'
+                  ? 'cash-bank'
+                  : activeTab === 'finance-loans'
+                  ? 'loans'
+                  : activeTab === 'finance-payments'
+                  ? 'payments'
+                  : activeTab === 'finance-receipts'
+                  ? 'receipts'
+                  : activeTab === 'finance-advances'
+                  ? 'advances'
+                  : activeTab === 'finance-controls-audit'
+                  ? 'controls-audit'
+                  : activeTab === 'finance-tax'
+                  ? 'tax-compliance'
+                  : activeTab === 'finance-budget'
+                  ? 'budget-management'
+                  : 'analytics'
+              }
+              onNavigateTab={(tab) => {
+                if (tab) {
+                  setActiveTab(tab as NavTab);
+                }
+              }}
+            />
+          )}
+            </>
           )}
         </main>
       </div>

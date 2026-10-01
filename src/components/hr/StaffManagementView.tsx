@@ -43,6 +43,7 @@ import {
 } from '../../types/hr';
 import { StaffRegistrationModal } from './StaffRegistrationModal';
 import { PrintableStaffProfile } from './PrintableStaffProfile';
+import { DepartmentMasterTable } from './DepartmentMasterTable';
 import { StaffIdCardRenderer } from './StaffIdCardRenderer';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
@@ -56,6 +57,7 @@ interface StaffManagementViewProps {
   onDeleteStaff: (id: string) => void;
   onUploadDocument?: (staffId: string, doc: StaffDocument) => void;
   onClearAllDummyData?: () => void;
+  onNavigateToHrConfiguration?: () => void;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -66,6 +68,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onSaveStaff,
   onDeleteStaff,
   onClearAllDummyData,
+  onNavigateToHrConfiguration,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -77,11 +80,6 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   // Department Master Table state
   const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
   const [isDeptMasterModalOpen, setIsDeptMasterModalOpen] = useState(false);
-  const [editingDept, setEditingDept] = useState<DepartmentMaster | null>(null);
-  const [newDeptCode, setNewDeptCode] = useState('');
-  const [newDeptName, setNewDeptName] = useState('');
-  const [newDeptReporting, setNewDeptReporting] = useState('');
-  const [deptFormError, setDeptFormError] = useState('');
 
   // Modals & Active Selections
   const [selectedStaffForView, setSelectedStaffForView] = useState<StaffMember | null>(null);
@@ -98,81 +96,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   // Department Master handlers
   const handleOpenDeptMaster = () => {
     setDepartmentsList(hrStorage.getDepartmentsMaster());
-    setEditingDept(null);
-    setNewDeptCode('');
-    setNewDeptName('');
-    setNewDeptReporting('');
-    setDeptFormError('');
     setIsDeptMasterModalOpen(true);
-  };
-
-  const handleEditDeptInit = (dept: DepartmentMaster) => {
-    setEditingDept(dept);
-    setNewDeptCode(dept.departmentCode);
-    setNewDeptName(dept.departmentName);
-    setNewDeptReporting(dept.reporting);
-    setDeptFormError('');
-  };
-
-  const handleCancelDeptEdit = () => {
-    setEditingDept(null);
-    setNewDeptCode('');
-    setNewDeptName('');
-    setNewDeptReporting('');
-    setDeptFormError('');
-  };
-
-  const handleSaveDepartment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDeptCode.trim() || !newDeptName.trim() || !newDeptReporting.trim()) {
-      setDeptFormError('Please fill all fields: Department Code, Department Name, and Reporting.');
-      return;
-    }
-    const cleanCode = newDeptCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (cleanCode.length < 2) {
-      setDeptFormError('Department Code must be at least 2 characters (e.g. 101, 102, 103).');
-      return;
-    }
-
-    if (editingDept) {
-      hrStorage.saveDepartment({
-        id: editingDept.id,
-        departmentCode: cleanCode,
-        departmentName: newDeptName.trim(),
-        reporting: newDeptReporting.trim(),
-        status: 'Active',
-      });
-      setDepartmentsList(hrStorage.getDepartmentsMaster());
-      setEditingDept(null);
-    } else {
-      if (departmentsList.some((d) => d.departmentCode.toUpperCase() === cleanCode)) {
-        setDeptFormError(`Department Code "${cleanCode}" already exists in Master Table.`);
-        return;
-      }
-      hrStorage.saveDepartment({
-        departmentCode: cleanCode,
-        departmentName: newDeptName.trim(),
-        reporting: newDeptReporting.trim(),
-        status: 'Active',
-      });
-      setDepartmentsList(hrStorage.getDepartmentsMaster());
-    }
-
-    setNewDeptCode('');
-    setNewDeptName('');
-    setNewDeptReporting('');
-    setDeptFormError('');
-  };
-
-  const handleDeleteDepartment = (id: string) => {
-    if (departmentsList.length <= 1) {
-      alert('At least one department must remain in the Department Master Table.');
-      return;
-    }
-    if (window.confirm('Are you sure you want to remove this department from Master Table?')) {
-      hrStorage.deleteDepartment(id);
-      setDepartmentsList(hrStorage.getDepartmentsMaster());
-    }
   };
 
   // Staff status toggle handler (Active <-> Inactive) to show instant access restriction
@@ -401,11 +325,23 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             type="button"
             onClick={handleOpenDeptMaster}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer border border-slate-300"
-            title="Manage Department Master Table: Department Code, Department Name, and Reporting Manager"
+            title="Manage Department Master Table: Code, Name, Reporting Manager and Menu Permissions"
           >
             <Building className="w-4 h-4 text-emerald-700" />
             <span>Department Master</span>
           </button>
+
+          {onNavigateToHrConfiguration && (
+            <button
+              type="button"
+              onClick={onNavigateToHrConfiguration}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#EAF7EF] hover:bg-[#D4EFE0] text-[#0B5D2A] rounded-xl text-xs font-extrabold transition-all shadow-2xs cursor-pointer border border-emerald-300"
+              title="Configure Department Access Control Matrix in HR Configuration"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#168A45]" />
+              <span>Access Control Matrix</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1384,195 +1320,23 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </div>
       )}
 
-      {/* MODAL: DEPARTMENT MASTER TABLE */}
+      {/* MODAL: DEPARTMENT MASTER TABLE WITH MENU ACCESS SELECTION */}
       {isDeptMasterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col text-xs max-h-[90vh]">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#0B5D2A] to-[#168A45] px-5 py-4 text-white flex items-center justify-between shrink-0 shadow-xs">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-white/10 rounded-xl">
-                  <Building className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-white">Department Master Table</h3>
-                  <p className="text-emerald-100 text-xs mt-0.5">
-                    Configure institutional departments, code prefixes, and reporting managers. Controls automatic ID generation: <span className="font-mono font-bold text-white bg-white/20 px-1.5 py-0.5 rounded">CB/[DeptCode]/[Continuous#]</span>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDeptMasterModalOpen(false)}
-                className="text-white hover:bg-white/20 p-2 rounded-xl transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-5">
-              {/* Add / Edit Department Form */}
-              <form onSubmit={handleSaveDepartment} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 flex items-center space-x-1.5">
-                    {editingDept ? <Edit2 className="w-3.5 h-3.5 text-emerald-700" /> : <Plus className="w-3.5 h-3.5 text-emerald-700" />}
-                    <span>{editingDept ? `Edit Department (${editingDept.departmentCode})` : 'Add New Department'}</span>
-                  </span>
-                  {editingDept && (
-                    <button
-                      type="button"
-                      onClick={handleCancelDeptEdit}
-                      className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                    >
-                      Cancel Edit
-                    </button>
-                  )}
-                </div>
-
-                {deptFormError && (
-                  <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
-                    {deptFormError}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Department Code *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 101, 102, 103"
-                      value={newDeptCode}
-                      onChange={(e) => setNewDeptCode(e.target.value.toUpperCase())}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold uppercase focus:ring-1 focus:ring-emerald-600 focus:outline-hidden"
-                    />
-                    <span className="text-[10px] text-slate-400">Used for ID: CB/{newDeptCode || '101'}/### (continuous sequence)</span>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Department Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Academic, Administration"
-                      value={newDeptName}
-                      onChange={(e) => setNewDeptName(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-emerald-600 focus:outline-hidden"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Reporting *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Principal / Director"
-                      value={newDeptReporting}
-                      onChange={(e) => setNewDeptReporting(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-emerald-600 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-lg font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                  >
-                    {editingDept ? 'Update Department' : 'Save Department'}
-                  </button>
-                </div>
-              </form>
-
-              {/* Master Table */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                    Configured Master Departments ({departmentsList.length})
-                  </h4>
-                  <span className="text-[11px] text-slate-500">
-                    Continuous Sequence pattern: <b className="text-emerald-800">CB / [Dept Code] / [Seq]</b>
-                  </span>
-                </div>
-
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase text-[10px]">
-                      <tr>
-                        <th className="px-3 py-2.5">Department Code</th>
-                        <th className="px-3 py-2.5">Department Name</th>
-                        <th className="px-3 py-2.5">Reporting</th>
-                        <th className="px-3 py-2.5">Staff Count</th>
-                        <th className="px-3 py-2.5">Employee ID Continuous Format</th>
-                        <th className="px-3 py-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {departmentsList.map((dept) => {
-                        const count = staff.filter(
-                          (s) =>
-                            s.department.toLowerCase() === dept.departmentName.toLowerCase() ||
-                            s.departmentCode?.toUpperCase() === dept.departmentCode.toUpperCase()
-                        ).length;
-
-                        return (
-                          <tr key={dept.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="px-3 py-2.5">
-                              <span className="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
-                                {dept.departmentCode}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 font-bold text-slate-800">{dept.departmentName}</td>
-                            <td className="px-3 py-2.5 text-slate-600 font-medium">{dept.reporting}</td>
-                            <td className="px-3 py-2.5">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                                {count} {count === 1 ? 'member' : 'members'}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span className="font-mono text-xs text-emerald-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                CB/{dept.departmentCode}/001, 002...
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-right">
-                              <div className="flex items-center justify-end space-x-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditDeptInit(dept)}
-                                  title="Edit Department"
-                                  className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteDepartment(dept.id)}
-                                  title="Delete Department"
-                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
-              <div className="text-[11px] text-slate-500">
-                Changes persist automatically into ERP Local Storage and onboarding forms.
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDeptMasterModalOpen(false)}
-                className="px-4 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl font-bold cursor-pointer transition-colors text-xs"
-              >
-                Done
-              </button>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
+            <div className="overflow-y-auto p-4 sm:p-6">
+              <DepartmentMasterTable
+                isModal={true}
+                onClose={() => {
+                  setIsDeptMasterModalOpen(false);
+                  setDepartmentsList(hrStorage.getDepartmentsMaster());
+                }}
+                onNavigateToStaff={() => setIsDeptMasterModalOpen(false)}
+                onNavigateToConfiguration={() => {
+                  setIsDeptMasterModalOpen(false);
+                  if (onNavigateToHrConfiguration) onNavigateToHrConfiguration();
+                }}
+              />
             </div>
           </div>
         </div>

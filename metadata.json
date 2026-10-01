@@ -1,6 +1,6 @@
 {
   "name": "MYSAR ERP",
-  "description": "Professional ERP for Casbiro Solutions Private Limited (MYSAR) with CRM, HR Management, Asset Management, Document & Expiry Management with multi-channel reminders and audit trails, Google Meet demo scheduling, Gmail communications, and Proposal generation.",
+  "description": "Professional ERP for Casbiro Solutions Private Limited (MYSAR) with CRM, HR Management, Finance & Budgeting with Loans & Debt Management (Amortization schedules, facility registry, disbursement journals, repayment vouchers, and debt reports), Section 21 Unified Party Master, General Ledger, Cash & Bank Accounts, AP/AR settlements, Asset Management, and Document Expiry tracking.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

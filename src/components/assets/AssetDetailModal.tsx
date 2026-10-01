@@ -21,10 +21,14 @@ import {
   Tag,
   Download,
   UserCheck,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { Asset, AssetMovement } from '../../types/asset';
 import { assetStorage } from '../../services/assetStorageService';
 import { AssetQrModal } from './AssetQrModal';
+import { DocumentPrintPdfModal } from '../common/DocumentPrintPdfModal';
+import { convertAssetToDoc } from '../../utils/documentConversionHelpers';
 
 interface AssetDetailModalProps {
   asset: Asset | null;
@@ -57,6 +61,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     'overview' | 'assignment' | 'purchase' | 'movement' | 'maintenance' | 'warranty' | 'documents' | 'audit'
   >('overview');
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isThemedDocOpen, setIsThemedDocOpen] = useState(false);
   const [movements, setMovements] = useState<AssetMovement[]>([]);
 
   useEffect(() => {
@@ -66,6 +72,24 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   }, [asset]);
 
   if (isOpen === false || !asset) return null;
+
+  const handlePrint = () => {
+    document.body.classList.add('asset-print-optimized');
+    document.body.classList.add('erp-fullscreen-print-optimized');
+
+    const cleanup = () => {
+      document.body.classList.remove('asset-print-optimized');
+      document.body.classList.remove('erp-fullscreen-print-optimized');
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(cleanup, 1200);
+    }, 120);
+  };
 
   const maintenanceRecords = assetStorage
     .getMaintenanceRecords()
@@ -95,10 +119,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 md:p-6 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs transition-all duration-200 ${
+        isFullScreen ? 'p-0' : 'p-3 md:p-6'
+      }`}
+    >
+      <div
+        className={`bg-white shadow-2xl border border-slate-200 flex flex-col overflow-hidden transition-all duration-200 ${
+          isFullScreen
+            ? 'w-screen h-screen rounded-none border-none'
+            : 'w-full max-w-5xl h-[92vh] rounded-2xl'
+        }`}
+      >
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0 select-none">
           <div className="flex items-center space-x-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-mono font-bold text-emerald-400">
               {asset.id.slice(0, 3)}
@@ -119,24 +153,54 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
           <div className="flex items-center space-x-2 shrink-0">
             <button
+              type="button"
+              onClick={() => setIsThemedDocOpen(true)}
+              className="hidden sm:flex px-2.5 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-lg items-center space-x-1.5 transition-colors cursor-pointer"
+              title="View as Official ERP Asset Certificate"
+            >
+              <FileText className="w-4 h-4 text-emerald-400" />
+              <span>Official Certificate</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setIsQrModalOpen(true)}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center space-x-1.5 transition-colors"
+              className="px-2.5 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
               title="View QR Code & Tag"
             >
               <QrCode className="w-4 h-4" />
               <span className="hidden sm:inline">QR Tag</span>
             </button>
+
+            {/* Persistent Primary Print/PDF Button */}
             <button
-              onClick={() => window.print()}
-              className="px-2.5 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center space-x-1.5 transition-colors"
-              title="Print Asset Dossier"
+              type="button"
+              onClick={handlePrint}
+              className="px-3.5 py-1.5 text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center space-x-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer ring-1 ring-white/20"
+              title="Trigger browser print dialogue (Print to paper or Save as PDF) with full-screen layout optimization"
             >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print/PDF</span>
             </button>
+
+            {/* Full Screen Toggle Button */}
             <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isFullScreen
+                  ? 'bg-emerald-900/60 text-emerald-400 hover:bg-emerald-800/80'
+                  : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white'
+              }`}
+              title={isFullScreen ? 'Exit Full Screen' : 'View Full Screen'}
+            >
+              {isFullScreen ? <Minimize2 className="w-4 h-4 text-emerald-400" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              title="Close (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
@@ -844,6 +908,47 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Persistent Floating Quick-Action Pill for Asset Dossier */}
+        <div className="fixed bottom-6 right-8 z-40 bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full shadow-2xl border border-slate-700/80 flex items-center space-x-2.5 text-xs transition-all duration-200 erp-floating-action-pill no-print">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-full shadow-sm hover:shadow transition-all cursor-pointer"
+            title="Trigger browser print dialogue (Print to paper or Save as PDF) with full-screen layout optimization"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print/PDF</span>
+          </button>
+          <div className="h-3.5 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            className="flex items-center space-x-1 text-slate-300 hover:text-white font-medium cursor-pointer transition-colors"
+            title={isFullScreen ? 'Exit Full Screen' : 'Expand Full Screen View'}
+          >
+            {isFullScreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Exit Full</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Full Screen</span>
+              </>
+            )}
+          </button>
+          <div className="h-3.5 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 rounded-full transition-colors cursor-pointer"
+            title="Close (Esc)"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* QR Code Tag Modal */}
@@ -851,6 +956,15 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         asset={asset}
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
+      />
+
+      {/* Themed ERP Document Certificate Modal */}
+      <DocumentPrintPdfModal
+        isOpen={isThemedDocOpen}
+        onClose={() => setIsThemedDocOpen(false)}
+        documentData={convertAssetToDoc(asset)}
+        category="asset"
+        initialFullScreen={isFullScreen}
       />
     </div>
   );

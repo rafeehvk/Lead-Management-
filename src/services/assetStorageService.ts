@@ -71,122 +71,13 @@ const INITIAL_LOCATIONS: AssetLocation[] = [
 ];
 
 // Seed Vendors
-const INITIAL_VENDORS: AssetVendor[] = [
-  { id: 'VND-01', vendorCode: 'VND-DELL', vendorName: 'Dell Technologies India Pvt Ltd', contactPerson: 'Arun Varma', phone: '+91 98450 11223', email: 'sales@dell-india-corporate.com', address: 'Inner Ring Road, Domlur, Bangalore - 560071', gstNumber: '29AAACD1234F1Z5', productCategories: ['Laptop', 'Desktop', 'Server', 'Monitor'], paymentTerms: 'Net 30 Days', status: 'Active' },
-  { id: 'VND-02', vendorCode: 'VND-APPL', vendorName: 'Apple Enterprise Solutions (Unicorn Retail)', contactPerson: 'Siddharth Menon', phone: '+91 98451 44556', email: 'enterprise@unicornapple.com', address: 'MG Road, Kochi - 682016', gstNumber: '32AAACU5678K1Z2', productCategories: ['Laptop', 'Tablet', 'Mobile'], paymentTerms: '100% Advance', status: 'Active' },
-  { id: 'VND-03', vendorCode: 'VND-CSCO', vendorName: 'Cisco Networking Systems Partner', contactPerson: 'Pooja Iyer', phone: '+91 98452 77889', email: 'pooja.i@cisconetworks.in', address: 'Cyberpark, Calicut - 673016', gstNumber: '32AABCC9012M1Z8', productCategories: ['Networking Equipment', 'Server'], paymentTerms: 'Net 45 Days', status: 'Active' },
-  { id: 'VND-04', vendorCode: 'VND-EPSC', vendorName: 'Epson Business Imaging Hub', contactPerson: 'Ramanathan K.', phone: '+91 98453 99001', email: 'corporate@epson-hub.in', address: 'Technopark, Trivandrum - 695581', gstNumber: '32AADDE3456L1Z4', productCategories: ['Printer', 'Office Equipment'], paymentTerms: 'Net 15 Days', status: 'Active' },
-  { id: 'VND-05', vendorCode: 'VND-FURN', vendorName: 'Featherlite Ergonomic Furniture', contactPerson: 'Reena Thomas', phone: '+91 98454 22334', email: 'sales@featherlite-kochi.com', address: 'NH Bypass, Edappally, Kochi - 682024', gstNumber: '32AABCF7890N1Z9', productCategories: ['Furniture'], paymentTerms: '50% Advance, 50% on Delivery', status: 'Active' },
-];
+const INITIAL_VENDORS: AssetVendor[] = [];
 
 // Seed Purchase Orders
-const INITIAL_POS: AssetPurchaseOrder[] = [
-  {
-    id: 'PO-2026-0045',
-    poNumber: 'PO-2026-0045',
-    poDate: '2026-08-10',
-    vendorId: 'VND-01',
-    vendorName: 'Dell Technologies India Pvt Ltd',
-    requestedBy: 'Anand Kumar',
-    department: 'IT & Systems',
-    expectedDeliveryDate: '2026-08-25',
-    deliveryLocation: 'Kochi Campus - Tech Block A',
-    paymentTerms: 'Net 30 Days',
-    notes: 'Bulk refresh for senior engineering and ERP consultants.',
-    items: [
-      { id: 'POI-1', category: 'Laptop', name: 'Dell Latitude 5440 Core i7 16GB 512GB SSD', description: 'Enterprise 14-inch Business Laptop with vPro', quantity: 5, receivedQuantity: 5, unitPrice: 85000, discount: 5000, tax: 72000, total: 472000 },
-      { id: 'POI-2', category: 'Monitor', name: 'Dell UltraSharp 27-inch 4K USB-C Hub Monitor (U2723QE)', description: 'Color accurate 4K IPS with RJ45 & USB-C hub', quantity: 3, receivedQuantity: 3, unitPrice: 38000, discount: 2000, tax: 20160, total: 132160 },
-    ],
-    status: 'Fully Received',
-    totalAmount: 604160,
-    createdBy: 'Anand Kumar',
-    createdAt: '2026-08-10 10:00:00',
-    approvedBy: 'Dr. Ramesh Narayan',
-    approvedAt: '2026-08-11 14:30:00',
-  },
-  {
-    id: 'PO-2026-0046',
-    poNumber: 'PO-2026-0046',
-    poDate: '2026-09-02',
-    vendorId: 'VND-02',
-    vendorName: 'Apple Enterprise Solutions (Unicorn Retail)',
-    requestedBy: 'Priya Sharma',
-    department: 'Sales & Marketing',
-    expectedDeliveryDate: '2026-09-18',
-    deliveryLocation: 'Kochi Campus - Admin Block',
-    paymentTerms: '100% Advance',
-    notes: 'MacBook Pro M3 units for mobile app team and field presentations.',
-    items: [
-      { id: 'POI-3', category: 'Laptop', name: 'MacBook Pro 14" M3 Pro 18GB 512GB', description: 'Space Black with 3-year AppleCare+ for Enterprise', quantity: 2, receivedQuantity: 2, unitPrice: 199900, discount: 10000, tax: 68364, total: 448164 },
-    ],
-    status: 'Fully Received',
-    totalAmount: 448164,
-    createdBy: 'Priya Sharma',
-    createdAt: '2026-09-02 11:20:00',
-    approvedBy: 'Director Office',
-    approvedAt: '2026-09-03 09:15:00',
-  },
-  {
-    id: 'PO-2026-0047',
-    poNumber: 'PO-2026-0047',
-    poDate: '2026-09-08',
-    vendorId: 'VND-03',
-    vendorName: 'Cisco Networking Systems Partner',
-    requestedBy: 'Mohammed Suhail',
-    department: 'IT & Systems',
-    expectedDeliveryDate: '2026-09-24',
-    deliveryLocation: 'Kochi Campus - Server Room 302',
-    paymentTerms: 'Net 45 Days',
-    notes: 'Core switch upgrade for multi-tenant high availability.',
-    items: [
-      { id: 'POI-4', category: 'Networking Equipment', name: 'Cisco Catalyst 9300 48-Port PoE+ Gigabit Switch', description: 'Network Essentials License with redundant power', quantity: 2, receivedQuantity: 0, unitPrice: 220000, discount: 20000, tax: 72000, total: 472000 },
-    ],
-    status: 'Pending Approval',
-    totalAmount: 472000,
-    createdBy: 'Mohammed Suhail',
-    createdAt: '2026-09-08 16:45:00',
-  },
-];
+const INITIAL_POS: AssetPurchaseOrder[] = [];
 
 // Seed Purchases
-const INITIAL_PURCHASES: AssetPurchaseRecord[] = [
-  {
-    id: 'PUR-2026-001',
-    poNumber: 'PO-2026-0045',
-    poId: 'PO-2026-0045',
-    vendorId: 'VND-01',
-    vendorName: 'Dell Technologies India Pvt Ltd',
-    invoiceNumber: 'INV-DELL-889921',
-    invoiceDate: '2026-08-18',
-    purchaseDate: '2026-08-18',
-    purchaseAmount: 512000,
-    tax: 92160,
-    discount: 7000,
-    totalAmount: 604160,
-    paymentStatus: 'Paid',
-    receivedStatus: 'Fully Received',
-    notes: 'Delivered in sealed cartons with inspection pass stamps.',
-    createdBy: 'Anand Kumar',
-  },
-  {
-    id: 'PUR-2026-002',
-    poNumber: 'PO-2026-0046',
-    poId: 'PO-2026-0046',
-    vendorId: 'VND-02',
-    vendorName: 'Apple Enterprise Solutions (Unicorn Retail)',
-    invoiceNumber: 'INV-UNI-55441',
-    invoiceDate: '2026-09-04',
-    purchaseDate: '2026-09-04',
-    purchaseAmount: 379800,
-    tax: 68364,
-    discount: 10000,
-    totalAmount: 448164,
-    paymentStatus: 'Paid',
-    receivedStatus: 'Fully Received',
-    notes: 'Warranty registered under MYSAR corporate apple ID.',
-    createdBy: 'Priya Sharma',
-  },
-];
+const INITIAL_PURCHASES: AssetPurchaseRecord[] = [];
 
 // Seed Assets
 const INITIAL_ASSETS: Asset[] = [
@@ -650,171 +541,16 @@ const INITIAL_ASSETS: Asset[] = [
 ];
 
 // Seed Movement Records (Historical Audit Trail)
-const INITIAL_MOVEMENTS: AssetMovement[] = [
-  {
-    id: 'MOV-2026-0001',
-    assetId: 'LAP-00025',
-    assetName: 'Dell Latitude 5440 Core i7',
-    movementType: 'Purchase Received',
-    direction: 'IN',
-    toLocation: 'Kochi Campus - Central Store',
-    date: '2026-08-18',
-    time: '11:30',
-    condition: 'New',
-    accessoriesIssued: ['65W Type-C Charger', 'Dell Pro Eco-Loop Backpack', 'Wireless Mouse WM126', 'HDMI Cable'],
-    reason: 'Initial intake against Purchase Order PO-2026-0045 from Dell Technologies.',
-    referenceNumber: 'PO-2026-0045',
-    approvedBy: 'Dr. Ramesh Narayan',
-    createdBy: 'Anand Kumar',
-    status: 'Completed',
-  },
-  {
-    id: 'MOV-2026-0002',
-    assetId: 'LAP-00025',
-    assetName: 'Dell Latitude 5440 Core i7',
-    movementType: 'Allocated to Employee',
-    direction: 'OUT',
-    fromLocation: 'Kochi Campus - Central Store',
-    toEmployee: 'Anand Kumar',
-    toEmployeeId: 'EMP-001',
-    toLocation: 'Kochi Campus - Executive Bay 201',
-    date: '2026-08-20',
-    time: '14:00',
-    condition: 'New',
-    accessoriesIssued: ['65W Type-C Charger', 'Dell Pro Eco-Loop Backpack', 'Wireless Mouse WM126', 'HDMI Cable'],
-    reason: 'Official laptop allocation for institutional ERP sales operations.',
-    referenceNumber: 'ALC-2026-001',
-    approvedBy: 'HR Manager',
-    createdBy: 'HR Manager',
-    status: 'Completed',
-  },
-  {
-    id: 'MOV-2026-0003',
-    assetId: 'PRJ-00004',
-    assetName: 'Epson EB-FH52 Full HD Wireless Projector',
-    movementType: 'Checked Out',
-    direction: 'OUT',
-    fromLocation: 'Kochi Campus - Conference Hall A',
-    toEmployee: 'Mohammed Suhail',
-    toEmployeeId: 'EMP-003',
-    toLocation: 'St. Mary Higher Secondary School - Client Hall',
-    date: '2026-09-10',
-    time: '09:00',
-    condition: 'Good',
-    accessoriesIssued: ['Power Cable', 'HDMI 5m Cable', 'Remote Controller', 'Protective Padded Bag'],
-    reason: 'Client presentation and demo on school premises.',
-    referenceNumber: 'CHK-2026-004',
-    approvedBy: 'Anand Kumar',
-    createdBy: 'Anand Kumar',
-    status: 'Completed',
-  },
-  {
-    id: 'MOV-2026-0004',
-    assetId: 'MOB-00012',
-    assetName: 'Samsung Galaxy A55 5G',
-    movementType: 'Sent for Maintenance',
-    direction: 'OUT',
-    fromLocation: 'Kochi Campus - IT & Systems',
-    toLocation: 'Samsung Authorized Service Center, MG Road',
-    date: '2026-09-08',
-    time: '15:30',
-    condition: 'Damaged',
-    accessoriesIssued: ['Spigen Rugged Armor Case'],
-    reason: 'Accidental display glass crack during client field visit. Sent for warranty screen panel replacement.',
-    referenceNumber: 'MNT-2026-001',
-    approvedBy: 'Anand Kumar',
-    createdBy: 'Mohammed Suhail',
-    status: 'Completed',
-  },
-  {
-    id: 'MOV-2026-0005',
-    assetId: 'LAP-00019',
-    assetName: 'Lenovo ThinkPad E14 Gen 4',
-    movementType: 'Disposed',
-    direction: 'OUT',
-    fromLocation: 'Kochi Campus - Central Store',
-    toLocation: 'Central Warehouse - E-Waste Depot',
-    date: '2026-08-15',
-    time: '16:00',
-    condition: 'Damaged',
-    reason: 'End-of-life retirement after motherboard burnout. Disposed via certified e-waste partner.',
-    referenceNumber: 'RET-2026-001',
-    approvedBy: 'Dr. Ramesh Narayan',
-    createdBy: 'Anand Kumar',
-    status: 'Completed',
-  },
-];
+const INITIAL_MOVEMENTS: AssetMovement[] = [];
 
 // Seed Asset Requests
-const INITIAL_REQUESTS: AssetRequest[] = [
-  {
-    id: 'REQ-2026-001',
-    employeeId: 'EMP-003',
-    employeeName: 'Mohammed Suhail',
-    department: 'IT & Systems',
-    category: 'IT Accessories',
-    assetTypeRequested: 'Noise-Canceling Wireless Headset with Mic',
-    quantity: 1,
-    reason: 'Required for daily client implementation calls and remote customer onboarding.',
-    priority: 'Medium',
-    status: 'Approved',
-    requestedDate: '2026-09-08',
-    approvedBy: 'Anand Kumar',
-    approvedAt: '2026-09-09 11:00',
-    remarks: 'Approved under Q3 IT accessories allocation.',
-  },
-  {
-    id: 'REQ-2026-002',
-    employeeId: 'EMP-002',
-    employeeName: 'Priya Sharma',
-    department: 'Sales & Marketing',
-    category: 'Tablet',
-    assetTypeRequested: 'Apple iPad Air with Apple Pencil',
-    quantity: 1,
-    reason: 'Digital proposal signing and on-site executive wireframe reviews.',
-    priority: 'High',
-    status: 'Pending Approval',
-    requestedDate: '2026-09-11',
-  },
-];
+const INITIAL_REQUESTS: AssetRequest[] = [];
 
 // Seed Maintenance Records
-const INITIAL_MAINTENANCE: AssetMaintenanceRecord[] = [
-  {
-    id: 'MNT-2026-001',
-    assetId: 'MOB-00012',
-    assetName: 'Samsung Galaxy A55 5G (Enterprise Edition)',
-    maintenanceType: 'Corrective',
-    issue: 'Cracked Front Display Panel',
-    serviceProvider: 'Samsung Official Authorized Service Plaza',
-    serviceDate: '2026-09-08',
-    cost: 4500,
-    partsReplaced: 'Original Super AMOLED Display Assembly & Water Seal Gasket',
-    description: 'Accidental display fracture during field deployment. Being repaired under Knox Enterprise Accidental cover.',
-    nextServiceDate: '2027-03-08',
-    warrantyClaim: true,
-    invoiceNumber: 'SM-REP-9081',
-    status: 'Under Maintenance',
-    createdBy: 'Mohammed Suhail',
-  },
-];
+const INITIAL_MAINTENANCE: AssetMaintenanceRecord[] = [];
 
 // Seed Retirement Records
-const INITIAL_RETIREMENTS: AssetRetirementRecord[] = [
-  {
-    id: 'RET-2026-001',
-    assetId: 'LAP-00019',
-    assetName: 'Lenovo ThinkPad E14 Gen 4',
-    retirementDate: '2026-08-15',
-    reason: 'Damaged Beyond Repair',
-    currentValue: 12000,
-    disposalValue: 2500,
-    disposalMethod: 'E-Waste Recycling',
-    approvedBy: 'Dr. Ramesh Narayan',
-    status: 'Disposed',
-    remarks: 'Board burned out; recovered scrap salvage value credited to office account.',
-  },
-];
+const INITIAL_RETIREMENTS: AssetRetirementRecord[] = [];
 
 export class AssetStorageService {
   private getStorage<T>(key: string, fallback: T): T {

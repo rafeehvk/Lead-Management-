@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { ProfilePhotoUploader } from './ProfilePhotoUploader';
+import { UserMenuPermissionsModal } from './UserMenuPermissionsModal';
 import {
   ROLE_DEFINITIONS,
   DEFAULT_ROLE_PERMISSIONS,
@@ -71,6 +72,7 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
   const [photoTargetUser, setPhotoTargetUser] = useState<User | null>(null);
+  const [permissionsTargetUser, setPermissionsTargetUser] = useState<User | null>(null);
 
   // Helper to generate secure password
   const generateRandomPassword = () => {
@@ -768,35 +770,50 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
 
                       {/* Role & Access Level */}
                       <td className="py-3 px-3">
-                        {canManage ? (
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleInlineRoleChange(u, e.target.value as UserRole)}
-                            className={`text-[11px] font-bold px-2 py-1 rounded border cursor-pointer focus:outline-none ${
-                              u.role === 'Admin'
-                                ? 'bg-emerald-50 text-[#0B5D2A] border-emerald-300'
-                                : u.role === 'Manager'
-                                ? 'bg-teal-50 text-teal-800 border-teal-200'
-                                : 'bg-[#EAF7EF] text-[#168A45] border-[#D9E5DD]'
-                            }`}
+                        <div className="flex items-center space-x-2">
+                          {canManage ? (
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleInlineRoleChange(u, e.target.value as UserRole)}
+                              className={`text-[11px] font-bold px-2 py-1 rounded border cursor-pointer focus:outline-none ${
+                                u.role === 'Admin'
+                                  ? 'bg-emerald-50 text-[#0B5D2A] border-emerald-300'
+                                  : u.role === 'Manager'
+                                  ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                  : 'bg-[#EAF7EF] text-[#168A45] border-[#D9E5DD]'
+                              }`}
+                            >
+                              <option value="Admin">Admin (Full Control)</option>
+                              <option value="Manager">Manager (Team View)</option>
+                              <option value="Salesperson">Salesperson (Own Leads)</option>
+                            </select>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-1 rounded text-[11px] font-bold border ${
+                                u.role === 'Admin'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : u.role === 'Manager'
+                                  ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                  : 'bg-[#EAF7EF] text-[#168A45] border-[#D9E5DD]'
+                              }`}
+                            >
+                              {u.role}
+                            </span>
+                          )}
+
+                          {/* View icon for Side Menu Permissions (View only, Entry, Edit, Delete) */}
+                          <button
+                            type="button"
+                            onClick={() => setPermissionsTargetUser(u)}
+                            title={`View & configure side menu access permissions for ${u.name}`}
+                            className="p-1.5 text-slate-500 hover:text-[#168A45] hover:bg-emerald-50 bg-white rounded-lg border border-gray-200 hover:border-[#168A45]/40 transition-all shadow-2xs cursor-pointer flex items-center gap-1 group shrink-0"
                           >
-                            <option value="Admin">Admin (Full Control)</option>
-                            <option value="Manager">Manager (Team View)</option>
-                            <option value="Salesperson">Salesperson (Own Leads)</option>
-                          </select>
-                        ) : (
-                          <span
-                            className={`px-2.5 py-1 rounded text-[11px] font-bold border ${
-                              u.role === 'Admin'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : u.role === 'Manager'
-                                ? 'bg-teal-50 text-teal-800 border-teal-200'
-                                : 'bg-[#EAF7EF] text-[#168A45] border-[#D9E5DD]'
-                            }`}
-                          >
-                            {u.role}
-                          </span>
-                        )}
+                            <Eye className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#168A45]" />
+                            <span className="text-[10px] font-bold text-slate-600 group-hover:text-[#168A45]">
+                              View
+                            </span>
+                          </button>
+                        </div>
                       </td>
 
                       {/* Status */}
@@ -1312,6 +1329,18 @@ export const TeamRbacManager: React.FC<TeamRbacManagerProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Side Menu Permissions Modal (View only, Entry, Edit, Delete) */}
+      {permissionsTargetUser && (
+        <UserMenuPermissionsModal
+          user={permissionsTargetUser}
+          isOpen={!!permissionsTargetUser}
+          onClose={() => setPermissionsTargetUser(null)}
+          onSaved={(uid) => {
+            showToast(`Menu permissions updated for ${permissionsTargetUser.name}.`);
+          }}
+        />
       )}
     </div>
   );

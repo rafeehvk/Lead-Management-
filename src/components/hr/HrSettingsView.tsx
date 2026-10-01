@@ -13,25 +13,48 @@ import {
   Plus,
   X,
   BadgeCheck,
+  ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import { HrSettingsConfig } from '../../types/hr';
 import { IdCardSettingsView } from './IdCardSettingsView';
+import { DepartmentRolesMatrixView } from './DepartmentRolesMatrixView';
+import { AccessManagementView } from './AccessManagementView';
+import { DepartmentMasterTable } from './DepartmentMasterTable';
+import { DepartmentAccessMatrixView } from './DepartmentAccessMatrixView';
 
 interface HrSettingsViewProps {
   settings: HrSettingsConfig;
   onSaveSettings: (settings: HrSettingsConfig) => void;
   onResetData: () => void;
+  initialSection?:
+    | 'access-matrix'
+    | 'departments'
+    | 'attendance'
+    | 'leave'
+    | 'payroll'
+    | 'idcards'
+    | 'roles'
+    | 'access';
 }
 
 export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
   settings,
   onSaveSettings,
   onResetData,
+  initialSection,
 }) => {
   const [formState, setFormState] = useState<HrSettingsConfig>(settings);
   const [activeSection, setActiveSection] = useState<
-    'attendance' | 'leave' | 'payroll' | 'idcards' | 'roles'
-  >('attendance');
+    | 'access-matrix'
+    | 'departments'
+    | 'attendance'
+    | 'leave'
+    | 'payroll'
+    | 'idcards'
+    | 'roles'
+    | 'access'
+  >(initialSection || 'access-matrix');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [newLocation, setNewLocation] = useState('');
 
@@ -116,6 +139,30 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
         {/* Navigation Sidebar */}
         <div className="space-y-1.5 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-2xs h-fit text-xs font-semibold">
           <button
+            onClick={() => setActiveSection('access-matrix')}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              activeSection === 'access-matrix'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] font-bold shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-[#168A45]" />
+            <span>Access Control Matrix</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSection('departments')}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              activeSection === 'departments'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] font-bold shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-[#168A45]" />
+            <span>Department Master</span>
+          </button>
+
+          <button
             onClick={() => setActiveSection('attendance')}
             className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
               activeSection === 'attendance'
@@ -172,18 +219,53 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
             }`}
           >
             <Shield className="w-4 h-4 text-[#168A45]" />
-            <span>Roles & Access Matrix</span>
+            <span>Departments & Roles Matrix</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSection('access')}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              activeSection === 'access'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A]'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-[#168A45]" />
+            <span>Access Management</span>
           </button>
         </div>
 
         {/* Configuration Body */}
-        {activeSection === 'idcards' ? (
+        {activeSection === 'access-matrix' ? (
+          <div className="md:col-span-3">
+            <DepartmentAccessMatrixView />
+          </div>
+        ) : activeSection === 'departments' ? (
+          <div className="md:col-span-3">
+            <DepartmentMasterTable />
+          </div>
+        ) : activeSection === 'idcards' ? (
           <div className="md:col-span-3">
             <IdCardSettingsView
               settings={formState}
               onSaveSettings={(newSettings) => {
                 setFormState(newSettings);
                 onSaveSettings(newSettings);
+              }}
+            />
+          </div>
+        ) : activeSection === 'access' ? (
+          <div className="md:col-span-3">
+            <AccessManagementView
+              settings={formState}
+              onSavePermissions={(newPerms, newDeptPerms) => {
+                const updated = {
+                  ...formState,
+                  rolePermissions: newPerms,
+                  departmentRolePermissions: newDeptPerms || formState.departmentRolePermissions,
+                };
+                setFormState(updated);
+                onSaveSettings(updated);
               }}
             />
           </div>
@@ -735,59 +817,9 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
             </div>
           )}
 
-          {/* 4. Role Matrix & Reset */}
+          {/* 4. Department and Roles Definition Matrix */}
           {activeSection === 'roles' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-                  MYSAR Role Permissions Matrix
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Access control boundaries for institutional governance, recruitment, and payroll processing.
-                </p>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 text-slate-700">
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <strong className="text-slate-900 font-semibold">Super Admin / Director:</strong>
-                  <span className="text-slate-600">Full access to Recruitment, Salaries, Approvals & System Settings</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <strong className="text-slate-900 font-semibold">HR Admin:</strong>
-                  <span className="text-slate-600">Manage Applicants, Offer/Appt Letters, Attendance & Onboarding</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                  <strong className="text-slate-900 font-semibold">Principal / Academic Head:</strong>
-                  <span className="text-slate-600">Interview evaluations, leave approvals, and KPI performance reviews</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <strong className="text-slate-900 font-semibold">Finance Officer:</strong>
-                  <span className="text-slate-600">Run monthly payroll, download statutory reports, disburse payslips</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900">Reset Demo Data</div>
-                  <div className="text-slate-500 text-[11px]">
-                    Revert all HR records back to default sample state.
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (window.confirm('Reset all HR data to demo defaults?')) {
-                      onResetData();
-                      window.location.reload();
-                    }
-                  }}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 border border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl font-bold cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Demo Data</span>
-                </button>
-              </div>
-            </div>
+            <DepartmentRolesMatrixView onResetData={onResetData} />
           )}
         </div>
         )}

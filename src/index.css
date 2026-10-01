@@ -39,16 +39,28 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 8mm;
   }
   html, body {
     background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .no-print {
+  .no-print,
+  .erp-no-print,
+  header,
+  nav,
+  aside,
+  button,
+  .erp-floating-action-pill,
+  .erp-modal-controls,
+  .erp-modal-footer {
     display: none !important;
   }
   .print-only {
@@ -74,6 +86,85 @@
   .proposal-page:last-child {
     page-break-after: avoid;
     break-after: avoid;
+  }
+
+  /* Universal ERP Document print isolation & Full-Screen Layout Optimization */
+  body.erp-print-active #root > div > *:not(.fixed):not(.erp-printable-container),
+  body.erp-fullscreen-print-optimized #root > div > *:not(.fixed):not(.erp-printable-container) {
+    display: none !important;
+  }
+  
+  body.erp-print-active .fixed,
+  body.erp-fullscreen-print-optimized .fixed {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+  
+  body.erp-print-active .fixed > div,
+  body.erp-fullscreen-print-optimized .fixed > div {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  
+  body.erp-print-active .bg-slate-900,
+  body.erp-print-active button,
+  body.erp-fullscreen-print-optimized button {
+    display: none !important;
+  }
+  
+  #erp-printable-document-root,
+  .erp-printable-document-root {
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+  }
+
+  /* Asset Modal Full Screen Print Optimization */
+  body.asset-print-optimized #root > div > *:not(.fixed) {
+    display: none !important;
+  }
+  body.asset-print-optimized .fixed {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+  body.asset-print-optimized .fixed > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
   }
 }
 

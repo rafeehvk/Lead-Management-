@@ -175,22 +175,6 @@ export interface ProposalPaymentTracking {
   paymentNotes?: string;
 }
 
-export interface ProposalDigitalSignature {
-  signerName: string;
-  signerDesignation: string;
-  signerEmail: string;
-  signerPhone?: string;
-  instituteName: string;
-  signatureImage: string; // Base64 PNG data URL or vector
-  signatureType: 'draw' | 'type' | 'upload';
-  signedAt: string; // ISO datetime
-  ipAddress?: string;
-  userAgent?: string;
-  verificationCode: string; // e.g. "MYSAR-ESIGN-84920"
-  acceptedTerms: boolean;
-  notes?: string;
-}
-
 export interface Proposal {
   id: string; // e.g. "PROP-2026-001"
   leadId: string;
@@ -209,7 +193,6 @@ export interface Proposal {
   version?: number;
   versionHistory?: ProposalVersionEntry[];
   paymentTracking?: ProposalPaymentTracking;
-  digitalSignature?: ProposalDigitalSignature;
   pdfFileId?: string;
   pdfUrl?: string;
   createdBy: string;
@@ -360,6 +343,7 @@ export interface Settings {
   companyLogo?: string; // Master / General fallback logo
   navbarLogo?: string; // Top-Left App Navigation / Header logo
   documentLogo?: string; // Document, PDF proposal & print header logo
+  invoiceLogo?: string; // Invoice, Bills, and Vouchers logo
   loginLogo?: string; // Login screen central emblem badge logo
   address: string;
   phone: string;

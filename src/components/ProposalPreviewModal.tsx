@@ -13,19 +13,12 @@ import {
   ZoomOut,
   CreditCard,
   FileText,
-  FileCheck2,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { Proposal, Settings } from '../types';
 import { generatePdfFromElement, printProposalDocument, formatINR } from '../utils/pdfGenerator';
 import { PrintableProposalDocument } from './PrintableProposalDocument';
 import { ProposalPaymentDashboard } from './ProposalPaymentDashboard';
 import { getProposalPaymentTracking, getPaymentBadgeClass } from '../utils/paymentScheduleUtils';
-import {
-  getProposalSignatureUrl,
-  copySignatureLinkToClipboard,
-} from '../utils/signatureUtils';
 
 interface ProposalPreviewModalProps {
   isOpen: boolean;
@@ -35,7 +28,6 @@ interface ProposalPreviewModalProps {
   onEdit: () => void;
   onSendEmail?: (proposal: Proposal, emailTo?: string) => void;
   onUpdateProposal?: (updated: Proposal) => void;
-  onOpenSignatureModal?: (proposal: Proposal) => void;
   initialMode?: 'full' | 'agreementOnly' | 'payment';
 }
 
@@ -47,7 +39,6 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   onEdit,
   onSendEmail,
   onUpdateProposal,
-  onOpenSignatureModal,
   initialMode = 'full',
 }) => {
   const [documentMode, setDocumentMode] = useState<'full' | 'agreementOnly' | 'payment'>(initialMode);

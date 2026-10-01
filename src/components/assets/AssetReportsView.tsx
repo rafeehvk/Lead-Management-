@@ -35,7 +35,21 @@ export const AssetReportsView: React.FC = () => {
   const metrics = assetStorage.getMetrics();
 
   const handlePrint = () => {
-    window.print();
+    document.body.classList.add('asset-print-optimized');
+    document.body.classList.add('erp-fullscreen-print-optimized');
+
+    const cleanup = () => {
+      document.body.classList.remove('asset-print-optimized');
+      document.body.classList.remove('erp-fullscreen-print-optimized');
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(cleanup, 1200);
+    }, 120);
   };
 
   const handleExport = () => {
@@ -70,10 +84,11 @@ export const AssetReportsView: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handlePrint}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-2xs flex items-center space-x-1.5"
+            className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-2xs flex items-center space-x-1.5 cursor-pointer ring-1 ring-emerald-500/30"
+            title="Trigger browser print dialogue (Print to paper or Save as PDF) with full-screen layout optimization"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print Report</span>
+            <span>Print/PDF Report</span>
           </button>
           <button
             onClick={handleExport}
