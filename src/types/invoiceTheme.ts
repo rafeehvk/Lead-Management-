@@ -17,6 +17,34 @@ export type InvoiceThemeColor =
 
 export type ThemedDocumentCategory = 'sales' | 'purchase' | 'receipt' | 'payment' | 'inventory' | 'asset';
 
+export interface ItemTableContentConfig {
+  showItemTable: boolean;
+  showSerialNumber: boolean;
+  showItemDescription: boolean;
+  showHsnColumn: boolean;
+  showQuantity: boolean;
+  showUnit: boolean;
+  showRate: boolean;
+  showTaxableValue: boolean;
+  showGstPercent: boolean;
+  showTaxAmount: boolean;
+  showDiscountColumn: boolean;
+}
+
+export const DEFAULT_ITEM_TABLE_CONTENT: ItemTableContentConfig = {
+  showItemTable: true,
+  showSerialNumber: true,
+  showItemDescription: true,
+  showHsnColumn: true,
+  showQuantity: true,
+  showUnit: true,
+  showRate: true,
+  showTaxableValue: true,
+  showGstPercent: true,
+  showTaxAmount: true,
+  showDiscountColumn: false,
+};
+
 export interface DocumentThemeConfig {
   themeStyle: InvoiceThemeStyle;
   primaryColor: InvoiceThemeColor;
@@ -28,11 +56,17 @@ export interface DocumentThemeConfig {
   showHsnSummary: boolean;
   showAmountInWords: boolean;
   showBalanceDue: boolean;
+  showItemTable?: boolean;
+  itemTableContent?: ItemTableContentConfig;
   headerTitle: string;
   termsAndConditions: string;
   signatoryText: string;
   accentHex?: string;
   upiId?: string;
+  bankName?: string;
+  accountName?: string;
+  accountNo?: string;
+  ifscCode?: string;
 }
 
 export interface InvoiceThemesSettings {
@@ -154,14 +188,20 @@ export const DEFAULT_INVOICE_THEMES: InvoiceThemesSettings = {
     showHsnSummary: true,
     showAmountInWords: true,
     showBalanceDue: true,
-    headerTitle: 'TAX INVOICE',
+    showItemTable: true,
+    itemTableContent: { ...DEFAULT_ITEM_TABLE_CONTENT },
+    headerTitle: 'BILL OF SUPPLY',
     termsAndConditions:
-      '1. Goods once sold will not be taken back without prior authorization.\n2. Interest @ 18% p.a. will be charged if payment is delayed beyond due date.\n3. All disputes are subject to Kochi jurisdiction.',
-    signatoryText: 'For MYSAR GLOBAL TRADING LLC\nAuthorized Signatory',
-    upiId: 'mysarglobal@hdfcbank',
+      '1. Goods/Services once billed will not be cancelled without prior authorization.\n2. Payment shall be made according to agreed invoice due date.\n3. All disputes are subject to Ernakulam jurisdiction.',
+    signatoryText: 'Authorised Signatory For\nCASBIRO SOLUTIONS PVT LTD',
+    upiId: '7994806906@okbizaxis',
+    bankName: 'Axis Bank, VENNALA',
+    accountName: 'Casbiro Solutions Private Limited',
+    accountNo: '925020008037268',
+    ifscCode: 'utib0002748',
   },
   purchaseTheme: {
-    themeStyle: 'advanced',
+    themeStyle: 'classic',
     primaryColor: 'blue',
     showLogo: true,
     showBankDetails: true,
@@ -171,14 +211,20 @@ export const DEFAULT_INVOICE_THEMES: InvoiceThemesSettings = {
     showHsnSummary: true,
     showAmountInWords: true,
     showBalanceDue: true,
-    headerTitle: 'PURCHASE BILL / ORDER',
+    showItemTable: true,
+    itemTableContent: { ...DEFAULT_ITEM_TABLE_CONTENT },
+    headerTitle: 'PURCHASE BILL',
     termsAndConditions:
       '1. Items received subject to physical inspection & quality verification.\n2. Payment will be released strictly within agreed credit terms.\n3. Goods must match specification and PO reference.',
-    signatoryText: 'For MYSAR GLOBAL TRADING LLC\nProcurement & Stores In-Charge',
+    signatoryText: 'For CASBIRO SOLUTIONS PVT LTD\nProcurement & Stores In-Charge',
     upiId: '',
+    bankName: 'Axis Bank, VENNALA',
+    accountName: 'Casbiro Solutions Private Limited',
+    accountNo: '925020008037268',
+    ifscCode: 'utib0002748',
   },
   receiptTheme: {
-    themeStyle: 'stylish',
+    themeStyle: 'classic',
     primaryColor: 'emerald',
     showLogo: true,
     showBankDetails: true,
@@ -188,14 +234,20 @@ export const DEFAULT_INVOICE_THEMES: InvoiceThemesSettings = {
     showHsnSummary: false,
     showAmountInWords: true,
     showBalanceDue: true,
-    headerTitle: 'OFFICIAL RECEIPT / PAYMENT IN',
+    showItemTable: true,
+    itemTableContent: { ...DEFAULT_ITEM_TABLE_CONTENT },
+    headerTitle: 'OFFICIAL RECEIPT',
     termsAndConditions:
       '1. Receipt valid subject to realization of cheque / online fund transfer.\n2. Please quote this receipt number in all future payment correspondences.\n3. This is a computer-generated money receipt.',
-    signatoryText: 'For MYSAR GLOBAL TRADING LLC\nAccounts & Finance Department',
-    upiId: 'mysarglobal@hdfcbank',
+    signatoryText: 'For CASBIRO SOLUTIONS PVT LTD\nAccounts & Finance Department',
+    upiId: '7994806906@okbizaxis',
+    bankName: 'Axis Bank, VENNALA',
+    accountName: 'Casbiro Solutions Private Limited',
+    accountNo: '925020008037268',
+    ifscCode: 'utib0002748',
   },
   paymentTheme: {
-    themeStyle: 'corporate',
+    themeStyle: 'classic',
     primaryColor: 'slate',
     showLogo: true,
     showBankDetails: true,
@@ -205,10 +257,16 @@ export const DEFAULT_INVOICE_THEMES: InvoiceThemesSettings = {
     showHsnSummary: false,
     showAmountInWords: true,
     showBalanceDue: false,
-    headerTitle: 'PAYMENT VOUCHER / PAYMENT OUT',
+    showItemTable: true,
+    itemTableContent: { ...DEFAULT_ITEM_TABLE_CONTENT },
+    headerTitle: 'PAYMENT VOUCHER',
     termsAndConditions:
       '1. Payment debited as per approved purchase order & vendor invoice settlement.\n2. TDS withheld wherever applicable under IT Act provisions.\n3. Payee acknowledges receipt of payment in full and final settlement.',
-    signatoryText: 'For MYSAR GLOBAL TRADING LLC\nAuthorized Financial Controller',
+    signatoryText: 'For CASBIRO SOLUTIONS PVT LTD\nAuthorized Financial Controller',
     upiId: '',
+    bankName: 'Axis Bank, VENNALA',
+    accountName: 'Casbiro Solutions Private Limited',
+    accountNo: '925020008037268',
+    ifscCode: 'utib0002748',
   },
 };

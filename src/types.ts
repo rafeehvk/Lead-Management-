@@ -120,6 +120,47 @@ export interface ProposalPricingItem {
   isPrimary?: boolean;
 }
 
+export interface ProposalTemplatePricingConfig {
+  id: string;
+  pricingType: PricingType | string;
+  pricePerStudent: number;
+  studentCount?: number;
+  totalAmount?: number;
+  description?: string;
+  isPrimary?: boolean;
+}
+
+export interface ProposalTemplateAgreementConfig {
+  agreementPeriod: string;
+  registrationFee: number;
+  trialPrice: number;
+  trialAcademicYear: string;
+  planChosen: string;
+  hasSpecialPrice?: boolean;
+  specialPrice?: number;
+  specialPriceLabel?: string;
+  paymentSchedule: string[];
+  paymentTerms: string[];
+  acceptanceClause?: string;
+  clientDesignation?: string;
+  companyAuthorizedPerson?: string;
+  companyDesignation?: string;
+}
+
+export interface ProposalTemplate {
+  id: string;
+  name: string;
+  code?: string;
+  description: string;
+  category?: 'K-12 Schools' | 'Colleges & Higher Ed' | 'Government & Grants' | 'Private Academies' | 'Custom';
+  isDefault?: boolean;
+  pricingItems: ProposalTemplatePricingConfig[];
+  agreementDetails: ProposalTemplateAgreementConfig;
+  defaultStudentCount?: number;
+  createdDate: string;
+  updatedDate: string;
+}
+
 export interface ProposalVersionEntry {
   version: number;
   updatedAt: string;
@@ -234,6 +275,9 @@ export interface User {
   staffId?: string; // e.g. "CB/101/001"
   department?: string;
   departmentCode?: string;
+  assignedModules?: string[]; // Modules assigned in Onboard Staff > System & Access
+  branchAccess?: string;
+  accessLevel?: string;
 }
 
 export interface FollowUpNotification {
@@ -334,6 +378,21 @@ export interface ProposalContentConfig {
   companySignatoryLabel?: string;
   companySignatoryName?: string;
   companySignatoryDesignation?: string;
+
+  // Proposal Theme Custom Print/PDF Header & Footer Configuration
+  proposalTheme?: ProposalThemeConfig;
+}
+
+export interface ProposalThemeConfig {
+  printHeaderEnabled: boolean;
+  printHeaderText: string;
+  printHeaderSubtext?: string;
+  printFooterEnabled: boolean;
+  printFooterText: string;
+  printFooterSubtext?: string;
+  showHeaderOnCoverPage?: boolean;
+  showFooterOnCoverPage?: boolean;
+  accentColor?: string;
 }
 
 export interface Settings {
@@ -350,6 +409,11 @@ export interface Settings {
   email: string;
   website: string;
   gstNumber: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  upiId?: string;
   proposalPrefix: string;
   proposalSequence: number;
   driveFolderId: string;
@@ -364,6 +428,7 @@ export interface Settings {
   emailSubjectTemplate: string;
   emailBodyTemplate: string;
   proposalContent?: ProposalContentConfig;
+  proposalTheme?: ProposalThemeConfig;
 }
 
 export interface DashboardMetrics {

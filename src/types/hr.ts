@@ -135,6 +135,12 @@ export interface AllowanceItem {
   amount: number;
 }
 
+export interface DeductionItem {
+  id: string;
+  name: string; // e.g. "Employee PF Contribution", "Professional Tax", "TDS / Income Tax", "ESI", "Other Applicable Deductions"
+  amount: number;
+}
+
 export interface OfferLetter {
   id: string; // e.g. "OFFER-2026-001"
   offerNumber: string;
@@ -149,7 +155,11 @@ export interface OfferLetter {
   basicSalary: number;
   allowances: number;
   allowanceItems?: AllowanceItem[];
+  deductions?: number;
+  deductionItems?: DeductionItem[];
   grossSalary: number;
+  netSalary?: number;
+  workingDays?: string;
   workingHours: string;
   benefits: string[];
   termsAndConditions: string;
@@ -196,7 +206,10 @@ export interface AppointmentLetter {
   basicSalary: number;
   allowances: number;
   allowanceItems?: AllowanceItem[];
+  deductions?: number;
+  deductionItems?: DeductionItem[];
   grossSalary: number;
+  netSalary?: number;
   probationPeriod: string;
   workingHours: string;
   workplace: string;
@@ -251,6 +264,7 @@ export interface StaffSalaryDetails {
   hra: number;
   allowances: number;
   allowanceItems?: AllowanceItem[];
+  deductionItems?: DeductionItem[];
   specialAllowance: number;
   bonus: number;
   otherEarnings: number;
@@ -328,6 +342,18 @@ export interface DepartmentMaster {
   status: 'Active' | 'Inactive';
   createdDate?: string;
   allowedMenuIds?: string[]; // Accessible menu IDs from SIDE_MENU_DEFINITIONS for department members
+}
+
+export interface BranchMaster {
+  id: string; // e.g. "BR-001"
+  branchCode: string; // e.g. "KCH-01", "CLT-02", "TVM-03", "WYD-04"
+  branchName: string; // e.g. "Kochi Main Campus"
+  city?: string; // e.g. "Kochi"
+  address?: string; // e.g. "Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021"
+  contactPerson?: string;
+  contactPhone?: string;
+  status: 'Active' | 'Inactive';
+  createdDate?: string;
 }
 
 export interface StaffBankPayroll {

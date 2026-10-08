@@ -39,7 +39,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 0;
   }
   html, body {
     background-color: #FFFFFF !important;
@@ -88,6 +88,155 @@
     break-after: avoid;
   }
 
+  /* Proposal Print-Specific Isolation & Full A4 Sheet Perfection */
+  body.proposal-print-active {
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body.proposal-print-active #root > div > *:not(.proposal-preview-modal-root):not(.fixed) {
+    display: none !important;
+  }
+
+  body.proposal-print-active .proposal-preview-modal-topbar,
+  body.proposal-print-active .no-print,
+  body.proposal-print-active .proposal-no-print,
+  body.proposal-print-active button {
+    display: none !important;
+  }
+
+  body.proposal-print-active .proposal-preview-modal-root,
+  body.proposal-print-active .fixed {
+    position: static !important;
+    inset: auto !important;
+    background: none !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
+  }
+
+  body.proposal-print-active .proposal-preview-modal-card {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  body.proposal-print-active .proposal-preview-scroll-area {
+    overflow: visible !important;
+    background: #FFFFFF !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  body.proposal-print-active .proposal-zoom-container {
+    transform: none !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* Proposal Sheet A4 Print-specific class */
+  .proposal-sheet-print-mode,
+  .proposal-sheet-a4-print,
+  body.proposal-print-active #mysar-proposal-printable-document {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .proposal-sheet-print-mode .proposal-page-wrapper,
+  .proposal-sheet-a4-print .proposal-page-wrapper,
+  body.proposal-print-active .proposal-page-wrapper {
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .proposal-sheet-print-mode .proposal-page-wrapper:last-child,
+  .proposal-sheet-a4-print .proposal-page-wrapper:last-child,
+  body.proposal-print-active .proposal-page-wrapper:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .proposal-sheet-print-mode .proposal-page,
+  .proposal-sheet-a4-print .proposal-page,
+  body.proposal-print-active .proposal-page {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #FFFFFF !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+  }
+
+  .proposal-sheet-print-mode .proposal-page:last-child,
+  .proposal-sheet-a4-print .proposal-page:last-child,
+  body.proposal-print-active .proposal-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .proposal-sheet-print-mode .proposal-page-card,
+  .proposal-sheet-a4-print .proposal-page-card,
+  body.proposal-print-active .proposal-page-card {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
   /* Universal ERP Document print isolation & Full-Screen Layout Optimization */
   body.erp-print-active #root > div > *:not(.fixed):not(.erp-printable-container),
   body.erp-fullscreen-print-optimized #root > div > *:not(.fixed):not(.erp-printable-container) {
@@ -132,15 +281,25 @@
   }
   
   #erp-printable-document-root,
-  .erp-printable-document-root {
+  .erp-printable-document-root,
+  .erp-a4-document-sheet {
     transform: none !important;
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
     background: #FFFFFF !important;
     overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .erp-a4-document-sheet table,
+  .erp-a4-document-sheet tr,
+  .erp-a4-document-sheet .break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Asset Modal Full Screen Print Optimization */
@@ -166,6 +325,131 @@
     border-radius: 0 !important;
     background: #FFFFFF !important;
   }
+
+  /* HR Offer & Appointment Letter A4 Full-Page Print Optimization */
+  body.offer-letter-print-active #root > div > *:not(.fixed):not(.offer-letter-modal-root) {
+    display: none !important;
+  }
+
+  body.offer-letter-print-active .no-print,
+  body.offer-letter-print-active button {
+    display: none !important;
+  }
+
+  body.offer-letter-print-active .fixed,
+  body.offer-letter-print-active .offer-letter-modal-root {
+    position: static !important;
+    inset: auto !important;
+    background: #FFFFFF !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
+  }
+
+  body.offer-letter-print-active .fixed > div,
+  body.offer-letter-print-active .offer-letter-modal-card {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  body.offer-letter-print-active .offer-letter-scroll-area {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #FFFFFF !important;
+    display: block !important;
+  }
+
+  #casbiro-offer-doc,
+  #casbiro-appt-doc,
+  .offer-letter-a4-sheet {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 14mm 16mm !important;
+    box-sizing: border-box !important;
+    background: #FFFFFF !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  #casbiro-offer-doc table,
+  #casbiro-offer-doc tr,
+  #casbiro-offer-doc .break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* HR Staff Onboarding & Staff Profile A4 Print Portal Isolation */
+  body.hr-doc-print-active > *:not(#hr-active-print-portal) {
+    display: none !important;
+  }
+
+  body.hr-doc-print-active #hr-active-print-portal {
+    display: block !important;
+    position: static !important;
+    width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+  }
+
+  body.hr-doc-print-active #hr-active-print-portal > div {
+    background: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.hr-doc-print-active .hr-pdf-page {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #FFFFFF !important;
+    box-sizing: border-box !important;
+  }
+
+  body.hr-doc-print-active .hr-pdf-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+}
+
+#hr-active-print-portal {
+  display: none;
 }
 
 /* Proposal A4 Page & Viewer Styles */
@@ -202,3 +486,46 @@
   min-height: 1123px !important;
   max-height: 1123px !important;
 }
+
+.pdf-export-mode .proposal-print-header-band,
+.pdf-export-mode .proposal-print-footer-band,
+.proposal-sheet-print-mode .proposal-print-header-band,
+.proposal-sheet-print-mode .proposal-print-footer-band {
+  display: flex !important;
+}
+
+/* Sales & Purchase A4 Document Standard Sheet */
+.erp-a4-document-sheet {
+  width: 210mm;
+  max-width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+  background-color: #FFFFFF;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .erp-a4-document-sheet {
+    width: 100%;
+    max-width: 100%;
+    min-height: auto;
+  }
+}
+
+/* Proposal Sheet A4 Print-specific class helper */
+.proposal-sheet-print-mode,
+.proposal-sheet-a4-print {
+  width: 794px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.proposal-sheet-print-mode .proposal-page-card,
+.proposal-sheet-a4-print .proposal-page-card {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+

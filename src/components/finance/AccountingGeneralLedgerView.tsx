@@ -526,7 +526,7 @@ export const AccountingGeneralLedgerView: React.FC<AccountingGeneralLedgerViewPr
 
       {/* 4. PROFIT & LOSS REPORT */}
       {activeTab === 'pnl' && pnlReport && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-2xs overflow-hidden p-6 max-w-4xl mx-auto space-y-6">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-2xs overflow-hidden p-6 w-full space-y-6">
           <div className="text-center border-b border-gray-200 pb-4">
             <h2 className="text-lg font-bold text-slate-900">{COMPANY_CONFIG.legalName}</h2>
             <h3 className="text-sm font-semibold text-slate-600">Statement of Profit & Loss</h3>
@@ -583,7 +583,7 @@ export const AccountingGeneralLedgerView: React.FC<AccountingGeneralLedgerViewPr
 
       {/* 5. BALANCE SHEET */}
       {activeTab === 'balance-sheet' && balanceSheet && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-2xs overflow-hidden p-6 max-w-4xl mx-auto space-y-6">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-2xs overflow-hidden p-6 w-full space-y-6">
           <div className="text-center border-b border-gray-200 pb-4">
             <h2 className="text-lg font-bold text-slate-900">{COMPANY_CONFIG.legalName}</h2>
             <h3 className="text-sm font-semibold text-slate-600">Balance Sheet Statement</h3>

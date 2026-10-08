@@ -51,6 +51,7 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   const [emailBody, setEmailBody] = useState('');
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
   const [zoom, setZoom] = useState(100);
+  const [isPrintMode, setIsPrintMode] = useState(false);
 
   useEffect(() => {
     if (initialMode) {
@@ -81,35 +82,73 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
 
   const paymentTracking = getProposalPaymentTracking(proposal);
 
-  const handleDownloadPdf = async () => {
-    // If currently in payment mode, switch to full before generating or download agreement
-    const exportTargetMode = documentMode === 'agreementOnly' ? 'agreementOnly' : 'full';
+  const triggerPrintWithA4Layout = () => {
+    // If currently in payment mode, switch to full before printing/downloading
+    if (documentMode === 'payment') {
+      setDocumentMode('full');
+    }
+
+    const previousZoom = zoom;
+    const originalTitle = document.title;
+    const sanitizedName = (proposal.instituteName || 'Proposal').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const prefix = documentMode === 'agreementOnly' ? 'MYSAR_Agreement_Contract' : 'MYSAR_Proposal';
+    const pdfFilename = `${prefix}_${(proposal.proposalNumber || 'DOC').replace(/\//g, '_')}_${sanitizedName}`;
+
     setIsExporting(true);
-    setExportProgress('Starting PDF export...');
+    setExportProgress('Preparing A4 Print / PDF...');
     setExportSuccess(false);
-    try {
-      const sanitizedName = (proposal.instituteName || 'Proposal').replace(/[^a-zA-Z0-9]/g, '_');
-      const prefix = exportTargetMode === 'agreementOnly' ? 'MYSAR_Agreement_Contract' : 'MYSAR_Proposal';
-      await generatePdfFromElement(
-        'mysar-proposal-printable-document',
-        `${prefix}_${proposal.proposalNumber.replace(/\//g, '_')}_${sanitizedName}`,
-        (msg) => {
-          setExportProgress(msg);
-        }
-      );
-      setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 3500);
-    } catch (e) {
-      console.error('PDF export error', e);
-      handlePrint();
-    } finally {
+    setIsPrintMode(true);
+    setZoom(100);
+
+    document.title = pdfFilename;
+    document.body.classList.add('proposal-print-active');
+
+    const docEl = document.getElementById('mysar-proposal-printable-document');
+    if (docEl) {
+      docEl.classList.add('proposal-sheet-print-mode', 'proposal-sheet-a4-print', 'pdf-export-mode');
+    }
+
+    const cleanupAfterPrint = () => {
+      document.body.classList.remove('proposal-print-active');
+      const currentDocEl = document.getElementById('mysar-proposal-printable-document');
+      if (currentDocEl) {
+        currentDocEl.classList.remove('proposal-sheet-print-mode', 'proposal-sheet-a4-print', 'pdf-export-mode');
+      }
+      document.title = originalTitle;
+      setIsPrintMode(false);
+      setZoom(previousZoom);
       setIsExporting(false);
       setExportProgress('');
-    }
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3500);
+      window.removeEventListener('afterprint', cleanupAfterPrint);
+    };
+
+    window.addEventListener('afterprint', cleanupAfterPrint);
+
+    setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('window.print error, falling back to iframe print:', err);
+        printProposalDocument('mysar-proposal-printable-document');
+      } finally {
+        // Fallback cleanup in case afterprint does not fire in all environments
+        setTimeout(() => {
+          if (document.body.classList.contains('proposal-print-active')) {
+            cleanupAfterPrint();
+          }
+        }, 1200);
+      }
+    }, 200);
+  };
+
+  const handleDownloadPdf = () => {
+    triggerPrintWithA4Layout();
   };
 
   const handlePrint = () => {
-    printProposalDocument('mysar-proposal-printable-document');
+    triggerPrintWithA4Layout();
   };
 
   const handleSendDirectEmail = (e: React.FormEvent) => {
@@ -155,10 +194,10 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-hidden">
-      <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col h-[96vh]">
+    <div className="proposal-preview-modal-root fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-hidden">
+      <div className="proposal-preview-modal-card bg-white border border-gray-200 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col h-[96vh]">
         {/* Modal Top Bar (Fixed) */}
-        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 no-print z-20 shrink-0">
+        <div className="proposal-preview-modal-topbar bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 no-print z-20 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-[#EAF7EF] text-[#168A45] flex items-center justify-center font-black">
               M
@@ -365,7 +404,7 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
         </div>
 
         {/* Scrollable Document Area with Authentic Reader Backdrop */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 bg-slate-200/90 flex flex-col items-center">
+        <div className="proposal-preview-scroll-area flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 bg-slate-200/90 flex flex-col items-center">
           {/* Email Dispatch Modal Dialog */}
           {showEmailDialog && (
             <div className="mb-6 p-5 rounded-2xl bg-white border-2 border-[#168A45] shadow-lg animate-in fade-in duration-150 w-full max-w-3xl">
@@ -480,15 +519,17 @@ export const ProposalPreviewModal: React.FC<ProposalPreviewModalProps> = ({
           ) : (
             /* OFFICIAL MYSAR PROPOSAL & AGREEMENT DOCUMENT WITH ZOOM CONTAINER */
             <div
-              className="transition-transform duration-150 origin-top flex flex-col items-center"
-              style={{ transform: `scale(${zoom / 100})` }}
+              className="proposal-zoom-container transition-transform duration-150 origin-top flex flex-col items-center"
+              style={{ transform: isPrintMode ? 'none' : `scale(${zoom / 100})` }}
             >
               <PrintableProposalDocument
                 proposal={proposal}
                 settings={settings}
                 id="mysar-proposal-printable-document"
-                showPageBadges={true}
+                showPageBadges={!isPrintMode}
                 documentMode={documentMode}
+                isPrintMode={isPrintMode}
+                className={isPrintMode ? 'proposal-sheet-print-mode proposal-sheet-a4-print' : ''}
               />
             </div>
           )}

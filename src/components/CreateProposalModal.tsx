@@ -23,6 +23,10 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
+  Bookmark,
+  Star,
+  Save,
+  Check,
 } from 'lucide-react';
 import {
   Lead,
@@ -31,6 +35,8 @@ import {
   Proposal,
   ProposalAgreementDetails,
   ProposalPricingItem,
+  ProposalTemplate,
+  ProposalTemplatePricingConfig,
   Settings,
   User,
 } from '../types';
@@ -46,6 +52,8 @@ interface CreateProposalModalProps {
   settings: Settings;
   currentUser?: User;
   editingProposal?: Proposal | null;
+  initialTemplateId?: string;
+  onOpenTemplatesManager?: () => void;
   onGenerateProposal: (proposalData: {
     leadId: string;
     instituteName: string;
@@ -108,6 +116,8 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
   settings,
   currentUser = { id: 'USR-001', name: 'Admin', email: 'admin@casbiro.com', mobile: '', role: 'Admin', status: 'Active' },
   editingProposal,
+  initialTemplateId,
+  onOpenTemplatesManager,
   onGenerateProposal,
 }) => {
   const today = new Date().toISOString().split('T')[0];
@@ -118,6 +128,19 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
   // Master Plans from Storage
   const [masterPlans, setMasterPlans] = useState<PricingPlan[]>([]);
   const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
+
+  // Proposal Template States
+  const [availableTemplates, setAvailableTemplates] = useState<ProposalTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [templateNotification, setTemplateNotification] = useState<string | null>(null);
+
+  // Save Current as Template Modal States
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
+  const [newTemplateName, setNewTemplateName] = useState<string>('');
+  const [newTemplateCode, setNewTemplateCode] = useState<string>('');
+  const [newTemplateCategory, setNewTemplateCategory] = useState<ProposalTemplate['category']>('K-12 Schools');
+  const [newTemplateDescription, setNewTemplateDescription] = useState<string>('');
+  const [newTemplateIsDefault, setNewTemplateIsDefault] = useState<boolean>(false);
 
   // Selected Lead or Custom Lead Form State
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
@@ -158,13 +181,154 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
     setMasterPlans(loaded);
   };
 
+  const loadTemplates = () => {
+    const loaded = storage.getProposalTemplates();
+    setAvailableTemplates(loaded);
+    return loaded;
+  };
+
   useEffect(() => {
     loadMasterPlans();
+    loadTemplates();
+
+    const handleTemplatesChanged = () => {
+      loadTemplates();
+    };
+    window.addEventListener('mysar_proposal_templates_changed', handleTemplatesChanged);
+    return () => window.removeEventListener('mysar_proposal_templates_changed', handleTemplatesChanged);
   }, [isOpen]);
+
+  const applyProposalTemplate = (template: ProposalTemplate, targetStudentCount?: number) => {
+    setSelectedTemplateId(template.id);
+    const count =
+      targetStudentCount !== undefined && targetStudentCount > 0
+        ? targetStudentCount
+        : studentCount > 0
+        ? studentCount
+        : template.defaultStudentCount || 500;
+
+    // Apply pricing items from template
+    if (template.pricingItems && template.pricingItems.length > 0) {
+      const mapped: ProposalPricingItem[] = template.pricingItems.map((item, idx) => ({
+        id: `plan-tmpl-${Date.now()}-${idx + 1}`,
+        pricingType: item.pricingType,
+        pricePerStudent: Number(item.pricePerStudent) || 100,
+        studentCount: count,
+        totalAmount: (Number(item.pricePerStudent) || 100) * count,
+        description: item.description || '',
+        isPrimary: item.isPrimary ?? idx === 0,
+      }));
+      setPricingItems(mapped);
+    }
+
+    // Apply agreement details from template
+    const ag = template.agreementDetails;
+    if (ag) {
+      setAgreementPeriod(ag.agreementPeriod || '5 Years');
+      setRegistrationFee(ag.registrationFee ?? 30000);
+      setTrialPrice(ag.trialPrice ?? 30);
+      setTrialAcademicYear(ag.trialAcademicYear || `${currentYear}–${currentYear + 1} Academic Year`);
+      setPlanChosen(ag.planChosen || 'Institute Payment');
+      setHasSpecialPrice(ag.hasSpecialPrice ?? true);
+      setSpecialPrice(ag.specialPrice ?? 65);
+      setSpecialPriceLabel(ag.specialPriceLabel || 'Institute Subscription (Special Price)');
+      setPaymentSchedule(
+        ag.paymentSchedule && ag.paymentSchedule.length > 0
+          ? [...ag.paymentSchedule]
+          : [...DEFAULT_PAYMENT_SCHEDULE]
+      );
+      setPaymentTerms(
+        ag.paymentTerms && ag.paymentTerms.length > 0
+          ? [...ag.paymentTerms]
+          : [...DEFAULT_PAYMENT_TERMS]
+      );
+      setAcceptanceClause(ag.acceptanceClause || '');
+      setClientDesignation(ag.clientDesignation || 'Principal / Authorized Signatory');
+      setCompanyAuthorizedPerson(ag.companyAuthorizedPerson || currentUser.name || 'Sakeer Ali V');
+      setCompanyDesignation(ag.companyDesignation || 'Director & Authorized Signatory');
+    }
+
+    setTemplateNotification(`Applied template: "${template.name}" with pricing configuration & agreement clauses!`);
+    setTimeout(() => setTemplateNotification(null), 4000);
+  };
+
+  const handleOpenSaveAsTemplateModal = () => {
+    const primaryPlan = pricingItems.find((p) => p.isPrimary) || pricingItems[0];
+    const defaultName = customInstituteName.trim()
+      ? `${customInstituteName.trim()} Model (${agreementPeriod})`
+      : `Custom ${primaryPlan?.pricingType || 'ERP'} Proposal Model`;
+    setNewTemplateName(defaultName);
+    setNewTemplateCode(`TMPL-${availableTemplates.length + 1}`);
+    setNewTemplateCategory('K-12 Schools');
+    setNewTemplateDescription(
+      `Customized proposal template with ${pricingItems.length} pricing tier(s) and ${agreementPeriod} agreement structure.`
+    );
+    setNewTemplateIsDefault(false);
+    setIsSaveTemplateModalOpen(true);
+  };
+
+  const handleSaveCurrentAsTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateName.trim()) {
+      alert('Please enter a Template Name.');
+      return;
+    }
+
+    const templatePricingItems: ProposalTemplatePricingConfig[] = pricingItems.map((item, idx) => ({
+      id: `pi-${Date.now()}-${idx + 1}`,
+      pricingType: item.pricingType,
+      pricePerStudent: Number(item.pricePerStudent) || 100,
+      studentCount: studentCount,
+      totalAmount: (Number(item.pricePerStudent) || 100) * studentCount,
+      description: item.description,
+      isPrimary: item.isPrimary,
+    }));
+
+    const saved = storage.saveProposalTemplate({
+      name: newTemplateName.trim(),
+      code: newTemplateCode.trim() || `TMPL-${availableTemplates.length + 1}`,
+      category: newTemplateCategory,
+      description:
+        newTemplateDescription.trim() ||
+        `Saved configuration based on ${customInstituteName || 'proposal'} pricing & agreement clauses`,
+      isDefault: newTemplateIsDefault,
+      defaultStudentCount: studentCount,
+      pricingItems: templatePricingItems,
+      agreementDetails: {
+        agreementPeriod,
+        registrationFee: Number(registrationFee) || 0,
+        trialPrice: Number(trialPrice) || 0,
+        trialAcademicYear,
+        planChosen,
+        hasSpecialPrice,
+        specialPrice: hasSpecialPrice ? Number(specialPrice) : undefined,
+        specialPriceLabel: hasSpecialPrice ? specialPriceLabel : undefined,
+        paymentSchedule: paymentSchedule.filter((s) => s.trim().length > 0),
+        paymentTerms: paymentTerms.filter((t) => t.trim().length > 0),
+        acceptanceClause,
+        clientDesignation,
+        companyAuthorizedPerson,
+        companyDesignation,
+      },
+    });
+
+    if (newTemplateIsDefault) {
+      storage.setDefaultProposalTemplate(saved.id);
+    }
+
+    const updated = storage.getProposalTemplates();
+    setAvailableTemplates(updated);
+    setSelectedTemplateId(saved.id);
+    setIsSaveTemplateModalOpen(false);
+    setTemplateNotification(`Saved "${saved.name}" to Proposal Templates library!`);
+    setTimeout(() => setTemplateNotification(null), 4000);
+  };
 
   // Sync state when modal opens or initialLead / editingProposal changes
   useEffect(() => {
     if (!isOpen) return;
+
+    const loadedTemplates = loadTemplates();
 
     if (editingProposal) {
       setSelectedLeadId(editingProposal.leadId || 'CUSTOM');
@@ -223,15 +387,15 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
       targetLead = leads[0];
     }
 
+    const count = targetLead?.studentCount && targetLead.studentCount > 0 ? targetLead.studentCount : 500;
+
     if (targetLead) {
       setSelectedLeadId(targetLead.id);
       setCustomInstituteName(targetLead.instituteName || '');
       setCustomContactPerson(targetLead.contactPerson || '');
       setCustomEmail(targetLead.email || '');
       setCustomMobile(targetLead.mobile || '');
-      const count = targetLead.studentCount && targetLead.studentCount > 0 ? targetLead.studentCount : 500;
       setStudentCount(count);
-      initPricingTiers(count);
       setClientAuthorizedPerson(targetLead.contactPerson || '');
     } else {
       setSelectedLeadId('NEW_CUSTOM_LEAD');
@@ -239,26 +403,37 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
       setCustomContactPerson('');
       setCustomEmail('');
       setCustomMobile('');
-      setStudentCount(500);
-      initPricingTiers(500);
+      setStudentCount(count);
       setClientAuthorizedPerson('');
     }
 
-    setAgreementPeriod('5 Years');
-    setRegistrationFee(30000);
-    setTrialPrice(30);
-    setTrialAcademicYear(`${currentYear}–${currentYear + 1} Academic Year`);
-    setPlanChosen('Institute Payment');
-    setHasSpecialPrice(true);
-    setSpecialPrice(65);
-    setSpecialPriceLabel('Institute Subscription (Special Price)');
-    setPaymentSchedule([...DEFAULT_PAYMENT_SCHEDULE]);
-    setPaymentTerms([...DEFAULT_PAYMENT_TERMS]);
-    setClientDesignation('Principal / Authorized Signatory');
-    setCompanyAuthorizedPerson(currentUser.name || 'Sakeer Ali V');
-    setCompanyDesignation('Director & Authorized Signatory');
     setNotes('');
-  }, [isOpen, initialLead, leads, editingProposal]);
+
+    // Preload template if specified, or default template, or standard
+    const matchedTemplate =
+      (initialTemplateId && loadedTemplates.find((t) => t.id === initialTemplateId)) ||
+      loadedTemplates.find((t) => t.isDefault) ||
+      loadedTemplates[0];
+
+    if (matchedTemplate) {
+      applyProposalTemplate(matchedTemplate, count);
+    } else {
+      initPricingTiers(count);
+      setAgreementPeriod('5 Years');
+      setRegistrationFee(30000);
+      setTrialPrice(30);
+      setTrialAcademicYear(`${currentYear}–${currentYear + 1} Academic Year`);
+      setPlanChosen('Institute Payment');
+      setHasSpecialPrice(true);
+      setSpecialPrice(65);
+      setSpecialPriceLabel('Institute Subscription (Special Price)');
+      setPaymentSchedule([...DEFAULT_PAYMENT_SCHEDULE]);
+      setPaymentTerms([...DEFAULT_PAYMENT_TERMS]);
+      setClientDesignation('Principal / Authorized Signatory');
+      setCompanyAuthorizedPerson(currentUser.name || 'Sakeer Ali V');
+      setCompanyDesignation('Director & Authorized Signatory');
+    }
+  }, [isOpen, initialLead, leads, editingProposal, initialTemplateId]);
 
   const initPricingTiers = (count: number, currentPlans?: PricingPlan[]) => {
     const plansPool =
@@ -563,6 +738,100 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
               />
             </div>
           )}
+
+          {/* Proposal Templates Selector & Actions Strip */}
+          <div className="bg-linear-to-r from-emerald-50/80 via-slate-50 to-teal-50/50 border border-emerald-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-2xs">
+                  <FileSignature className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-slate-900 tracking-tight">
+                      Proposal Template Preset
+                    </span>
+                    {availableTemplates.find((t) => t.id === selectedTemplateId)?.isDefault && (
+                      <span className="inline-flex items-center space-x-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <Star className="w-2.5 h-2.5 fill-emerald-600 text-emerald-600" />
+                        <span>Default</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Apply verified pricing item models and agreement terms, or save this configuration for future proposals.
+                  </p>
+                </div>
+              </div>
+
+              {/* Template Action Controls */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleOpenSaveAsTemplateModal}
+                  className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-[#0B5D2A] border border-emerald-300 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs flex items-center space-x-1.5 cursor-pointer"
+                  title="Save current pricing tiers and agreement clauses as a new reusable template"
+                >
+                  <Save className="w-3.5 h-3.5 text-[#168A45]" />
+                  <span>Save as Template</span>
+                </button>
+
+                {onOpenTemplatesManager && (
+                  <button
+                    type="button"
+                    onClick={onOpenTemplatesManager}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center space-x-1 cursor-pointer"
+                    title="Open Proposal Templates library in Settings"
+                  >
+                    <span>Manage in Settings</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Template Selector Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center pt-1 border-t border-emerald-100/80">
+              <div className="sm:col-span-8 flex items-center space-x-2">
+                <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">
+                  Active Template:
+                </span>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => {
+                    const tmpl = availableTemplates.find((t) => t.id === e.target.value);
+                    if (tmpl) {
+                      applyProposalTemplate(tmpl);
+                    }
+                  }}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:outline-none focus:border-[#168A45] focus:ring-1 focus:ring-[#168A45] cursor-pointer"
+                >
+                  {availableTemplates.map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id}>
+                      {tmpl.name} {tmpl.isDefault ? '★ (Default)' : ''} &bull; {tmpl.category || 'General'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Template Specs Quick Badge */}
+              <div className="sm:col-span-4 text-[11px] text-slate-600 bg-white/90 border border-slate-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between">
+                <span className="truncate">
+                  {pricingItems.length} tiers &bull; {agreementPeriod} contract
+                </span>
+                <span className="font-mono font-bold text-[#0B5D2A] ml-1 shrink-0">
+                  Reg: {formatINR(registrationFee)}
+                </span>
+              </div>
+            </div>
+
+            {/* Notification alert banner */}
+            {templateNotification && (
+              <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 rounded-xl text-xs font-semibold text-emerald-900 flex items-center space-x-2 animate-in fade-in duration-150">
+                <Check className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>{templateNotification}</span>
+              </div>
+            )}
+          </div>
 
           {/* Institution & Target Lead Selector */}
           <div className="bg-[#F7FAF8] border border-gray-200 rounded-xl p-4 space-y-3.5">
@@ -1445,6 +1714,139 @@ export const CreateProposalModal: React.FC<CreateProposalModalProps> = ({
                 setMasterPlans(updated);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Save Current Proposal as New Template Modal */}
+      {isSaveTemplateModalOpen && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6 border border-gray-200 space-y-4 my-6">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <div className="flex items-center space-x-2">
+                <div className="w-9 h-9 rounded-xl bg-[#168A45] text-white flex items-center justify-center shadow-xs">
+                  <FileSignature className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Save as Proposal Template
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Store this exact pricing tier and agreement clause configuration in settings
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSaveTemplateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCurrentAsTemplate} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Template Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. CBSE 3-Year Special Institutional ERP Package"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  className="w-full bg-slate-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-[#168A45]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Template Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. TMPL-CBSE-3Y"
+                    value={newTemplateCode}
+                    onChange={(e) => setNewTemplateCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:border-[#168A45]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={newTemplateCategory}
+                    onChange={(e) => setNewTemplateCategory(e.target.value as any)}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 cursor-pointer"
+                  >
+                    <option value="K-12 Schools">K-12 Schools</option>
+                    <option value="Colleges & Higher Ed">Colleges & Higher Ed</option>
+                    <option value="Private Academies">Private Academies</option>
+                    <option value="Government & Grants">Government & Grants</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Description / Proposal Scope Summary
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Describe the target institutions and agreement terms covered..."
+                  value={newTemplateDescription}
+                  onChange={(e) => setNewTemplateDescription(e.target.value)}
+                  className="w-full bg-slate-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-[#168A45]"
+                />
+              </div>
+
+              {/* What will be captured summary card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-[11px] text-slate-600">
+                <span className="font-bold text-slate-700 block text-xs">
+                  Captured Configuration:
+                </span>
+                <div>
+                  • <strong>{pricingItems.length} Pricing Tier(s)</strong>:{' '}
+                  {pricingItems.map((p) => `${p.pricingType} (₹${p.pricePerStudent})`).join(', ')}
+                </div>
+                <div>
+                  • <strong>Agreement Details</strong>: {agreementPeriod} contract &bull; Reg Fee: {formatINR(registrationFee)} &bull; Trial: ₹{trialPrice}/student &bull; {paymentSchedule.length} payment stages &bull; {paymentTerms.length} terms
+                </div>
+              </div>
+
+              <label className="flex items-center space-x-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newTemplateIsDefault}
+                  onChange={(e) => setNewTemplateIsDefault(e.target.checked)}
+                  className="rounded text-[#168A45] focus:ring-[#168A45]"
+                />
+                <span className="text-xs font-medium text-slate-700">
+                  Set this as system default template for future proposals
+                </span>
+              </label>
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end space-x-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsSaveTemplateModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold shadow-xs flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save to Template Library</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

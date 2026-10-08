@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   LayoutGrid,
   List,
+  FileSignature,
 } from 'lucide-react';
 import { Proposal, ProposalStatus, Settings, ProposalVersionEntry, OverallPaymentStatus } from '../types';
 import { generatePdfFromElement, formatINR } from '../utils/pdfGenerator';
@@ -40,6 +41,7 @@ interface ProposalsViewProps {
   onUpdateStatus: (id: string, status: ProposalStatus) => void;
   onExportCsv: () => void;
   onOpenNewProposalPrompt: () => void;
+  onNavigateToTemplates?: () => void;
   onEmailProposal?: (proposal: Proposal) => void;
   onUpdateProposal?: (updated: Proposal) => void;
 }
@@ -53,6 +55,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
   onUpdateStatus,
   onExportCsv,
   onOpenNewProposalPrompt,
+  onNavigateToTemplates,
   onEmailProposal,
   onUpdateProposal,
 }) => {
@@ -180,6 +183,17 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
         </div>
 
         <div className="flex items-center space-x-2.5">
+          {onNavigateToTemplates && (
+            <button
+              onClick={onNavigateToTemplates}
+              className="bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0B5D2A] border border-gray-200 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"
+              title="Configure and manage reusable proposal templates in Settings"
+            >
+              <FileSignature className="w-3.5 h-3.5 text-[#168A45]" />
+              <span>Proposal Templates</span>
+            </button>
+          )}
+
           <button
             onClick={onExportCsv}
             className="bg-white hover:bg-[#EAF7EF] text-[#0B5D2A] border border-gray-200 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"

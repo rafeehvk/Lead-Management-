@@ -1,5 +1,6 @@
 import React from 'react';
 import { StaffMember } from '../../types/hr';
+import { storage } from '../../services/storageService';
 
 interface PrintableStaffOnboardingProps {
   onboardingData: Partial<StaffMember>;
@@ -10,6 +11,18 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
   onboardingData,
   id = 'printable-staff-onboarding-doc',
 }) => {
+  const settings = storage.getSettings();
+  const parentCompanyLegalName = settings.companyName || 'Casbiro Solutions Private Limited';
+  const brandName = settings.brandName || 'MYSAr';
+  const navLogo =
+    storage.getNavbarLogo() ||
+    storage.getDocumentLogo() ||
+    storage.getCompanyLogo() ||
+    settings.navbarLogo ||
+    settings.documentLogo ||
+    settings.companyLogo ||
+    '';
+
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -18,27 +31,43 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
 
   const staffId = onboardingData.id || onboardingData.staffId || 'EMP-2026-NEW';
   const fullName = onboardingData.fullName || 'Candidate Full Name';
+  const basicSalary = onboardingData.salary?.basicSalary || 38000;
+  const hra = onboardingData.salary?.hra || 0;
+  const allowances = onboardingData.salary?.allowances || 6800;
+  const grossSalary = onboardingData.salary?.grossSalary || basicSalary + hra + allowances;
+  const totalDeductions = onboardingData.salary?.totalDeductions || 2000;
+  const netSalary = onboardingData.salary?.netSalary || Math.max(0, grossSalary - totalDeductions);
+  const allowanceItems = onboardingData.salary?.allowanceItems || [];
+  const deductionItems = onboardingData.salary?.deductionItems || [];
 
   return (
     <div id={id} className="bg-slate-200 text-slate-800 font-sans select-none">
       {/* ======================= PAGE 1 ======================= */}
-      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-10 box-border">
-        <div>
+      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-9 box-border">
+        <div className="space-y-4">
           {/* Top Institutional Header */}
-          <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-4 mb-4">
+          <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-3.5">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-black text-xl tracking-tight shadow-xs">
-                M
-              </div>
-              <div>
-                <div className="text-[10px] font-bold tracking-widest text-[#0B5D2A] uppercase">
-                  CASBIRO SOLUTIONS PRIVATE LIMITED
+              {navLogo ? (
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center overflow-hidden shadow-2xs shrink-0">
+                  <img
+                    src={navLogo}
+                    alt={brandName}
+                    className="max-h-full max-w-full object-contain"
+                    crossOrigin="anonymous"
+                  />
                 </div>
-                <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
-                  MYSAR INSTITUTIONAL ERP
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-black text-xl tracking-tight shadow-xs shrink-0">
+                  {brandName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
+                  {parentCompanyLegalName}
                 </h1>
-                <div className="text-[11px] font-semibold text-emerald-800">
-                  Staff Registration & Institutional Onboarding Dossier
+                <div className="text-xs font-bold text-[#0B5D2A] mt-0.5">
+                  Staff Registration &amp; Onboarding
                 </div>
               </div>
             </div>
@@ -52,25 +81,10 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
             </div>
           </div>
 
-          {/* Banner */}
-          <div className="bg-gradient-to-r from-[#0B5D2A] to-[#168A45] text-white px-5 py-3 rounded-xl flex items-center justify-between mb-4 shadow-xs">
-            <div>
-              <div className="text-[10px] uppercase font-bold tracking-widest text-emerald-200">
-                Official Institutional Enrollment Application
-              </div>
-              <div className="text-base font-bold tracking-tight">NEW STAFF ONBOARDING FORM</div>
-            </div>
-            <div className="text-right text-[11px]">
-              <span className="bg-white/20 px-3 py-1 rounded-lg font-bold">
-                10-Section Form
-              </span>
-            </div>
-          </div>
-
           {/* Staff Top Banner */}
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-4 flex items-center justify-between">
+          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-xl bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-2xl font-black text-[#0B5D2A] shadow-xs shrink-0 overflow-hidden">
+              <div className="w-15 h-15 rounded-xl bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-2xl font-black text-[#0B5D2A] shadow-xs shrink-0 overflow-hidden">
                 {onboardingData.profilePhoto ? (
                   <img
                     src={onboardingData.profilePhoto}
@@ -108,12 +122,12 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
           </div>
 
           {/* Section 1: Personal Coordinates */}
-          <div className="mb-4">
+          <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 1
               </span>
-              <span>Personal Information & Identity Details</span>
+              <span>Personal Information &amp; Identity Details</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2 text-[10px]">
@@ -130,7 +144,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
                 <div className="font-bold text-rose-700 mt-0.5">{onboardingData.bloodGroup || 'O+'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-slate-400">Nationality & Marital</div>
+                <div className="text-slate-400">Nationality &amp; Marital</div>
                 <div className="font-bold text-slate-900 mt-0.5">
                   {onboardingData.nationality || 'Indian'} • {onboardingData.maritalStatus || 'Married'}
                 </div>
@@ -149,46 +163,48 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
                 <div className="font-bold text-slate-900 mt-0.5 truncate">{onboardingData.personalEmail || '—'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-slate-400">Official Assigned Email</div>
-                <div className="font-bold text-emerald-800 mt-0.5 truncate">{onboardingData.email || '—'}</div>
+                <div className="text-slate-400">Official Email</div>
+                <div className="font-bold text-emerald-800 mt-0.5 truncate">{onboardingData.officialEmail || onboardingData.email || '—'}</div>
               </div>
             </div>
 
-            {/* Emergency Contact */}
-            <div className="mt-2 p-2 bg-rose-50/60 rounded-lg border border-rose-200 flex items-center justify-between text-[10px]">
+            <div className="mt-2 p-2 bg-rose-50/70 rounded-lg border border-rose-200 flex items-center justify-between text-[10px]">
               <div>
-                <span className="font-bold text-rose-900">Emergency Contact: </span>
-                <span className="text-slate-800">
-                  {onboardingData.emergencyContact?.name || 'Contact Name'} ({onboardingData.emergencyContact?.relationship || 'Spouse'})
+                <span className="font-bold text-rose-900 uppercase">Emergency Contact: </span>
+                <span className="font-semibold text-slate-800">
+                  {onboardingData.emergencyContact?.name || '—'} ({onboardingData.emergencyContact?.relationship || 'Spouse'})
                 </span>
               </div>
-              <div className="font-bold text-rose-800 font-mono">{onboardingData.emergencyContact?.phone || '—'}</div>
+              <div className="font-bold text-rose-800 font-mono">
+                {onboardingData.emergencyContact?.phone || '—'}
+              </div>
             </div>
           </div>
 
-          {/* Section 2: Residential Addresses */}
-          <div className="mb-4">
+          {/* Section 2: Address Coordinates */}
+          <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 2
               </span>
-              <span>Address Information</span>
+              <span>Residential &amp; Communication Addresses</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-[10px]">
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-800 mb-1">Permanent Residential Address</div>
+                <div className="font-bold text-slate-800 mb-1">Permanent Address</div>
                 <div className="text-slate-600 leading-relaxed">
                   {onboardingData.permanentAddress?.addressLine1 || '—'}
                   {onboardingData.permanentAddress?.addressLine2 ? `, ${onboardingData.permanentAddress.addressLine2}` : ''}
                   {onboardingData.permanentAddress?.city ? `, ${onboardingData.permanentAddress.city}` : ''}
-                  {onboardingData.permanentAddress?.state ? `, ${onboardingData.permanentAddress.state}` : ''}
-                  {onboardingData.permanentAddress?.pinCode ? ` – ${onboardingData.permanentAddress.pinCode}` : ''}
+                  {onboardingData.permanentAddress?.district ? `, ${onboardingData.permanentAddress.district}` : ''}
+                  {onboardingData.permanentAddress?.state ? `, ${onboardingData.permanentAddress.state}` : ''} –{' '}
+                  {onboardingData.permanentAddress?.pinCode || '682001'}
                 </div>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="font-bold text-slate-800 mb-1">Communication / Current Address</div>
+                <div className="font-bold text-slate-800 mb-1">Communication / Present Address</div>
                 <div className="text-slate-600 leading-relaxed">
                   {onboardingData.communicationAddress?.sameAsPermanent
                     ? 'Same as Permanent Residential Address.'
@@ -198,31 +214,33 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
             </div>
           </div>
 
-          {/* Section 3: Institutional Employment Details */}
-          <div className="mb-4">
+          {/* Section 3: Employment & Posting */}
+          <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 3
               </span>
-              <span>Institutional Employment Details</span>
+              <span>Institutional Employment &amp; Posting Details</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2 text-[10px]">
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Department</div>
-                <div className="font-bold text-slate-800">{onboardingData.department || 'Academic'}</div>
+                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.department || 'Academic'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Designation</div>
-                <div className="font-bold text-emerald-800">{onboardingData.position || 'Staff'}</div>
+                <div className="font-bold text-emerald-800 mt-0.5">{onboardingData.position || '—'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Reporting Manager</div>
-                <div className="font-bold text-slate-800 truncate">{onboardingData.reportingManager || 'Principal'}</div>
+                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.reportingManager || 'Dr. Ramesh Nambiar'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-slate-400">Probation Period</div>
-                <div className="font-bold text-slate-800">{onboardingData.probationPeriod || '6 Months'}</div>
+                <div className="text-slate-400">Campus &amp; Probation</div>
+                <div className="font-bold text-slate-900 mt-0.5">
+                  {onboardingData.branchLocation || 'Main Campus'} ({onboardingData.probationPeriod || '6 Months'})
+                </div>
               </div>
             </div>
           </div>
@@ -233,32 +251,73 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 4
               </span>
-              <span>Prior Career & Employment Experience</span>
+              <span>Prior Career &amp; Employment Experience</span>
             </div>
 
             <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
               <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
                 <tr>
-                  <th className="p-1.5 border-b border-slate-200">Organization</th>
-                  <th className="p-1.5 border-b border-slate-200">Designation</th>
-                  <th className="p-1.5 border-b border-slate-200">Period</th>
-                  <th className="p-1.5 border-b border-slate-200 text-right">Reason for Leaving</th>
+                  <th className="p-2 border-b border-slate-200">Organization</th>
+                  <th className="p-2 border-b border-slate-200">Designation</th>
+                  <th className="p-2 border-b border-slate-200">Period</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Reason for Leaving</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {!onboardingData.experiences || onboardingData.experiences.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-2 text-center text-slate-400 italic">
+                    <td colSpan={4} className="p-2.5 text-center text-slate-400 italic">
                       Fresher / No prior organizational experience records entered.
                     </td>
                   </tr>
                 ) : (
                   onboardingData.experiences.map((exp, idx) => (
                     <tr key={exp.id || idx}>
-                      <td className="p-1.5 font-bold text-slate-800">{exp.organization}</td>
-                      <td className="p-1.5 text-emerald-800">{exp.designation}</td>
-                      <td className="p-1.5 text-slate-600">{exp.dateOfJoining} to {exp.dateOfLeaving || 'Present'}</td>
-                      <td className="p-1.5 text-right text-slate-500">{exp.reasonForLeaving || 'Career move'}</td>
+                      <td className="p-2 font-bold text-slate-800">{exp.organization}</td>
+                      <td className="p-2 text-emerald-800">{exp.designation}</td>
+                      <td className="p-2 text-slate-600">{exp.dateOfJoining} to {exp.dateOfLeaving || 'Present'}</td>
+                      <td className="p-2 text-right text-slate-500">{exp.reasonForLeaving || 'Career move'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Section 5: Qualifications (Moved to Page 1 to eliminate bottom blank space) */}
+          <div>
+            <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
+                5
+              </span>
+              <span>Educational &amp; Professional Qualifications</span>
+            </div>
+
+            <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
+              <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
+                <tr>
+                  <th className="p-2 border-b border-slate-200">Level</th>
+                  <th className="p-2 border-b border-slate-200">Course / Degree</th>
+                  <th className="p-2 border-b border-slate-200">Institution</th>
+                  <th className="p-2 border-b border-slate-200">Year</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Grade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {!onboardingData.qualifications || onboardingData.qualifications.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-2.5 text-center text-slate-400 italic">
+                      No qualification credentials cataloged.
+                    </td>
+                  </tr>
+                ) : (
+                  onboardingData.qualifications.map((q, idx) => (
+                    <tr key={q.id || idx}>
+                      <td className="p-2 font-medium text-slate-500">{q.level}</td>
+                      <td className="p-2 font-bold text-slate-800">{q.courseName}</td>
+                      <td className="p-2 text-slate-600">{q.institution}</td>
+                      <td className="p-2 text-slate-600">{q.yearOfPassing}</td>
+                      <td className="p-2 text-right font-bold text-emerald-800">{q.grade}</td>
                     </tr>
                   ))
                 )}
@@ -268,62 +327,88 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
         </div>
 
         {/* Page 1 Footer */}
-        <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[9px] text-slate-400">
-          <div>OFFICIAL MYSAR STAFF REGISTRATION APPLICATION • FOR HR USE ONLY</div>
+        <div className="border-t border-slate-200 pt-2.5 flex items-center justify-between text-[9px] text-slate-400">
+          <div className="uppercase">{parentCompanyLegalName} • STAFF REGISTRATION &amp; ONBOARDING • FOR HR USE ONLY</div>
           <div className="font-bold tracking-widest text-[#168A45]">PAGE 1 OF 2</div>
         </div>
       </div>
 
       {/* ======================= PAGE 2 ======================= */}
-      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-10 box-border mt-6">
-        <div>
+      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-9 box-border mt-6">
+        <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs">
-                M
+          <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-3">
+            <div className="flex items-center space-x-2.5">
+              {navLogo ? (
+                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
+                  <img
+                    src={navLogo}
+                    alt={brandName}
+                    className="max-h-full max-w-full object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {brandName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                  {parentCompanyLegalName}
+                </div>
+                <div className="font-bold text-[#0B5D2A] text-[10px]">
+                  Staff Registration &amp; Onboarding • {fullName} ({staffId})
+                </div>
               </div>
-              <span className="font-bold text-slate-900 text-xs">
-                MYSAR ERP • Staff Onboarding Dossier • {fullName} ({staffId})
-              </span>
             </div>
-            <div className="text-[10px] text-slate-500 font-medium">Page 2 of 2</div>
+            <div className="text-[10px] text-slate-500 font-semibold">Page 2 of 2</div>
           </div>
 
-          {/* Section 5: Qualifications */}
-          <div className="mb-4">
+          {/* Section 6: Family Contacts & Dependents */}
+          <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
-                5
+                6
               </span>
-              <span>Educational & Professional Qualifications</span>
+              <span>Family Contacts &amp; Institutional Dependents</span>
             </div>
 
             <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
               <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
                 <tr>
-                  <th className="p-1.5 border-b border-slate-200">Level</th>
-                  <th className="p-1.5 border-b border-slate-200">Course / Degree</th>
-                  <th className="p-1.5 border-b border-slate-200">Institution</th>
-                  <th className="p-1.5 border-b border-slate-200">Year</th>
-                  <th className="p-1.5 border-b border-slate-200 text-right">Grade</th>
+                  <th className="p-2 border-b border-slate-200">Member Name</th>
+                  <th className="p-2 border-b border-slate-200">Relationship</th>
+                  <th className="p-2 border-b border-slate-200">Occupation</th>
+                  <th className="p-2 border-b border-slate-200">Contact Number</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {!onboardingData.qualifications || onboardingData.qualifications.length === 0 ? (
+                {!onboardingData.familyMembers || onboardingData.familyMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-2 text-center text-slate-400 italic">
-                      No qualification credentials cataloged.
+                    <td colSpan={5} className="p-2.5 text-center text-slate-400 italic">
+                      No family members recorded.
                     </td>
                   </tr>
                 ) : (
-                  onboardingData.qualifications.map((q, idx) => (
-                    <tr key={q.id || idx}>
-                      <td className="p-1.5 font-medium text-slate-500">{q.level}</td>
-                      <td className="p-1.5 font-bold text-slate-800">{q.courseName}</td>
-                      <td className="p-1.5 text-slate-600">{q.institution}</td>
-                      <td className="p-1.5 text-slate-600">{q.yearOfPassing}</td>
-                      <td className="p-1.5 text-right font-bold text-emerald-800">{q.grade}</td>
+                  onboardingData.familyMembers.map((fam, idx) => (
+                    <tr key={fam.id || idx}>
+                      <td className="p-2 font-bold text-slate-800">{fam.name}</td>
+                      <td className="p-2 text-slate-600">{fam.relationship}</td>
+                      <td className="p-2 text-slate-600">{fam.occupation || '—'}</td>
+                      <td className="p-2 font-mono text-slate-700">{fam.contactNumber}</td>
+                      <td className="p-2 text-right">
+                        {fam.isEmergencyContact ? (
+                          <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[8px]">
+                            Emergency
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[8px]">
+                            Dependent
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -331,86 +416,137 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
             </table>
           </div>
 
-          {/* Section 6 & 7: Family Contacts + Bank Details */}
-          <div className="grid grid-cols-2 gap-3 mb-4 text-[10px]">
-            {/* Family */}
-            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="font-bold text-slate-800 mb-1 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-100 text-[#0B5D2A] text-[9px] flex items-center justify-center font-bold">6</span>
-                <span>Family Contacts & Dependents</span>
+          {/* Section 7: Bank Account & Full Itemized Compensation Structure */}
+          <div>
+            <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
+                7
+              </span>
+              <span>Bank Account &amp; Statutory Compensation Structure</span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 text-[10px] mb-2.5">
+              <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-slate-400">Bank Name</div>
+                <div className="font-bold text-slate-900 mt-0.5 truncate">{onboardingData.salary?.bankDetails?.bankName || onboardingData.bankPayroll?.bankName || 'State Bank of India'}</div>
               </div>
-              <div className="space-y-1.5">
-                {!onboardingData.familyMembers || onboardingData.familyMembers.length === 0 ? (
-                  <div className="text-slate-400 italic text-[9px]">No family members recorded.</div>
-                ) : (
-                  onboardingData.familyMembers.map((fam, idx) => (
-                    <div key={fam.id || idx} className="flex justify-between items-center text-[9px]">
-                      <div>
-                        <b>{fam.name}</b> ({fam.relationship})
-                      </div>
-                      <div className="text-slate-500">{fam.contactNumber}</div>
-                    </div>
-                  ))
-                )}
+              <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-slate-400">Account Number</div>
+                <div className="font-bold font-mono text-slate-900 mt-0.5">{onboardingData.salary?.bankDetails?.accountNo || onboardingData.bankPayroll?.accountNo || '••••••••4819'}</div>
+              </div>
+              <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-slate-400">IFSC &amp; Branch</div>
+                <div className="font-bold text-slate-900 mt-0.5 truncate">
+                  {onboardingData.salary?.bankDetails?.ifscCode || 'SBIN0002144'} • {onboardingData.salary?.bankDetails?.branch || 'Kochi'}
+                </div>
+              </div>
+              <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="text-emerald-800 font-semibold">Net Monthly Salary</div>
+                <div className="font-black text-emerald-950 text-xs mt-0.5">₹{netSalary.toLocaleString('en-IN')}/mo</div>
               </div>
             </div>
 
-            {/* Bank & Salary */}
-            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="font-bold text-slate-800 mb-1 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-100 text-[#0B5D2A] text-[9px] flex items-center justify-center font-bold">7</span>
-                <span>Bank Account & Statutory Payroll</span>
-              </div>
-              <div className="space-y-1 text-[9px]">
-                <div className="flex justify-between"><span className="text-slate-500">Bank:</span><b>{onboardingData.salary?.bankDetails?.bankName || 'State Bank of India'}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Account:</span><b className="font-mono">{onboardingData.salary?.bankDetails?.accountNo || '••••••••4819'}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">IFSC:</span><b>{onboardingData.salary?.bankDetails?.ifscCode || 'SBIN0002144'}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Gross Salary:</span><b className="text-slate-900">₹{(onboardingData.salary?.grossSalary || 62000).toLocaleString('en-IN')}/mo</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Allowances:</span><b className="text-slate-800">₹{(onboardingData.salary?.allowances || 6800).toLocaleString('en-IN')}/mo</b></div>
-                {onboardingData.salary?.allowanceItems && onboardingData.salary.allowanceItems.length > 0 && (
-                  <div className="text-[8px] text-slate-600 pl-1 border-l border-emerald-300 space-y-0.5 my-0.5">
-                    {onboardingData.salary.allowanceItems.slice(0, 3).map((item, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>• {item.name}:</span>
-                        <span>₹{item.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    {onboardingData.salary.allowanceItems.length > 3 && (
-                      <div className="text-[7.5px] text-slate-400">+ {onboardingData.salary.allowanceItems.length - 3} more items</div>
-                    )}
+            <div className="grid grid-cols-2 gap-3 text-[10px]">
+              {/* Earnings Breakdown */}
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                <div className="font-bold text-emerald-900 border-b border-slate-200 pb-1 flex justify-between">
+                  <span>Monthly Earnings &amp; Allowances</span>
+                  <span>Amount (₹)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Basic Salary</span>
+                  <span className="font-bold font-mono text-slate-900">₹{basicSalary.toLocaleString('en-IN')}</span>
+                </div>
+                {hra > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">House Rent Allowance (HRA)</span>
+                    <span className="font-bold font-mono text-slate-900">₹{hra.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                <div className="flex justify-between"><span className="text-slate-500">Net Take-Home:</span><b className="text-emerald-800">₹{(onboardingData.salary?.netSalary || 58700).toLocaleString('en-IN')}/mo</b></div>
+                {allowanceItems.length > 0 ? (
+                  allowanceItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span className="text-slate-600">{item.name}</span>
+                      <span className="font-semibold font-mono text-slate-800">₹{Number(item.amount || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Standard Allowances</span>
+                    <span className="font-semibold font-mono text-slate-800">₹{allowances.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="pt-1 border-t border-slate-200 flex justify-between font-bold text-emerald-950">
+                  <span>Gross Monthly Salary</span>
+                  <span className="font-mono">₹{grossSalary.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Deductions & Statutory */}
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <div className="font-bold text-rose-900 border-b border-slate-200 pb-1 flex justify-between">
+                    <span>Statutory Deductions &amp; IDs</span>
+                    <span>Amount (₹)</span>
+                  </div>
+                  {deductionItems.length > 0 ? (
+                    deductionItems.map((item, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span className="text-slate-600">{item.name}</span>
+                        <span className="font-semibold font-mono text-rose-800">₹{Number(item.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Employee PF Contribution</span>
+                        <span className="font-semibold font-mono text-rose-800">₹{(onboardingData.salary?.pfDeduction ?? 1800).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Professional Tax / TDS</span>
+                        <span className="font-semibold font-mono text-rose-800">₹{(onboardingData.salary?.taxDeduction ?? 200).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="pt-1 border-t border-slate-200 flex justify-between font-bold text-rose-900">
+                    <span>Total Monthly Deductions</span>
+                    <span className="font-mono">₹{totalDeductions.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="pt-2 mt-2 border-t border-slate-200 text-[9px] text-slate-500 flex justify-between">
+                  <span>UAN: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.uan || '100984712093'}</b></span>
+                  <span>PF: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.pfNumber || 'KR/KCH/0048192'}</b></span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Section 8 & 9: Document Checklist + System Access */}
-          <div className="grid grid-cols-2 gap-3 mb-4 text-[10px]">
+          <div className="grid grid-cols-2 gap-3 text-[10px]">
             {/* Documents */}
-            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="font-bold text-slate-800 mb-1 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
                 <span className="w-4 h-4 rounded-full bg-emerald-100 text-[#0B5D2A] text-[9px] flex items-center justify-center font-bold">8</span>
                 <span>Document Verification Checklist</span>
               </div>
-              <div className="grid grid-cols-2 gap-1 text-[9px]">
-                <div className="flex items-center space-x-1 text-emerald-800">✓ Aadhaar Card: {onboardingData.aadhaarNumber || 'Verified'}</div>
-                <div className="flex items-center space-x-1 text-emerald-800">✓ PAN Card: {onboardingData.panNumber || 'Verified'}</div>
-                <div className="flex items-center space-x-1 text-emerald-800">✓ Passport Photos (Uploaded)</div>
-                <div className="flex items-center space-x-1 text-emerald-800">✓ Resume / CV (Uploaded)</div>
-                <div className="flex items-center space-x-1 text-emerald-800">✓ Qualification Certificates</div>
-                <div className="flex items-center space-x-1 text-emerald-800">✓ Relieving / Experience Docs</div>
+              <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ Aadhaar: {onboardingData.aadhaarNumber || 'Verified'}</div>
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ PAN Card: {onboardingData.panNumber || 'Verified'}</div>
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ Passport Photos (Uploaded)</div>
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ Resume / CV (Uploaded)</div>
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ Qualification Certificates</div>
+                <div className="flex items-center space-x-1 text-emerald-800 font-medium">✓ Relieving / Experience Docs</div>
               </div>
             </div>
 
             {/* System Access */}
-            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="font-bold text-slate-800 mb-1 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="font-bold text-slate-800 mb-1.5 border-b border-slate-200 pb-1 flex items-center space-x-1.5">
                 <span className="w-4 h-4 rounded-full bg-emerald-100 text-[#0B5D2A] text-[9px] flex items-center justify-center font-bold">9</span>
-                <span>ERP & Software Access Permissions</span>
+                <span>System &amp; Software Access Permissions</span>
               </div>
               <div className="space-y-1 text-[9px]">
-                <div className="flex justify-between"><span className="text-slate-500">System Username:</span><b>{onboardingData.systemAccess?.username || 'meera.g'}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">System Username:</span><b className="font-mono">{onboardingData.systemAccess?.username || 'staff.user'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Assigned Role:</span><b>{onboardingData.systemAccess?.role || 'Staff / Faculty'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Access Level:</span><b>{onboardingData.systemAccess?.accessLevel || 'Standard'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Branch Allowed:</span><b>{onboardingData.systemAccess?.branchAccess || 'All Branches'}</b></div>
@@ -424,16 +560,16 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 10
               </span>
-              <span>Candidate Declaration & Official Verification Sign-Off</span>
+              <span>Candidate Declaration &amp; Official Verification Sign-Off</span>
             </div>
 
-            <p className="text-[9px] text-slate-600 leading-relaxed mb-4">
+            <p className="text-[9.5px] text-slate-600 leading-relaxed mb-5">
               I hereby solemnly declare that all statements and particulars provided in this staff onboarding dossier are true,
               complete, and authentic to the best of my knowledge and belief. I agree to abide by the service rules, institutional
-              code of conduct, and confidentiality protocols established by Casbiro Solutions Private Limited (MYSAR).
+              code of conduct, and confidentiality protocols established by {parentCompanyLegalName} ({brandName}).
             </p>
 
-            <div className="grid grid-cols-3 gap-4 text-[9px] text-center pt-2">
+            <div className="grid grid-cols-3 gap-5 text-[9.5px] text-center pt-3">
               <div className="flex flex-col justify-end">
                 <div className="border-b border-slate-400 pb-1 font-semibold text-slate-800 font-mono">
                   {fullName}
@@ -450,8 +586,8 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
 
               <div className="flex flex-col justify-end items-center">
                 <div className="w-12 h-12 rounded-full border-2 border-emerald-700 flex flex-col items-center justify-center text-[7px] font-bold text-emerald-800 mb-1 leading-tight uppercase">
-                  <span>MYSAR</span>
-                  <span>ENROLL</span>
+                  <span>{brandName}</span>
+                  <span>VERIFIED</span>
                 </div>
                 <div className="border-b border-slate-400 w-full pb-1 font-semibold text-slate-800">
                   {onboardingData.verification?.verifiedBy || 'Dr. Ramesh Nambiar (Principal)'}
@@ -463,8 +599,8 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
         </div>
 
         {/* Page 2 Footer */}
-        <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[9px] text-slate-400">
-          <div>CASBIRO SOLUTIONS PRIVATE LIMITED • OFFICIAL ENROLLMENT DOSSIER</div>
+        <div className="border-t border-slate-200 pt-2.5 flex items-center justify-between text-[9px] text-slate-400">
+          <div className="uppercase">{parentCompanyLegalName} • STAFF REGISTRATION &amp; ONBOARDING DOSSIER</div>
           <div className="font-bold tracking-widest text-[#168A45]">PAGE 2 OF 2</div>
         </div>
       </div>

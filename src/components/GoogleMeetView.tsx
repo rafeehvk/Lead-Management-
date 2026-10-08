@@ -390,7 +390,7 @@ Casbiro Solutions Private Limited`;
 
       {/* AUTHENTICATION PROMPT CARD (If not connected) */}
       {!isAuthenticated && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4 max-w-2xl mx-auto my-6 text-center">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4 w-full my-6 text-center">
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-[#168A45] flex items-center justify-center mx-auto shadow-2xs">
             <Video className="w-7 h-7" />
           </div>

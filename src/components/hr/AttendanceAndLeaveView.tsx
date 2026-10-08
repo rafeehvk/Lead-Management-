@@ -22,7 +22,9 @@ import {
   Sparkles,
   ArrowRight,
   User,
+  LayoutGrid,
 } from 'lucide-react';
+import { WeeklyAttendanceHeatmap } from './WeeklyAttendanceHeatmap';
 import {
   DailyAttendanceRecord,
   LeaveRequest,
@@ -69,7 +71,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
   onSubmitLeaveRequest,
   onUpdateLeaveStatus,
 }) => {
-  const [activeTab, setActiveTab] = useState<'attendance' | 'leave-requests' | 'leave-balances'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'heatmap' | 'leave-requests' | 'leave-balances'>('attendance');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -182,6 +184,18 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
           >
             <Clock className="w-4 h-4 text-[#168A45]" />
             <span>Daily Biometric Attendance</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('heatmap')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'heatmap'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] border border-[#D9E5DD] shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4 text-[#168A45]" />
+            <span>Weekly Attendance Heatmap</span>
           </button>
 
           <button
@@ -374,7 +388,25 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
               </table>
             </div>
           </div>
+
+          {/* Weekly Attendance Heatmap inside Attendance Overview */}
+          <WeeklyAttendanceHeatmap
+            staff={staff}
+            attendance={attendance}
+            leaveRequests={leaveRequests}
+            onMarkAttendance={onMarkAttendance}
+          />
         </div>
+      )}
+
+      {/* SUB-TAB: WEEKLY ATTENDANCE HEATMAP */}
+      {activeTab === 'heatmap' && (
+        <WeeklyAttendanceHeatmap
+          staff={staff}
+          attendance={attendance}
+          leaveRequests={leaveRequests}
+          onMarkAttendance={onMarkAttendance}
+        />
       )}
 
       {/* SUB-TAB 2: LEAVE REQUESTS */}

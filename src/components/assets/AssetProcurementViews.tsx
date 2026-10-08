@@ -684,7 +684,7 @@ export const AssetReceivingView: React.FC<{
   };
 
   return (
-    <div className="space-y-4 pb-12 animate-in fade-in max-w-3xl">
+    <div className="space-y-4 pb-12 animate-in fade-in w-full">
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
         <h2 className="text-base font-bold text-slate-900">Goods Receiving / GRN (Intake Verification)</h2>
         <p className="text-xs text-slate-500">

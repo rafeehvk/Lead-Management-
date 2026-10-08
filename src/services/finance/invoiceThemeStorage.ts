@@ -3,21 +3,35 @@ import {
   DocumentThemeConfig,
   ThemedDocumentCategory,
   DEFAULT_INVOICE_THEMES,
+  DEFAULT_ITEM_TABLE_CONTENT,
 } from '../../types/invoiceTheme';
 
 const INVOICE_THEMES_STORAGE_KEY = 'mysar_erp_invoice_themes_v1';
 
 class InvoiceThemeStorageService {
+  private mergeTheme(def: DocumentThemeConfig, custom?: Partial<DocumentThemeConfig>): DocumentThemeConfig {
+    return {
+      ...def,
+      ...(custom || {}),
+      showItemTable: custom?.showItemTable !== undefined ? custom.showItemTable : def.showItemTable ?? true,
+      itemTableContent: {
+        ...DEFAULT_ITEM_TABLE_CONTENT,
+        ...(def.itemTableContent || {}),
+        ...(custom?.itemTableContent || {}),
+      },
+    };
+  }
+
   private getStorage(): InvoiceThemesSettings {
     try {
       const data = localStorage.getItem(INVOICE_THEMES_STORAGE_KEY);
       if (!data) return DEFAULT_INVOICE_THEMES;
       const parsed = JSON.parse(data);
       return {
-        salesTheme: { ...DEFAULT_INVOICE_THEMES.salesTheme, ...(parsed.salesTheme || {}) },
-        purchaseTheme: { ...DEFAULT_INVOICE_THEMES.purchaseTheme, ...(parsed.purchaseTheme || {}) },
-        receiptTheme: { ...DEFAULT_INVOICE_THEMES.receiptTheme, ...(parsed.receiptTheme || {}) },
-        paymentTheme: { ...DEFAULT_INVOICE_THEMES.paymentTheme, ...(parsed.paymentTheme || {}) },
+        salesTheme: this.mergeTheme(DEFAULT_INVOICE_THEMES.salesTheme, parsed.salesTheme),
+        purchaseTheme: this.mergeTheme(DEFAULT_INVOICE_THEMES.purchaseTheme, parsed.purchaseTheme),
+        receiptTheme: this.mergeTheme(DEFAULT_INVOICE_THEMES.receiptTheme, parsed.receiptTheme),
+        paymentTheme: this.mergeTheme(DEFAULT_INVOICE_THEMES.paymentTheme, parsed.paymentTheme),
       };
     } catch (e) {
       console.error('Failed to load invoice themes settings', e);

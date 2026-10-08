@@ -10,6 +10,8 @@ interface PrintableProposalDocumentProps {
   id?: string;
   showPageBadges?: boolean;
   documentMode?: 'full' | 'agreementOnly';
+  className?: string;
+  isPrintMode?: boolean;
 }
 
 // Decorative SVG Wave Curve for Page Top-Right
@@ -93,13 +95,39 @@ const MysarLogo: React.FC<{ companyLogo?: string; brandName?: string }> = ({ com
 };
 
 // Bottom Page Bar across all document pages
-const PageFooter: React.FC<{ pageNumber: number; companyName?: string }> = ({ pageNumber, companyName }) => (
+const PageFooter: React.FC<{
+  pageNumber: number;
+  companyName?: string;
+  customFooterEnabled?: boolean;
+  customFooterText?: string;
+  customFooterSubtext?: string;
+  isPrintMode?: boolean;
+}> = ({
+  pageNumber,
+  companyName,
+  customFooterEnabled,
+  customFooterText,
+  customFooterSubtext,
+  isPrintMode,
+}) => (
   <div className="w-full mt-auto">
+    {customFooterEnabled && (customFooterText || customFooterSubtext) && (
+      <div
+        className={`w-full border-t border-emerald-200/80 bg-[#F7FAF8] px-10 py-1.5 flex items-center justify-between gap-4 text-[9.5px] text-slate-600 select-none ${
+          isPrintMode ? 'flex' : 'hidden print:flex proposal-print-footer-band'
+        }`}
+      >
+        <span className="font-semibold text-slate-700 truncate">{customFooterText}</span>
+        {customFooterSubtext && (
+          <span className="font-medium text-[#0B5D2A] shrink-0">{customFooterSubtext}</span>
+        )}
+      </div>
+    )}
     <div className="h-8 bg-[#168A45] flex items-center justify-between px-10 text-white text-[10px] select-none">
-      <span className="font-semibold tracking-wider uppercase">
+      <span className="font-semibold tracking-wider uppercase truncate pr-4">
         MYSAR • {companyName ? companyName.toUpperCase() : 'CASBIRO SOLUTIONS PRIVATE LIMITED'}
       </span>
-      <span className="font-bold tracking-widest uppercase">PAGE {pageNumber}</span>
+      <span className="font-bold tracking-widest uppercase shrink-0">PAGE {pageNumber}</span>
     </div>
   </div>
 );
@@ -110,11 +138,14 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
   id = 'mysar-proposal-printable-document',
   showPageBadges = true,
   documentMode = 'full',
+  className = '',
+  isPrintMode = false,
 }) => {
   const companyLogo = settings?.documentLogo || settings?.companyLogo;
   const brandName = settings?.brandName || 'MYSAR';
   const companyName = settings?.companyName || 'Casbiro Solutions Private Limited';
   const content = getEffectiveProposalContent(settings);
+  const proposalTheme = content.proposalTheme || DEFAULT_PROPOSAL_CONTENT.proposalTheme!;
 
   // Filter live modules
   const liveModules = content.modules.filter((m) => m.isLive);
@@ -265,9 +296,9 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       ];
 
   const renderPageBadge = (pageIdx: number) => {
-    if (!showPageBadges) return null;
+    if (!showPageBadges || isPrintMode) return null;
     return (
-      <div className="no-print flex items-center justify-between text-xs font-semibold text-slate-500 py-2 px-1 w-[794px] max-w-full">
+      <div className="no-print proposal-no-print flex items-center justify-between text-xs font-semibold text-slate-500 py-2 px-1 w-[794px] max-w-full">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-[#168A45]"></span>
           <span className="text-slate-700 font-bold">Page {pageIdx + 1} of {totalPages}</span>
@@ -279,19 +310,63 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
     );
   };
 
+  const resolvedHeaderText = replacePlaceholders(proposalTheme.printHeaderText || '');
+  const resolvedHeaderSubtext = replacePlaceholders(proposalTheme.printHeaderSubtext || '');
+  const resolvedFooterText = replacePlaceholders(proposalTheme.printFooterText || '');
+  const resolvedFooterSubtext = replacePlaceholders(proposalTheme.printFooterSubtext || '');
+
+  const renderPrintHeader = (isCoverPage = false) => {
+    if (!proposalTheme.printHeaderEnabled) return null;
+    if (isCoverPage && !proposalTheme.showHeaderOnCoverPage) return null;
+    if (!resolvedHeaderText && !resolvedHeaderSubtext) return null;
+
+    return (
+      <div
+        className={`w-full border-b border-emerald-200/80 bg-[#F7FAF8] px-12 py-1.5 flex items-center justify-between gap-4 text-[9.5px] text-slate-600 select-none z-10 shrink-0 ${
+          isPrintMode ? 'flex' : 'hidden print:flex proposal-print-header-band'
+        }`}
+      >
+        <span className="font-bold text-[#0B5D2A] tracking-wide uppercase truncate">
+          {resolvedHeaderText}
+        </span>
+        {resolvedHeaderSubtext && (
+          <span className="font-mono font-semibold text-slate-600 shrink-0">
+            {resolvedHeaderSubtext}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderPageFooter = (pageNumber: number) => (
+    <PageFooter
+      pageNumber={pageNumber}
+      companyName={companyName}
+      customFooterEnabled={proposalTheme.printFooterEnabled}
+      customFooterText={resolvedFooterText}
+      customFooterSubtext={resolvedFooterSubtext}
+      isPrintMode={isPrintMode}
+    />
+  );
+
   return (
     <div
       id={id}
-      className="bg-transparent text-slate-800 font-sans w-full flex flex-col items-center space-y-10 print:space-y-0 print:w-full"
+      className={`bg-transparent text-slate-800 font-sans w-full flex flex-col items-center ${
+        isPrintMode
+          ? 'proposal-sheet-print-mode proposal-sheet-a4-print space-y-0'
+          : 'space-y-10 print:space-y-0'
+      } print:w-full ${className}`}
     >
       {documentMode !== 'agreementOnly' && (
         <>
           {/* ========================================================================= */}
           {/* PAGE 1: COVER PAGE */}
           {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(0)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader(true)}
           <TopRightWaves />
 
           {/* Header Logo */}
@@ -338,28 +413,44 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
           </div>
 
           {/* Bottom Green Banner (Page 1 Cover) */}
-          <div className="w-full mt-auto bg-[#168A45] text-white px-12 py-7 flex justify-between items-center relative overflow-hidden">
-            <div className="space-y-1 z-10">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-white/80">
-                Proposal Date
+          <div className="w-full mt-auto">
+            {proposalTheme.printFooterEnabled &&
+              proposalTheme.showFooterOnCoverPage !== false &&
+              (resolvedFooterText || resolvedFooterSubtext) && (
+                <div
+                  className={`w-full border-t border-emerald-200/80 bg-[#F7FAF8] px-12 py-1.5 flex items-center justify-between gap-4 text-[9.5px] text-slate-600 select-none ${
+                    isPrintMode ? 'flex' : 'hidden print:flex proposal-print-footer-band'
+                  }`}
+                >
+                  <span className="font-semibold text-slate-700 truncate">{resolvedFooterText}</span>
+                  {resolvedFooterSubtext && (
+                    <span className="font-medium text-[#0B5D2A] shrink-0">{resolvedFooterSubtext}</span>
+                  )}
+                </div>
+              )}
+            <div className="w-full bg-[#168A45] text-white px-12 py-7 flex justify-between items-center relative overflow-hidden">
+              <div className="space-y-1 z-10">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-white/80">
+                  Proposal Date
+                </div>
+                <div className="text-sm font-black text-white">
+                  {proposal.proposalDate || '28 April 2026'}
+                </div>
+                <div className="text-xs text-white/80">
+                  Ref: <span className="font-bold">{proposal.proposalNumber}</span>
+                  <span className="ml-2 px-1.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-bold">
+                    v{proposal.version || 1}
+                  </span>
+                </div>
               </div>
-              <div className="text-sm font-black text-white">
-                {proposal.proposalDate || '28 April 2026'}
-              </div>
-              <div className="text-xs text-white/80">
-                Ref: <span className="font-bold">{proposal.proposalNumber}</span>
-                <span className="ml-2 px-1.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-bold">
-                  v{proposal.version || 1}
-                </span>
-              </div>
-            </div>
 
-            <div className="z-10 text-right">
-              <div className="text-lg font-black tracking-wider text-white uppercase">
-                {companyName ? companyName.split(' ')[0] : 'CASBIRO'}
-              </div>
-              <div className="text-[10px] tracking-widest text-white/80 font-bold uppercase">
-                — SOLUTIONS PVT. LTD. —
+              <div className="z-10 text-right">
+                <div className="text-lg font-black tracking-wider text-white uppercase">
+                  {companyName ? companyName.split(' ')[0] : 'CASBIRO'}
+                </div>
+                <div className="text-[10px] tracking-widest text-white/80 font-bold uppercase">
+                  — SOLUTIONS PVT. LTD. —
+                </div>
               </div>
             </div>
           </div>
@@ -369,9 +460,10 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       {/* ========================================================================= */}
       {/* PAGE 2: TABLE OF CONTENTS */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(1)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -405,16 +497,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={2} companyName={companyName} />
+          {renderPageFooter(2)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 3: 1. ABOUT COMPANY */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(2)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -454,16 +547,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             )}
           </div>
 
-          <PageFooter pageNumber={3} companyName={companyName} />
+          {renderPageFooter(3)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 4: 2. ABOUT MYSAR */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(3)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -497,16 +591,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             )}
           </div>
 
-          <PageFooter pageNumber={4} companyName={companyName} />
+          {renderPageFooter(4)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 5: 3. MODULES IN MYSAR (Part 1) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(4)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -542,16 +637,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={5} companyName={companyName} />
+          {renderPageFooter(5)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 6: 3. MODULES IN MYSAR (Part 2) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(5)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -583,16 +679,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={6} companyName={companyName} />
+          {renderPageFooter(6)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 7: 3. MODULES IN MYSAR (Part 3) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(6)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -634,16 +731,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={7} companyName={companyName} />
+          {renderPageFooter(7)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 8: 4. REPORTS IN MYSAR (Part 1) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(7)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -675,16 +773,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={8} companyName={companyName} />
+          {renderPageFooter(8)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 9: 4. REPORTS IN MYSAR (Part 2) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(8)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -723,16 +822,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={9} companyName={companyName} />
+          {renderPageFooter(9)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 10: 5. SERVICES FROM TEAM MYSAR (Part 1) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(9)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -762,16 +862,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={10} companyName={companyName} />
+          {renderPageFooter(10)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 11: 5. SERVICES FROM TEAM MYSAR (Part 2) */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(10)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -808,16 +909,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={11} companyName={companyName} />
+          {renderPageFooter(11)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 12: 6. PRICING & COMMERCIAL OPTIONS */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(11)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -919,16 +1021,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={12} companyName={companyName} />
+          {renderPageFooter(12)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 13: 7. CONTACT INFORMATION */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(12)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -990,16 +1093,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={13} companyName={companyName} />
+          {renderPageFooter(13)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 14: 8. CONCLUSION */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(13)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -1063,7 +1167,7 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter pageNumber={14} companyName={companyName} />
+          {renderPageFooter(14)}
         </div>
       </div>
         </>
@@ -1072,9 +1176,10 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
       {/* ========================================================================= */}
       {/* PAGE 15: 9. PROPOSAL SUMMARY, PRICE DETAILS & AGREEMENT PERIOD */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(documentMode === 'agreementOnly' ? 0 : 14)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -1287,19 +1392,17 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter
-            pageNumber={documentMode === 'agreementOnly' ? 1 : 15}
-            companyName={companyName}
-          />
+          {renderPageFooter(documentMode === 'agreementOnly' ? 1 : 15)}
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* PAGE 16: 9. PAYMENT SCHEDULE, TERMS & DUAL SIGNATURES */}
       {/* ========================================================================= */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center proposal-page-wrapper">
         {renderPageBadge(documentMode === 'agreementOnly' ? 1 : 15)}
         <div className="proposal-page proposal-page-card">
+          {renderPrintHeader()}
           <TopRightWaves />
           <div className="pt-7 px-12 pb-1 shrink-0">
             <MysarLogo companyLogo={companyLogo} brandName={brandName} />
@@ -1505,10 +1608,7 @@ export const PrintableProposalDocument: React.FC<PrintableProposalDocumentProps>
             </div>
           </div>
 
-          <PageFooter
-            pageNumber={documentMode === 'agreementOnly' ? 2 : 16}
-            companyName={companyName}
-          />
+          {renderPageFooter(documentMode === 'agreementOnly' ? 2 : 16)}
         </div>
       </div>
     </div>

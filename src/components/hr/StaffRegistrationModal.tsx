@@ -49,11 +49,15 @@ import {
   StaffDocument,
   StaffDocumentReference,
   DepartmentMaster,
+  BranchMaster,
   AllowanceItem,
+  DeductionItem,
 } from '../../types/hr';
 import { PrintableStaffOnboarding } from './PrintableStaffOnboarding';
+import { ProfilePhotoUploader } from '../ProfilePhotoUploader';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
+import { ONBOARDING_ASSIGNABLE_MODULES } from '../../utils/menuPermissions';
 
 export interface StaffRegistrationModalProps {
   isOpen: boolean;
@@ -61,6 +65,7 @@ export interface StaffRegistrationModalProps {
   onSave: (staffData: Partial<StaffMember>) => void;
   existingStaffCount: number;
   staffToEdit?: StaffMember | null;
+  prefillStaffData?: Partial<StaffMember> | null;
 }
 
 type TabKey =
@@ -101,12 +106,19 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   onSave,
   existingStaffCount,
   staffToEdit,
+  prefillStaffData,
 }) => {
   const isEditMode = Boolean(staffToEdit);
+  const isPrefillMode = Boolean(!staffToEdit && prefillStaffData);
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
 
   // Department Master table integration & continuous ID generation: CB/{DeptCode}/{ContinuesNumber}
   const [departmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
+  const [branchesList, setBranchesList] = useState<BranchMaster[]>(() => hrStorage.getBranchesMaster());
+  const [isQuickAddBranchOpen, setIsQuickAddBranchOpen] = useState(false);
+  const [newBranchNameInput, setNewBranchNameInput] = useState('');
+  const [newBranchCodeInput, setNewBranchCodeInput] = useState('');
+  const [newBranchCityInput, setNewBranchCityInput] = useState('');
   const initialDept = departmentsList[0] || { departmentCode: '101', departmentName: 'Academic', reporting: 'Dr. Ramesh Nambiar' };
   const [departmentCode, setDepartmentCode] = useState(initialDept.departmentCode);
 
@@ -235,7 +247,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [pfNumber, setPfNumber] = useState('KR/KCH/0048192/000/1209');
   const [esiNumber, setEsiNumber] = useState('4800918234001');
   const [basicSalary, setBasicSalary] = useState(38000);
-  const [hra, setHra] = useState(15200);
+  const [hra, setHra] = useState(0);
   const [allowanceItems, setAllowanceItems] = useState<AllowanceItem[]>([
     { id: 'all-room', name: 'Room Allowance', amount: 3000 },
     { id: 'all-trans', name: 'Transportation', amount: 2000 },
@@ -243,7 +255,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     { id: 'all-med', name: 'Medical Allowance', amount: 800 },
   ]);
   const [allowances, setAllowances] = useState(6800);
-  const [specialAllowance, setSpecialAllowance] = useState(2000);
+  const [specialAllowance, setSpecialAllowance] = useState(0);
+  const [deductionItems, setDeductionItems] = useState<DeductionItem[]>([]);
   const [pfDeduction, setPfDeduction] = useState(1800);
   const [taxDeduction, setTaxDeduction] = useState(1500);
 
@@ -313,85 +326,96 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
   const [copiedPass, setCopiedPass] = useState(false);
 
-  // Synchronize state when opening in Edit mode or Resetting for Add mode
+  // Synchronize state when opening in Edit mode, Prefill mode (from Appointment Letter), or Resetting for Add mode
   useEffect(() => {
     if (!isOpen) return;
 
-    if (staffToEdit) {
-      const existingId = staffToEdit.staffCode || staffToEdit.id || '';
+    const latestBranches = hrStorage.getBranchesMaster();
+    setBranchesList(latestBranches);
+    const defaultBranchName = latestBranches[0]?.branchName || 'Kochi Main Campus';
+
+    setActiveTab('personal');
+    const sourceData = staffToEdit || prefillStaffData;
+
+    if (sourceData) {
+      const code = sourceData.departmentCode || hrStorage.getDepartmentCodeByNameOrCode(sourceData.department || 'Academic');
+      const existingId = sourceData.staffCode || sourceData.id || hrStorage.generateNextEmployeeId(code);
       setStaffId(existingId);
-      setFullName(staffToEdit.fullName || '');
-      setProfilePhoto(staffToEdit.profilePhoto || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80');
-      setGender(staffToEdit.gender || 'Female');
-      setDateOfBirth(staffToEdit.dateOfBirth || '1990-01-01');
-      setBloodGroup(staffToEdit.bloodGroup || 'O+');
-      setNationality(staffToEdit.nationality || 'Indian');
-      setMaritalStatus(staffToEdit.maritalStatus || 'Married');
-      setPersonalEmail(staffToEdit.personalEmail || '');
-      setOfficialEmail(staffToEdit.email || '');
-      setContactNumber(staffToEdit.contactNumber || '');
-      setWhatsappNumber(staffToEdit.whatsappNumber || staffToEdit.contactNumber || '');
-      setEmergencyContactName(staffToEdit.emergencyContact?.name || '');
-      setEmergencyRelationship(staffToEdit.emergencyContact?.relationship || 'Spouse');
-      setEmergencyPhone(staffToEdit.emergencyContact?.phone || '');
+      setFullName(sourceData.fullName || '');
+      setProfilePhoto(
+        sourceData.profilePhoto !== undefined
+          ? sourceData.profilePhoto
+          : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+      );
+      setGender(sourceData.gender || 'Female');
+      setDateOfBirth(sourceData.dateOfBirth || '1994-06-15');
+      setBloodGroup(sourceData.bloodGroup || 'O+');
+      setNationality(sourceData.nationality || 'Indian');
+      setMaritalStatus(sourceData.maritalStatus || 'Married');
+      setPersonalEmail(sourceData.personalEmail || sourceData.email || '');
+      setOfficialEmail(sourceData.email || '');
+      setContactNumber(sourceData.contactNumber || '');
+      setWhatsappNumber(sourceData.whatsappNumber || sourceData.contactNumber || '');
+      setEmergencyContactName(sourceData.emergencyContact?.name || '');
+      setEmergencyRelationship(sourceData.emergencyContact?.relationship || 'Spouse');
+      setEmergencyPhone(sourceData.emergencyContact?.phone || '');
 
       // Address
-      if (staffToEdit.permanentAddress) {
+      if (sourceData.permanentAddress) {
         setPermanentAddress({
-          addressLine1: staffToEdit.permanentAddress.addressLine1 || '',
-          addressLine2: staffToEdit.permanentAddress.addressLine2 || '',
-          city: staffToEdit.permanentAddress.city || '',
-          district: staffToEdit.permanentAddress.district || 'Ernakulam',
-          state: staffToEdit.permanentAddress.state || 'Kerala',
-          country: staffToEdit.permanentAddress.country || 'India',
-          pinCode: staffToEdit.permanentAddress.pinCode || '',
+          addressLine1: sourceData.permanentAddress.addressLine1 || '',
+          addressLine2: sourceData.permanentAddress.addressLine2 || '',
+          city: sourceData.permanentAddress.city || '',
+          district: sourceData.permanentAddress.district || 'Ernakulam',
+          state: sourceData.permanentAddress.state || 'Kerala',
+          country: sourceData.permanentAddress.country || 'India',
+          pinCode: sourceData.permanentAddress.pinCode || '',
         });
       }
-      const same = staffToEdit.communicationAddress?.sameAsPermanent ?? true;
+      const same = sourceData.communicationAddress?.sameAsPermanent ?? true;
       setSameAsPermanent(same);
-      if (staffToEdit.communicationAddress) {
+      if (sourceData.communicationAddress) {
         setCommunicationAddress({
-          addressLine1: staffToEdit.communicationAddress.addressLine1 || '',
-          addressLine2: staffToEdit.communicationAddress.addressLine2 || '',
-          city: staffToEdit.communicationAddress.city || '',
-          district: staffToEdit.communicationAddress.district || 'Ernakulam',
-          state: staffToEdit.communicationAddress.state || 'Kerala',
-          country: staffToEdit.communicationAddress.country || 'India',
-          pinCode: staffToEdit.communicationAddress.pinCode || '',
+          addressLine1: sourceData.communicationAddress.addressLine1 || '',
+          addressLine2: sourceData.communicationAddress.addressLine2 || '',
+          city: sourceData.communicationAddress.city || '',
+          district: sourceData.communicationAddress.district || 'Ernakulam',
+          state: sourceData.communicationAddress.state || 'Kerala',
+          country: sourceData.communicationAddress.country || 'India',
+          pinCode: sourceData.communicationAddress.pinCode || '',
         });
       }
 
       // Employment
-      setDateOfJoining(staffToEdit.joiningDate || new Date().toISOString().split('T')[0]);
-      setDepartment(staffToEdit.department || 'Academic');
-      const code = staffToEdit.departmentCode || hrStorage.getDepartmentCodeByNameOrCode(staffToEdit.department);
+      setDateOfJoining(sourceData.joiningDate || new Date().toISOString().split('T')[0]);
+      setDepartment(sourceData.department || 'Academic');
       setDepartmentCode(code);
-      setPosition(staffToEdit.position || '');
-      setEmployeeCategory(staffToEdit.employeeCategory || 'Administrator');
-      setEmploymentType(staffToEdit.employmentType || 'Full Time');
-      setBranchLocation(staffToEdit.branchLocation || 'Kochi Main Campus');
-      setReportingManager(staffToEdit.reportingTo || staffToEdit.reportingManager || 'Dr. Ramesh Nambiar');
-      setWorkLocation(staffToEdit.workLocation || 'On-site (Campus Wing A)');
-      setPreviousEmployeeId(staffToEdit.previousEmployeeId || '');
-      setEmploymentStatus(staffToEdit.employmentStatus || 'Active');
-      setProbationPeriod(staffToEdit.probationPeriod || '6 Months');
+      setPosition(sourceData.position || '');
+      setEmployeeCategory(sourceData.employeeCategory || 'Administrator');
+      setEmploymentType(sourceData.employmentType || 'Full Time');
+      setBranchLocation(sourceData.branchLocation || defaultBranchName);
+      setReportingManager(sourceData.reportingTo || sourceData.reportingManager || 'Dr. Ramesh Nambiar');
+      setWorkLocation(sourceData.workLocation || 'On-site (Campus Wing A)');
+      setPreviousEmployeeId(sourceData.previousEmployeeId || '');
+      setEmploymentStatus(sourceData.employmentStatus || 'Active');
+      setProbationPeriod(sourceData.probationPeriod || '6 Months');
 
       // Records
-      if (staffToEdit.experiences && staffToEdit.experiences.length > 0) {
-        setExperiences(staffToEdit.experiences);
+      if (sourceData.experiences !== undefined) {
+        setExperiences(sourceData.experiences);
       }
-      if (staffToEdit.qualifications && staffToEdit.qualifications.length > 0) {
-        setQualifications(staffToEdit.qualifications);
+      if (sourceData.qualifications !== undefined && sourceData.qualifications.length > 0) {
+        setQualifications(sourceData.qualifications);
       }
-      if (staffToEdit.familyMembers && staffToEdit.familyMembers.length > 0) {
-        setFamilyMembers(staffToEdit.familyMembers);
+      if (sourceData.familyMembers !== undefined && sourceData.familyMembers.length > 0) {
+        setFamilyMembers(sourceData.familyMembers);
       }
 
       // Bank & Salary
-      const sal = staffToEdit.salary;
-      const bp = staffToEdit.bankPayroll;
+      const sal = sourceData.salary;
+      const bp = sourceData.bankPayroll;
       setBankName(sal?.bankDetails?.bankName || bp?.bankName || 'State Bank of India');
-      setAccountHolderName(bp?.accountHolderName || staffToEdit.fullName || '');
+      setAccountHolderName(bp?.accountHolderName || sourceData.fullName || '');
       setAccountNo(sal?.bankDetails?.accountNo || bp?.accountNo || '');
       setIfscCode(sal?.bankDetails?.ifscCode || bp?.ifscCode || 'SBIN0002144');
       setBankBranch(sal?.bankDetails?.branch || bp?.branch || 'Edappally, Kochi');
@@ -400,35 +424,53 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       setEsiNumber(bp?.esiNumber || '4800918234001');
 
       setBasicSalary(sal?.basicSalary ?? 38000);
-      setHra(sal?.hra ?? 15200);
+      setHra(sal?.hra ?? 0);
       if (sal?.allowanceItems && sal.allowanceItems.length > 0) {
         setAllowanceItems(sal.allowanceItems);
         const sum = sal.allowanceItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
         setAllowances(sum);
       } else {
-        setAllowances(sal?.allowances ?? 6800);
+        setAllowanceItems([]);
+        setAllowances(sal?.allowances ?? 0);
       }
-      setSpecialAllowance(sal?.specialAllowance ?? 2000);
-      setPfDeduction(sal?.pfDeduction ?? 1800);
-      setTaxDeduction(sal?.taxDeduction ?? 1500);
+      setSpecialAllowance(sal?.specialAllowance ?? 0);
+
+      if (sal?.deductionItems && sal.deductionItems.length > 0) {
+        setDeductionItems(sal.deductionItems);
+        const pfSum = sal.deductionItems
+          .filter((i) => /pf|provident/i.test(i.name))
+          .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+        const totalDed = sal.deductionItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+        setPfDeduction(pfSum);
+        setTaxDeduction(Math.max(0, totalDed - pfSum));
+      } else {
+        const pfVal = sal?.pfDeduction ?? 0;
+        const taxVal = sal?.taxDeduction ?? 0;
+        setPfDeduction(pfVal);
+        setTaxDeduction(taxVal);
+        const initialDeds: DeductionItem[] = [];
+        if (pfVal > 0) initialDeds.push({ id: 'ded-pf-init', name: 'Employee PF Contribution', amount: pfVal });
+        if (taxVal > 0) initialDeds.push({ id: 'ded-tax-init', name: 'Professional Tax / TDS', amount: taxVal });
+        setDeductionItems(initialDeds);
+      }
 
       // Documents
-      setAadhaarNumber(staffToEdit.aadhaarNumber || '•••• •••• 9812');
-      setPanNumber(staffToEdit.panNumber || 'ABCDE1234F');
+      setAadhaarNumber(sourceData.aadhaarNumber || '•••• •••• 9812');
+      setPanNumber(sourceData.panNumber || 'ABCDE1234F');
 
       // Populate document references
-      if (staffToEdit.documentReferences && staffToEdit.documentReferences.length > 0) {
-        setDocReferences(staffToEdit.documentReferences);
-      } else if (staffToEdit.documents && staffToEdit.documents.length > 0) {
+      if (sourceData.documentReferences && sourceData.documentReferences.length > 0) {
+        setDocReferences(sourceData.documentReferences);
+      } else if (sourceData.documents && sourceData.documents.length > 0) {
         setDocReferences(
-          staffToEdit.documents.map((d, idx) => ({
+          sourceData.documents.map((d, idx) => ({
             id: d.id || `doc-ref-${idx + 1}`,
             name: `${d.category} - ${d.fileName}`,
             category: d.category,
             fileName: d.fileName,
             fileSize: d.fileSize || '1.4 MB',
             verificationStatus: d.verificationStatus || 'Verified',
-            uploadDate: d.uploadDate || staffToEdit.joiningDate || new Date().toISOString().split('T')[0],
+            uploadDate: d.uploadDate || sourceData.joiningDate || new Date().toISOString().split('T')[0],
             documentNumber: d.documentNumber,
             issueDate: d.issueDate,
             expiryDate: d.expiryDate,
@@ -438,33 +480,40 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       }
 
       // System Access
-      if (staffToEdit.systemAccess) {
-        setEnableLogin(staffToEdit.systemAccess.enableLogin ?? true);
-        setSystemUserType(staffToEdit.systemAccess.userType || 'Faculty / Staff');
-        setSystemUsername(staffToEdit.systemAccess.username || '');
-        setSystemRole(staffToEdit.systemAccess.role || 'Staff');
-        setAccessLevel(staffToEdit.systemAccess.accessLevel || 'Standard');
-        if (staffToEdit.systemAccess.assignedModules) {
-          setAssignedModules(staffToEdit.systemAccess.assignedModules);
+      if (sourceData.systemAccess) {
+        setEnableLogin(sourceData.systemAccess.enableLogin ?? true);
+        setSystemUserType(sourceData.systemAccess.userType || 'Faculty / Staff');
+        setSystemUsername(sourceData.systemAccess.username || '');
+        setSystemRole(sourceData.systemAccess.role || 'Staff');
+        setAccessLevel(sourceData.systemAccess.accessLevel || 'Standard');
+        if (sourceData.systemAccess.assignedModules) {
+          setAssignedModules(sourceData.systemAccess.assignedModules);
         }
-        setSystemBranchAccess(staffToEdit.systemAccess.branchAccess || 'Kochi Main Campus');
-        setAccountStatus(staffToEdit.systemAccess.accountStatus || 'Active');
+        setSystemBranchAccess(sourceData.systemAccess.branchAccess || sourceData.branchLocation || defaultBranchName);
+        setAccountStatus(sourceData.systemAccess.accountStatus || 'Active');
+      } else {
+        setSystemBranchAccess(sourceData.branchLocation || defaultBranchName);
       }
 
       // Verification
-      if (staffToEdit.verification) {
-        setRegistrationDate(staffToEdit.verification.registrationDate || staffToEdit.createdDate || '');
-        setRegisteredBy(staffToEdit.verification.registeredBy || 'HR Admin');
-        setVerificationStatus(staffToEdit.verification.verificationStatus || 'Verified');
-        setVerifiedBy(staffToEdit.verification.verifiedBy || 'Dr. Ramesh Nambiar');
-        setVerificationDate(staffToEdit.verification.verificationDate || '');
-        setRegistrationRemarks(staffToEdit.verification.remarks || '');
+      if (sourceData.verification) {
+        setRegistrationDate(sourceData.verification.registrationDate || sourceData.createdDate || new Date().toISOString().split('T')[0]);
+        setRegisteredBy(sourceData.verification.registeredBy || 'HR Admin');
+        setVerificationStatus(sourceData.verification.verificationStatus || 'Verified');
+        setVerifiedBy(sourceData.verification.verifiedBy || 'Dr. Ramesh Nambiar');
+        setVerificationDate(sourceData.verification.verificationDate || new Date().toISOString().split('T')[0]);
+        setRegistrationRemarks(sourceData.verification.remarks || sourceData.notes || '');
+      } else if (sourceData.notes) {
+        setRegistrationRemarks(sourceData.notes);
       }
     } else {
       // New Onboard Mode
       const freshId = hrStorage.generateNextEmployeeId(departmentCode);
       setStaffId(freshId);
+      setBranchLocation(defaultBranchName);
+      setSystemBranchAccess(defaultBranchName);
       setFullName('');
+      setProfilePhoto('');
       setPosition('');
       setPersonalEmail('');
       setOfficialEmail('');
@@ -472,6 +521,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       setWhatsappNumber('');
       setAccountNo('');
       setAccountHolderName('');
+      setBasicSalary(30000);
+      setHra(0);
+      setSpecialAllowance(0);
       setAllowanceItems([
         { id: 'all-room', name: 'Room Allowance', amount: 3000 },
         { id: 'all-trans', name: 'Transportation', amount: 2000 },
@@ -479,8 +531,14 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         { id: 'all-med', name: 'Medical Allowance', amount: 800 },
       ]);
       setAllowances(6800);
+      setDeductionItems([
+        { id: 'ded-pf', name: 'Employee PF Contribution', amount: 1800 },
+        { id: 'ded-pt', name: 'Professional Tax', amount: 200 },
+      ]);
+      setPfDeduction(1800);
+      setTaxDeduction(200);
     }
-  }, [isOpen, staffToEdit]);
+  }, [isOpen, staffToEdit, prefillStaffData]);
 
   const handleAddAllowanceItem = (name = 'Room Allowance', amount = 2000) => {
     const newItem: AllowanceItem = {
@@ -508,10 +566,42 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     setAllowances(sum);
   };
 
+  const syncDeductionsFromList = (list: DeductionItem[]) => {
+    setDeductionItems(list);
+    const pfSum = list
+      .filter((i) => /pf|provident/i.test(i.name))
+      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const totalDed = list.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setPfDeduction(pfSum);
+    setTaxDeduction(Math.max(0, totalDed - pfSum));
+  };
+
+  const handleAddDeductionItem = (name = 'Employee PF Contribution', amount = 1800) => {
+    const newItem: DeductionItem = {
+      id: `ded-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      amount,
+    };
+    syncDeductionsFromList([...deductionItems, newItem]);
+  };
+
+  const handleUpdateDeductionItem = (id: string, updates: Partial<DeductionItem>) => {
+    const updated = deductionItems.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    syncDeductionsFromList(updated);
+  };
+
+  const handleRemoveDeductionItem = (id: string) => {
+    const updated = deductionItems.filter((item) => item.id !== id);
+    syncDeductionsFromList(updated);
+  };
+
   // Computed Salary Values
   const grossSalary = basicSalary + hra + allowances + specialAllowance;
-  const totalDeductions = pfDeduction + taxDeduction;
-  const netSalary = grossSalary - totalDeductions;
+  const totalDeductions =
+    deductionItems.length > 0
+      ? deductionItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0)
+      : pfDeduction + taxDeduction;
+  const netSalary = Math.max(0, grossSalary - totalDeductions);
 
   // Document References Handlers
   const handleAddDocReference = () => {
@@ -724,7 +814,10 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     e.preventDefault();
     if (!fullName.trim()) {
       setActiveTab('personal');
-      alert('Please enter the Staff Member Full Name.');
+      return;
+    }
+    if (!branchLocation || !branchLocation.trim()) {
+      setActiveTab('employment');
       return;
     }
 
@@ -802,6 +895,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         hra,
         allowances,
         allowanceItems,
+        deductionItems,
         specialAllowance,
         bonus: 0,
         otherEarnings: 0,
@@ -1025,7 +1119,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   {isEditMode ? `Edit Staff Member: ${fullName || staffToEdit?.fullName || 'Staff'}` : 'Onboard New Staff Member'}
                 </h2>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isEditMode ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>
-                  {isEditMode ? 'Edit Mode' : 'MYSAR HR Module'}
+                  {isEditMode ? 'Edit Mode' : isPrefillMode ? 'Prefilled from Appointment Letter' : 'MYSAR HR Module'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 font-mono">
                   ID: {staffId}
@@ -1034,6 +1128,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <p className="text-[11px] text-slate-500">
                 {isEditMode
                   ? 'Update staff demographics, department assignment, document attachments, allowances, and system credentials.'
+                  : isPrefillMode
+                  ? 'Candidate details, designation, joining date, salary, allowances, and deductions have been prefilled from the Appointment & Offer Letter.'
                   : 'Official institutional staff registration form spanning 10 structured sections.'}
               </p>
             </div>
@@ -1125,14 +1221,38 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
           {/* SECTION 1: PERSONAL INFORMATION */}
           {activeTab === 'personal' && (
             <div className="space-y-4 animate-in fade-in duration-150">
+              {isPrefillMode && (
+                <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                    <div className="text-xs text-teal-900">
+                      <strong>Prefilled from Appointment &amp; Offer Letter:</strong> Candidate name ({fullName}), designation ({position}), department ({department}), joining date ({dateOfJoining}), and compensation (Gross ₹{grossSalary.toLocaleString('en-IN')}/mo • Net ₹{netSalary.toLocaleString('en-IN')}/mo) are pre-loaded.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">1. Personal Information</h3>
-                  <p className="text-slate-500 text-[11px]">Primary identity, contact coordinates, and demographic details.</p>
+                  <p className="text-slate-500 text-[11px]">Primary identity, profile photograph, contact coordinates, and demographic details.</p>
                 </div>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   Step 1 of 10
                 </span>
+              </div>
+
+              {/* Staff Profile Photo Upload Card (Top of Personal Info) */}
+              <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                <ProfilePhotoUploader
+                  currentAvatar={profilePhoto}
+                  userName={fullName || 'Staff'}
+                  onAvatarChange={(url) => setProfilePhoto(url)}
+                  onAvatarRemove={() => setProfilePhoto('')}
+                  label="Staff Profile Photo"
+                  description="Upload a formal passport-size photo from your device (JPG, PNG, WebP), pick a preset, or paste an image URL."
+                  size="lg"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1296,25 +1416,6 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     <option value="Guardian">Guardian</option>
                     <option value="Other">Other</option>
                   </select>
-                </div>
-              </div>
-
-              {/* Profile Photo URL / Selector */}
-              <div>
-                <label className="font-semibold text-slate-700">Profile Photo URL or Avatar</label>
-                <div className="flex items-center space-x-3 mt-1.5">
-                  <img
-                    src={profilePhoto}
-                    alt="Preview"
-                    className="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-2xs"
-                  />
-                  <input
-                    type="url"
-                    value={profilePhoto}
-                    onChange={(e) => setProfilePhoto(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
-                  />
                 </div>
               </div>
             </div>
@@ -1642,17 +1743,103 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700">Branch / Location</label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-700">Branch / Location (Branch Master) *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAddBranchOpen(!isQuickAddBranchOpen)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{isQuickAddBranchOpen ? 'Cancel' : 'Add Branch Master'}</span>
+                    </button>
+                  </div>
                   <select
                     value={branchLocation}
-                    onChange={(e) => setBranchLocation(e.target.value)}
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                    onChange={(e) => {
+                      setBranchLocation(e.target.value);
+                      setSystemBranchAccess(e.target.value);
+                    }}
+                    required
+                    className="w-full mt-1 border border-emerald-300 bg-emerald-50/30 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="Kochi Main Campus">Kochi Main Campus</option>
-                    <option value="Calicut Regional Centre">Calicut Regional Centre</option>
-                    <option value="Trivandrum South Wing">Trivandrum South Wing</option>
-                    <option value="Wayanad Academic Outreach">Wayanad Academic Outreach</option>
+                    <option value="" disabled>
+                      Select Branch / Location *
+                    </option>
+                    {branchesList.map((b) => (
+                      <option key={b.id} value={b.branchName}>
+                        [{b.branchCode}] {b.branchName}{b.city ? ` — ${b.city}` : ''}
+                      </option>
+                    ))}
+                    {!branchesList.some((b) => b.branchName === branchLocation) && branchLocation && (
+                      <option value={branchLocation}>{branchLocation}</option>
+                    )}
                   </select>
+                  {(() => {
+                    const selectedBranchObj = branchesList.find((b) => b.branchName === branchLocation);
+                    return selectedBranchObj ? (
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Branch Code: <span className="font-mono font-bold text-slate-800">{selectedBranchObj.branchCode}</span> • City: <span className="font-medium text-slate-700">{selectedBranchObj.city || 'Kerala'}</span>
+                      </p>
+                    ) : null;
+                  })()}
+                  {isQuickAddBranchOpen && (
+                    <div className="mt-2 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+                      <div className="text-[11px] font-bold text-emerald-900">Quick Add to Branch / Location Master</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          value={newBranchCodeInput}
+                          onChange={(e) => setNewBranchCodeInput(e.target.value.toUpperCase())}
+                          placeholder="Code (e.g. BR-05)"
+                          className="border border-emerald-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-mono"
+                        />
+                        <input
+                          type="text"
+                          value={newBranchNameInput}
+                          onChange={(e) => setNewBranchNameInput(e.target.value)}
+                          placeholder="Branch / Location Name *"
+                          className="col-span-2 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <input
+                          type="text"
+                          value={newBranchCityInput}
+                          onChange={(e) => setNewBranchCityInput(e.target.value)}
+                          placeholder="City / Campus Location (optional)"
+                          className="flex-1 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!newBranchNameInput.trim()) return;
+                            const nextNum = branchesList.length + 1;
+                            const code = newBranchCodeInput.trim() || `BR-0${nextNum}`;
+                            const updated = hrStorage.saveBranch({
+                              id: `BR-00${nextNum}-${Date.now().toString().slice(-3)}`,
+                              branchCode: code,
+                              branchName: newBranchNameInput.trim(),
+                              city: newBranchCityInput.trim() || 'Kerala',
+                              address: newBranchCityInput.trim() || 'Institutional Campus',
+                              contactPerson: reportingManager || 'Campus Head',
+                              contactPhone: '+91 98460 00000',
+                              status: 'Active',
+                            });
+                            setBranchesList(updated);
+                            setBranchLocation(newBranchNameInput.trim());
+                            setNewBranchNameInput('');
+                            setNewBranchCodeInput('');
+                            setNewBranchCityInput('');
+                            setIsQuickAddBranchOpen(false);
+                          }}
+                          className="px-3 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-lg text-xs cursor-pointer shrink-0"
+                        >
+                          Save Branch
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -2324,19 +2511,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 0;
                         setBasicSalary(val);
-                        setHra(Math.round(val * 0.4));
                       }}
                       className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-slate-700">HRA (40% Standard)</label>
-                    <input
-                      type="number"
-                      value={hra}
-                      onChange={(e) => setHra(parseInt(e.target.value) || 0)}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                     />
                   </div>
 
@@ -2356,7 +2532,22 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-700">Total Deductions (PF+Tax)</label>
+                    <label className="font-semibold text-slate-700">Gross Salary (₹ / mo)</label>
+                    <input
+                      type="number"
+                      value={grossSalary}
+                      readOnly
+                      className="w-full mt-1 border border-emerald-200 rounded-xl px-3 py-2 text-emerald-800 bg-emerald-50/70 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="font-semibold text-slate-700">Total Deductions (₹)</label>
+                      <span className="text-[10px] text-rose-800 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                        {deductionItems.length} Items
+                      </span>
+                    </div>
                     <input
                       type="number"
                       value={totalDeductions}
@@ -2462,6 +2653,104 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     </span>
                     <span className="font-bold text-slate-900">
                       ₹{allowances.toLocaleString('en-IN')} / mo
+                    </span>
+                  </div>
+                </div>
+
+                {/* MULTIPLE DEDUCTIONS BREAKDOWN */}
+                <div className="bg-white border border-rose-200/80 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Monthly Deductions (PF, Professional Tax, ESI, TDS, etc.)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Synced from Appointment / Offer Letter. Add or adjust statutory deductions below.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddDeductionItem('Deduction', 500)}
+                      className="text-xs text-rose-700 hover:text-rose-800 font-bold flex items-center space-x-1 cursor-pointer bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Deduction</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Add Deduction Presets */}
+                  <div className="flex items-center flex-wrap gap-1.5 pt-1">
+                    <span className="text-[10px] text-slate-400 font-medium">Quick Add:</span>
+                    {[
+                      { label: '+ Employee PF (12%)', name: 'Employee PF Contribution', amount: Math.round(basicSalary * 0.12) || 1800 },
+                      { label: '+ Professional Tax', name: 'Professional Tax', amount: 200 },
+                      { label: '+ ESI Contribution', name: 'ESI Contribution', amount: 500 },
+                      { label: '+ TDS / Income Tax', name: 'TDS / Income Tax', amount: 1000 },
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddDeductionItem(preset.name, preset.amount)}
+                        className="text-[10px] bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Dynamic Deduction List */}
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {deductionItems.length === 0 ? (
+                      <div className="text-center py-2.5 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        No monthly deductions configured.
+                      </div>
+                    ) : (
+                      deductionItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center space-x-2 bg-rose-50/40 p-2 rounded-xl border border-rose-200/70"
+                        >
+                          <input
+                            type="text"
+                            value={item.name}
+                            placeholder="Deduction Name"
+                            onChange={(e) => handleUpdateDeductionItem(item.id, { name: e.target.value })}
+                            className="flex-1 border border-slate-200 bg-white rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-rose-500"
+                          />
+                          <div className="relative w-36">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-400 text-xs font-semibold">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              value={item.amount}
+                              placeholder="Amount"
+                              onChange={(e) =>
+                                handleUpdateDeductionItem(item.id, { amount: parseInt(e.target.value) || 0 })
+                              }
+                              className="w-full border border-slate-200 bg-white rounded-lg pl-6 pr-2.5 py-1 text-xs text-rose-900 font-bold focus:outline-rose-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDeductionItem(item.id)}
+                            title="Remove Deduction"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
+                    <span className="text-slate-500">
+                      Total from {deductionItems.length} deduction item{deductionItems.length === 1 ? '' : 's'}:
+                    </span>
+                    <span className="font-bold text-rose-700">
+                      -₹{totalDeductions.toLocaleString('en-IN')} / mo
                     </span>
                   </div>
                 </div>
@@ -3002,25 +3291,64 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         <option value="Suspended">Suspended / Restricted</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700">Assigned Branch / Location *</label>
+                      <select
+                        value={systemBranchAccess || branchLocation}
+                        onChange={(e) => {
+                          setSystemBranchAccess(e.target.value);
+                          setBranchLocation(e.target.value);
+                        }}
+                        required
+                        className="w-full mt-1 border border-emerald-300 bg-emerald-50/30 rounded-xl px-3 py-2 text-slate-900 font-semibold"
+                      >
+                        {branchesList.map((b) => (
+                          <option key={b.id} value={b.branchName}>
+                            [{b.branchCode}] {b.branchName}
+                          </option>
+                        ))}
+                        {!branchesList.some((b) => b.branchName === (systemBranchAccess || branchLocation)) &&
+                          (systemBranchAccess || branchLocation) && (
+                            <option value={systemBranchAccess || branchLocation}>
+                              {systemBranchAccess || branchLocation}
+                            </option>
+                          )}
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Assigned Modules Multi-Select */}
-              <div className="space-y-2">
-                <label className="font-bold text-slate-800">Assigned Institutional Modules</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    'Dashboard',
-                    'Leads & Admissions',
-                    'HR & Staff Directory',
-                    'Attendance & Leave',
-                    'Payroll Management',
-                    'KPI & Performance',
-                    'Academic Schedules',
-                    'Reports & Analytics',
-                    'System Settings',
-                  ].map((mod) => {
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-slate-800">Assigned Institutional Modules (Staff Access Control)</label>
+                    <p className="text-[11px] text-slate-500">
+                      When this staff member logs in, they will only view and access the modules selected below.
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setAssignedModules(ONBOARDING_ASSIGNABLE_MODULES.map((m) => m.id))}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssignedModules(['Dashboard'])}
+                      className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 cursor-pointer"
+                    >
+                      Reset Default
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {ONBOARDING_ASSIGNABLE_MODULES.map((modObj) => {
+                    const mod = modObj.id;
                     const isSelected = assignedModules.includes(mod);
                     return (
                       <button
@@ -3029,15 +3357,18 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         onClick={() => toggleModule(mod)}
                         className={`p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all ${
                           isSelected
-                            ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold'
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold shadow-2xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        <span className="text-[11px]">{mod}</span>
+                        <div>
+                          <div className="text-[11px] font-bold">{modObj.label}</div>
+                          <div className="text-[9px] text-slate-400 font-medium">{modObj.category}</div>
+                        </div>
                         {isSelected ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-700" />
+                          <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                         ) : (
-                          <span className="w-3.5 h-3.5 border border-slate-300 rounded-sm" />
+                          <span className="w-3.5 h-3.5 border border-slate-300 rounded-sm shrink-0" />
                         )}
                       </button>
                     );

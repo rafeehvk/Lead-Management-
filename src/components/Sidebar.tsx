@@ -43,6 +43,7 @@ import {
   Truck,
   CornerDownLeft,
   Sparkles,
+  FileSignature,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { hasPermission, ROLE_DEFINITIONS } from '../utils/rbac';
@@ -51,6 +52,7 @@ import { assetStorage } from '../services/assetStorageService';
 import { financeStorage } from '../services/financeStorageService';
 import { hrStorage } from '../services/hrStorageService';
 import { DepartmentMaster } from '../types/hr';
+import { resolveAssignedModulesToNavTabs } from '../utils/menuPermissions';
 
 export type NavTab =
   | 'dashboard'
@@ -72,6 +74,8 @@ export type NavTab =
   | 'hr-recruitment-offers'
   | 'hr-recruitment-appointments'
   | 'hr-staff'
+  | 'hr-branch-dashboard'
+  | 'hr-staff-access'
   | 'hr-attendance'
   | 'hr-payroll'
   | 'hr-kpi'
@@ -161,7 +165,7 @@ export type NavTab =
   | 'finance-tax'
   | 'finance-budget';
 
-export type SettingsSubTab = 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations' | 'themes';
+export type SettingsSubTab = 'pricing' | 'proposal' | 'templates' | 'company' | 'users' | 'import' | 'integrations' | 'themes';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -198,6 +202,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     hrStorage.getDepartmentsMaster()
   );
 
+  // Staff-level Assigned Modules (from Onboard Staff > System & Access)
+  const [staffRecordsVersion, setStaffRecordsVersion] = useState(0);
+
   useEffect(() => {
     try {
       localStorage.removeItem('mysar_simulated_department');
@@ -205,12 +212,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const handleDeptChange = () => {
       setDepartmentsList(hrStorage.getDepartmentsMaster());
+      setStaffRecordsVersion((v) => v + 1);
     };
     window.addEventListener('mysar_department_permissions_changed', handleDeptChange);
     return () => {
       window.removeEventListener('mysar_department_permissions_changed', handleDeptChange);
     };
   }, []);
+
+  const staffAssignedNavTabs = useMemo(() => {
+    // Look up latest staff record if currentUser is linked to a staff profile
+    const allStaff = hrStorage.getStaff();
+    const matchedStaff = allStaff.find(
+      (s) =>
+        (currentUser.staffId && s.staffId === currentUser.staffId) ||
+        (currentUser.userId &&
+          s.systemAccess?.username?.toLowerCase() === currentUser.userId.toLowerCase()) ||
+        (currentUser.email && s.email?.toLowerCase() === currentUser.email.toLowerCase())
+    );
+
+    const assignedModules =
+      matchedStaff?.systemAccess?.assignedModules ?? currentUser.assignedModules;
+    const accessLevel =
+      matchedStaff?.systemAccess?.accessLevel ?? currentUser.accessLevel;
+
+    // Master default admin account (without a restricted staff profile) sees everything unless modules are explicitly assigned
+    if (!matchedStaff && currentUser.role === 'Admin' && (!assignedModules || assignedModules.length === 0)) {
+      return null;
+    }
+
+    // If a staff member has assignedModules defined in Onboard Staff > System Access, strictly enforce those modules
+    if (assignedModules && assignedModules.length > 0) {
+      return resolveAssignedModulesToNavTabs(assignedModules, accessLevel);
+    }
+
+    // If it's a matched staff member whose accessLevel is Admin and no specific module restrictions, allow all
+    if (accessLevel === 'Admin' || currentUser.role === 'Admin') {
+      return null;
+    }
+
+    return null;
+  }, [currentUser, staffRecordsVersion]);
 
   const activeUserDept = useMemo(() => {
     if (currentUser.role === 'Admin') {
@@ -236,6 +278,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [departmentsList, currentUser]);
 
   const isTabAuthorized = (tabId: string): boolean => {
+    // 1. If staff member has explicit Assigned Modules from Onboard Staff > System Access, enforce them
+    if (staffAssignedNavTabs && staffAssignedNavTabs.size > 0) {
+      return staffAssignedNavTabs.has(tabId);
+    }
+    // 2. Otherwise fall back to department allowedMenuIds
     if (!activeUserDept) {
       return true;
     }
@@ -255,6 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isHrTabActive = [
     'hr-dashboard',
+    'hr-branch-dashboard',
     'hr-recruitment',
     'hr-recruitment-positions',
     'hr-recruitment-applicants',
@@ -262,6 +310,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'hr-recruitment-offers',
     'hr-recruitment-appointments',
     'hr-staff',
+    'hr-staff-access',
     'hr-attendance',
     'hr-payroll',
     'hr-kpi',
@@ -953,6 +1002,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: FileText,
     },
     {
+      id: 'templates',
+      label: 'Proposal Templates',
+      icon: FileSignature,
+    },
+    {
       id: 'company',
       label: 'Company & Branding',
       icon: Building2,
@@ -1073,9 +1127,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const hrSubsequentItems = [
     {
+      id: 'hr-branch-dashboard' as NavTab,
+      label: 'Branch Dashboard',
+      icon: Building2,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
       id: 'hr-staff' as NavTab,
       label: 'Staff Directory',
       icon: UserCheck,
+      badge: null,
+      badgeColor: undefined,
+    },
+    {
+      id: 'hr-staff-access' as NavTab,
+      label: 'Staff Access',
+      icon: ShieldCheck,
       badge: null,
       badgeColor: undefined,
     },
@@ -2004,6 +2072,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Group: Purchase */}
+        {isPurchaseGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2044,7 +2113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {isPurchaseManagementOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {purchaseManagementItems.map((item) => {
+              {visiblePurchaseItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -2071,6 +2140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
 
               {/* Purchase Reports Sub-group */}
+              {purchaseReportItems.some((r) => isTabAuthorized(r.id) || isTabAuthorized('purchase-dashboard')) && (
               <div className="pt-1">
                 <button
                   type="button"
@@ -2099,7 +2169,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {isPurchaseReportsOpen && (
                   <div className="mt-1 ml-3 pl-2 border-l border-slate-200 space-y-0.5 animate-in fade-in duration-100">
-                    {purchaseReportItems.map((rpt) => {
+                    {purchaseReportItems
+                      .filter((r) => isTabAuthorized(r.id) || isTabAuthorized('purchase-dashboard'))
+                      .map((rpt) => {
                       const Icon = rpt.icon;
                       const isActive = activeTab === rpt.id;
                       return (
@@ -2126,11 +2198,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* Group: Item Master & Inventory */}
+        {isInventoryGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2171,7 +2246,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {isInventoryManagementOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {inventoryManagementItems.map((item) => {
+              {visibleInventoryItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   activeTab === item.id ||
@@ -2204,8 +2279,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* Group: Party Management */}
+        {isPartyGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2246,7 +2323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {isPartyManagementOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {partyManagementItems.map((item) => {
+              {visiblePartyItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   activeTab === item.id ||
@@ -2277,8 +2354,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* 4. Group: Finance & Budgeting */}
+        {isFinanceGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2319,7 +2398,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {isFinanceManagementOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {financeManagementItems.map((item) => {
+              {visibleFinanceItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -2347,8 +2426,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* 5. Group: Document & Expiry Management */}
+        {isDocExpiryGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2387,7 +2468,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Document & Expiry Children */}
           {isDocExpiryOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {docExpiryManagementItems.map((item) => {
+              {visibleDocExpiryItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   activeTab === item.id ||
@@ -2417,8 +2498,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* 5. Group: Asset Management */}
+        {isAssetGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2457,7 +2540,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Asset Management Children */}
           {isAssetManagementOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {assetManagementItems.map((item) => {
+              {visibleAssetItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   activeTab === item.id ||
@@ -2487,8 +2570,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* 6. Group: Settings */}
+        {isSettingsGroupVisible && (
         <div className="pt-1">
           <button
             type="button"
@@ -2527,7 +2612,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Group Children: Settings Sub-Buttons */}
           {isSettingsOpen && (
             <div className="mt-1 ml-4 pl-2.5 border-l-2 border-[#D9E5DD] space-y-1 animate-in fade-in duration-150">
-              {settingsItems.map((item) => {
+              {visibleSettingsItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === 'settings' && settingsSubTab === item.id;
                 return (
@@ -2560,6 +2645,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Bottom Footer */}

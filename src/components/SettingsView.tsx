@@ -31,6 +31,7 @@ import {
   Receipt,
   MapPin,
   Phone,
+  FileSignature,
 } from 'lucide-react';
 import { Settings, User, UserRole, ProposalContentConfig, Lead } from '../types';
 import { hasPermission } from '../utils/rbac';
@@ -39,11 +40,12 @@ import { optimizeLogoImage } from '../utils/imageOptimizer';
 import { PricingMasterManager } from './PricingMasterManager';
 import { TeamRbacManager } from './TeamRbacManager';
 import { ProposalContentManager } from './ProposalContentManager';
+import { ProposalTemplatesManager } from './ProposalTemplatesManager';
 import { CsvLeadImporter } from './CsvLeadImporter';
 import { InvoiceThemeSettingsManager } from './finance/themes/InvoiceThemeSettingsManager';
 
 export type LogoSlot = 'master' | 'invoice' | 'navbar' | 'document' | 'login';
-export type SettingsTabType = 'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations' | 'themes';
+export type SettingsTabType = 'pricing' | 'proposal' | 'templates' | 'company' | 'users' | 'import' | 'integrations' | 'themes';
 
 interface SettingsViewProps {
   settings: Settings;
@@ -57,6 +59,7 @@ interface SettingsViewProps {
   onResetDemo: () => void;
   onBulkImportLeads?: (leadsData: Array<Partial<Lead>>) => { successCount: number; createdLeads: Lead[]; errors: string[] };
   onNavigateToLeads?: () => void;
+  onNavigateToProposals?: (selectedTemplateId?: string) => void;
   initialTab?: SettingsTabType;
   onTabChange?: (tab: SettingsTabType) => void;
 }
@@ -73,6 +76,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onResetDemo,
   onBulkImportLeads,
   onNavigateToLeads,
+  onNavigateToProposals,
   initialTab = 'pricing',
   onTabChange,
 }) => {
@@ -429,6 +433,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <button
           type="button"
+          onClick={() => handleSubTabSelect('templates')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
+            activeTab === 'templates'
+              ? 'bg-[#168A45] text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-gray-200'
+          }`}
+        >
+          <FileSignature className="w-4 h-4" />
+          <span>Proposal Templates</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => handleSubTabSelect('company')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all ${
             activeTab === 'company'
@@ -507,6 +524,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           currentUser={currentUser}
           onSaveProposalContent={handleSaveProposalContent}
         />
+      )}
+
+      {/* TAB 3: PROPOSAL TEMPLATES (PRICING TIERS & AGREEMENT TEXT TEMPLATES) */}
+      {activeTab === 'templates' && (
+        <div className="space-y-4">
+          <ProposalTemplatesManager
+            currentUser={currentUser}
+            onSelectTemplateForProposal={
+              onNavigateToProposals
+                ? (template) => {
+                    onNavigateToProposals(template.id);
+                  }
+                : undefined
+            }
+          />
+        </div>
       )}
 
       {/* TAB 2: COMPANY & BRANDING */}

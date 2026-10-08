@@ -407,11 +407,39 @@ export const DEFAULT_PROPOSAL_CONTENT: ProposalContentConfig = {
   companySignatoryLabel: 'Authorized Signatory',
   companySignatoryName: 'Sakeer Ali V',
   companySignatoryDesignation: 'Director & Authorized Signatory',
+
+  // Default Proposal Theme Custom Print/PDF Header & Footer
+  proposalTheme: {
+    printHeaderEnabled: true,
+    printHeaderText: 'CONFIDENTIAL COMMERCIAL PROPOSAL • CASBIRO SOLUTIONS PVT LTD (MYSAR)',
+    printHeaderSubtext: 'Ref: {{PROPOSAL_NUMBER}} | Date: {{PROPOSAL_DATE}}',
+    printFooterEnabled: true,
+    printFooterText: 'Issued for {{INSTITUTE_NAME}} • Casbiro Solutions Private Limited, Kakkanad, Kochi – 682021',
+    printFooterSubtext: 'Official Printed / PDF Copy • Valid for 30 Days • www.mysar.in',
+    showHeaderOnCoverPage: false,
+    showFooterOnCoverPage: true,
+    accentColor: '#168A45',
+  },
 };
+
+export const DEFAULT_PROPOSAL_THEME = DEFAULT_PROPOSAL_CONTENT.proposalTheme!;
+
+export function getEffectiveProposalTheme(settings?: Settings) {
+  const fromSettings = settings?.proposalTheme;
+  const fromContent = settings?.proposalContent?.proposalTheme;
+  return {
+    ...DEFAULT_PROPOSAL_THEME,
+    ...(fromContent || {}),
+    ...(fromSettings || {}),
+  };
+}
 
 export function getEffectiveProposalContent(settings?: Settings): ProposalContentConfig {
   if (!settings?.proposalContent) {
-    return DEFAULT_PROPOSAL_CONTENT;
+    return {
+      ...DEFAULT_PROPOSAL_CONTENT,
+      proposalTheme: getEffectiveProposalTheme(settings),
+    };
   }
 
   const custom = settings.proposalContent;
@@ -423,6 +451,7 @@ export function getEffectiveProposalContent(settings?: Settings): ProposalConten
   return {
     ...DEFAULT_PROPOSAL_CONTENT,
     ...custom,
+    proposalTheme: getEffectiveProposalTheme(settings),
     signatoryAgreementText: isOldDefaultAgreement
       ? DEFAULT_PROPOSAL_CONTENT.signatoryAgreementText
       : custom.signatoryAgreementText,

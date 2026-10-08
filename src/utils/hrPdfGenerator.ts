@@ -7,220 +7,225 @@ export interface HrPdfExportOptions {
 }
 
 /**
- * Generates and downloads a multi-page A4 PDF from a container element containing .hr-pdf-page elements
+ * Ensures all <img> elements in a cloned subtree are loaded or safely stripped of
+ * broken cross-origin URLs so html2canvas never hangs or throws a CORS security error.
  */
-export async function generateHrPdfFromElement(
+async function prepareImagesForCapture(container: HTMLElement): Promise<void> {
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          const src = img.getAttribute('src') || '';
+          if (!src) {
+            resolve();
+            return;
+          }
+          // Data URLs are already loaded and CORS-safe
+          if (src.startsWith('data:')) {
+            resolve();
+            return;
+          }
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          const timer = setTimeout(() => {
+            resolve();
+          }, 1800);
+          img.onload = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          img.onerror = () => {
+            clearTimeout(timer);
+            img.removeAttribute('crossorigin');
+            resolve();
+          };
+        })
+    )
+  );
+}
+
+/**
+ * Renders an element containing `.hr-pdf-page` sections (or a single A4 document sheet)
+ * into a multi-page A4 PDF and triggers an instant file download.
+ * Works regardless of whether the source element is inside a hidden/opacity-0 wrapper.
+ */
+export const generateHrPdfFromElement = async (
   elementId: string,
-  options?: HrPdfExportOptions
-): Promise<void> {
-  const rootElement = document.getElementById(elementId);
-  if (!rootElement) {
-    throw new Error(`Element with ID "${elementId}" not found for PDF export.`);
+  options: HrPdfExportOptions = {}
+): Promise<boolean> => {
+  const sourceElement = document.getElementById(elementId);
+  if (!sourceElement) {
+    console.error(`HR PDF Export: Element #${elementId} not found`);
+    return false;
   }
 
-  const { filename = 'MYSAR_Staff_Document.pdf', onProgress } = options || {};
+  // Create a clean off-screen staging container with opacity: 1 so html2canvas renders full colors
+  const stagingRoot = document.createElement('div');
+  stagingRoot.style.position = 'fixed';
+  stagingRoot.style.left = '-10000px';
+  stagingRoot.style.top = '0px';
+  stagingRoot.style.width = '794px';
+  stagingRoot.style.opacity = '1';
+  stagingRoot.style.pointerEvents = 'none';
+  stagingRoot.style.zIndex = '-9999';
+  stagingRoot.style.background = '#ffffff';
 
-  // Find individual A4 pages with class .hr-pdf-page
-  const pageElements = Array.from(rootElement.querySelectorAll<HTMLElement>('.hr-pdf-page'));
-
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-  });
-
-  const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
-  const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
-
-  rootElement.classList.add('hr-pdf-export-mode');
+  const clonedRoot = sourceElement.cloneNode(true) as HTMLElement;
+  clonedRoot.removeAttribute('id');
+  stagingRoot.appendChild(clonedRoot);
+  document.body.appendChild(stagingRoot);
 
   try {
-    if (pageElements.length > 0) {
-      const total = pageElements.length;
-      for (let i = 0; i < total; i++) {
-        if (onProgress) {
-          onProgress(`Rendering page ${i + 1} of ${total}...`, i + 1, total);
+    await prepareImagesForCapture(stagingRoot);
+    await new Promise((r) => setTimeout(r, 100));
+
+    const pages = stagingRoot.querySelectorAll('.hr-pdf-page');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+
+    if (pages.length > 0) {
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i] as HTMLElement;
+        if (options.onProgress) {
+          options.onProgress(`Rendering page ${i + 1} of ${pages.length}...`, i + 1, pages.length);
         }
-        const pageEl = pageElements[i];
+
+        await new Promise((r) => setTimeout(r, 40));
 
         const canvas = await html2canvas(pageEl, {
-          scale: 2, // 2x crispness
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           logging: false,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: '#ffffff',
           width: 794,
           height: 1123,
           windowWidth: 794,
-          scrollX: 0,
-          scrollY: 0,
+          windowHeight: 1123,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.96);
-
+        const imgData = canvas.toDataURL('image/jpeg', 0.94);
         if (i > 0) {
-          pdf.addPage('a4', 'portrait');
+          pdf.addPage();
         }
-
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       }
     } else {
-      if (onProgress) {
-        onProgress('Rendering document...', 1, 1);
+      // Single continuous A4 sheet (such as Offer Letter or Appointment Letter) -> automatic multi-page A4 slicing
+      clonedRoot.style.width = '794px';
+      clonedRoot.style.maxWidth = '794px';
+      clonedRoot.style.margin = '0';
+      clonedRoot.style.boxShadow = 'none';
+      clonedRoot.style.border = 'none';
+
+      if (options.onProgress) {
+        options.onProgress('Rendering document pages...', 1, 1);
       }
-      const canvas = await html2canvas(rootElement, {
+
+      const canvas = await html2canvas(clonedRoot, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#ffffff',
         width: 794,
         windowWidth: 794,
-        scrollX: 0,
-        scrollY: 0,
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.96);
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const imgWidth = pdfWidth;
+      const pageHeight = pdfHeight;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pdfHeight;
+      const imgData = canvas.toDataURL('image/jpeg', 0.94);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
 
-      while (heightLeft > 0) {
+      while (heightLeft > 8) {
         position = heightLeft - imgHeight;
-        pdf.addPage('a4', 'portrait');
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
       }
     }
-  } finally {
-    rootElement.classList.remove('hr-pdf-export-mode');
-  }
 
-  if (onProgress) {
-    onProgress('Saving PDF file...', 1, 1);
-  }
-
-  // Safe file delivery with fallback
-  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-
-  try {
+    const rawFilename = options.filename || `MYSAR_HR_Document_${new Date().toISOString().split('T')[0]}.pdf`;
+    const safeFilename = rawFilename.endsWith('.pdf') ? rawFilename : `${rawFilename}.pdf`;
     pdf.save(safeFilename);
-  } catch (saveErr) {
-    console.warn('Standard PDF save failed, using blob download fallback', saveErr);
-    try {
-      const pdfBlob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = blobUrl;
-      downloadLink.download = safeFilename;
-      downloadLink.target = '_blank';
-      downloadLink.style.display = 'none';
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-
-      setTimeout(() => {
-        if (document.body.contains(downloadLink)) {
-          document.body.removeChild(downloadLink);
-        }
-        URL.revokeObjectURL(blobUrl);
-      }, 3000);
-    } catch (blobErr) {
-      console.warn('Blob download failed, fallback to print', blobErr);
-      printHrDocument(elementId);
+    return true;
+  } catch (error) {
+    console.error('Error generating HR PDF:', error);
+    return false;
+  } finally {
+    if (stagingRoot.parentNode) {
+      stagingRoot.parentNode.removeChild(stagingRoot);
     }
   }
-}
+};
 
 /**
- * Print HR Document via isolated iframe
+ * Prints an HR document (Staff Onboarding Form, Staff Profile Dossier, Offer Letter, or Appointment Letter)
+ * by mounting a clean print portal directly into document.body and invoking native window.print(),
+ * or opens a clean print window if native iframe printing is restricted.
  */
-export function printHrDocument(elementId: string): void {
+export const printHrDocument = (elementId: string, documentTitle?: string) => {
   const element = document.getElementById(elementId);
   if (!element) {
     window.print();
     return;
   }
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
-
-  const iframeDoc = iframe.contentWindow?.document;
-  if (!iframeDoc) {
-    window.print();
-    return;
+  const originalTitle = document.title;
+  if (documentTitle) {
+    document.title = documentTitle;
   }
 
-  const headStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((el) => el.outerHTML)
-    .join('\n');
+  // Remove any leftover portal from previous print actions
+  const existingPortal = document.getElementById('hr-active-print-portal');
+  if (existingPortal && existingPortal.parentNode) {
+    existingPortal.parentNode.removeChild(existingPortal);
+  }
 
-  iframeDoc.open();
-  iframeDoc.write(`
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <title>MYSAR Institutional HR Document</title>
-        ${headStyles}
-        <style>
-          @page {
-            size: A4 portrait;
-            margin: 0;
-          }
-          html, body {
-            background-color: #FFFFFF !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .hr-pdf-page {
-            page-break-after: always;
-            break-after: page;
-            margin: 0 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-start !important;
-          }
-          .hr-pdf-page:last-child {
-            page-break-after: avoid;
-            break-after: avoid;
-          }
-        </style>
-      </head>
-      <body>
-        ${element.outerHTML}
-      </body>
-    </html>
-  `);
-  iframeDoc.close();
+  const portal = document.createElement('div');
+  portal.id = 'hr-active-print-portal';
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.style.margin = '0 auto';
+  clone.style.boxShadow = 'none';
+  portal.appendChild(clone);
+  document.body.appendChild(portal);
+  document.body.classList.add('hr-doc-print-active');
 
-  iframe.contentWindow?.focus();
-  setTimeout(() => {
-    try {
-      iframe.contentWindow?.print();
-    } catch (err) {
-      console.warn('Iframe print failed', err);
-      window.print();
-    } finally {
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 1500);
+  const cleanup = () => {
+    document.body.classList.remove('hr-doc-print-active');
+    if (documentTitle) {
+      document.title = originalTitle;
     }
-  }, 450);
-}
+    const activePortal = document.getElementById('hr-active-print-portal');
+    if (activePortal && activePortal.parentNode) {
+      activePortal.parentNode.removeChild(activePortal);
+    }
+    window.removeEventListener('afterprint', cleanup);
+  };
+
+  window.addEventListener('afterprint', cleanup);
+
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      if (document.body.classList.contains('hr-doc-print-active')) {
+        cleanup();
+      }
+    }, 1500);
+  }, 180);
+};

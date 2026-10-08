@@ -606,6 +606,21 @@ export const InvoiceThemeSettingsManager: React.FC = () => {
                 </label>
               )}
 
+              {(activeCategory === 'receipt' || activeCategory === 'payment') && (
+                <label className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:bg-slate-50 cursor-pointer">
+                  <div>
+                    <span className="font-bold text-slate-800 block">HSN / SAC Tax Summary Table</span>
+                    <span className="text-[10px] text-slate-400">Display statutory HSN/SAC tax summary on voucher if applicable</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={currentThemeConfig.showHsnSummary}
+                    onChange={(e) => updateCurrentConfig({ showHsnSummary: e.target.checked })}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+              )}
+
               <label className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:bg-slate-50 cursor-pointer">
                 <div>
                   <span className="font-bold text-slate-800 block">Total Amount in Words</span>
@@ -657,6 +672,121 @@ export const InvoiceThemeSettingsManager: React.FC = () => {
                   className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                 />
               </label>
+            </div>
+          </div>
+
+          {/* Item Table Content & Columns Checkboxes */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sliders className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-sm text-slate-900">Item Table Content & HSN Summary</h3>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Columns & Tax Table
+              </span>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <label className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/70 cursor-pointer">
+                <div>
+                  <span className="font-bold text-slate-900 block">Show Item Table Content</span>
+                  <span className="text-[10px] text-slate-500">Display line-item breakdown table on invoice / voucher</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={currentThemeConfig.showItemTable !== false && currentThemeConfig.itemTableContent?.showItemTable !== false}
+                  onChange={(e) =>
+                    updateCurrentConfig({
+                      showItemTable: e.target.checked,
+                      itemTableContent: {
+                        ...(currentThemeConfig.itemTableContent || {
+                          showItemTable: true,
+                          showSerialNumber: true,
+                          showItemDescription: true,
+                          showHsnColumn: true,
+                          showQuantity: true,
+                          showUnit: true,
+                          showRate: true,
+                          showTaxableValue: true,
+                          showGstPercent: true,
+                          showTaxAmount: true,
+                          showDiscountColumn: false,
+                        }),
+                        showItemTable: e.target.checked,
+                      },
+                    })
+                  }
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/70 cursor-pointer">
+                <div>
+                  <span className="font-bold text-slate-900 block">Show HSN / SAC Summary Table</span>
+                  <span className="text-[10px] text-slate-500">Include HSN/SAC-wise taxable value, CGST, SGST & total tax summary</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={currentThemeConfig.showHsnSummary}
+                  onChange={(e) => updateCurrentConfig({ showHsnSummary: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              {currentThemeConfig.showItemTable !== false &&
+                currentThemeConfig.itemTableContent?.showItemTable !== false && (
+                  <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
+                    {[
+                      { key: 'showSerialNumber', label: 'S.No. Column' },
+                      { key: 'showItemDescription', label: 'Item Description' },
+                      { key: 'showHsnColumn', label: 'HSN / SAC Column' },
+                      { key: 'showQuantity', label: 'Quantity (Qty)' },
+                      { key: 'showUnit', label: 'Unit (UOM)' },
+                      { key: 'showRate', label: 'Rate / Price' },
+                      { key: 'showDiscountColumn', label: 'Discount Column' },
+                      { key: 'showTaxableValue', label: 'Taxable Value' },
+                      { key: 'showGstPercent', label: 'GST % Column' },
+                      { key: 'showTaxAmount', label: 'Tax Amount' },
+                    ].map((col) => {
+                      const tbl = currentThemeConfig.itemTableContent || {
+                        showItemTable: true,
+                        showSerialNumber: true,
+                        showItemDescription: true,
+                        showHsnColumn: true,
+                        showQuantity: true,
+                        showUnit: true,
+                        showRate: true,
+                        showTaxableValue: true,
+                        showGstPercent: true,
+                        showTaxAmount: true,
+                        showDiscountColumn: false,
+                      };
+                      const isChecked = (tbl as any)[col.key] !== false;
+                      return (
+                        <label
+                          key={col.key}
+                          className="flex items-center justify-between p-2 rounded-lg border border-gray-200 hover:bg-slate-50 cursor-pointer"
+                        >
+                          <span className="font-semibold text-slate-700 text-[11px]">{col.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) =>
+                              updateCurrentConfig({
+                                itemTableContent: {
+                                  ...tbl,
+                                  [col.key]: e.target.checked,
+                                },
+                              })
+                            }
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
             </div>
           </div>
 
@@ -743,12 +873,20 @@ export const InvoiceThemeSettingsManager: React.FC = () => {
             </div>
 
             {/* Live Document Canvas */}
-            <div className="bg-slate-100/70 p-3 md:p-5 rounded-xl border border-gray-200 max-h-[82vh] overflow-y-auto">
-              <ThemedDocumentRenderer
-                category={activeCategory}
-                themeConfig={currentThemeConfig}
-                isSample={true}
-              />
+            <div className="bg-slate-100/70 p-3 md:p-5 rounded-xl border border-gray-200 max-h-[82vh] overflow-y-auto flex flex-col items-center">
+              <div className="mb-3 px-3 py-1 rounded-full bg-slate-900 text-slate-300 text-[11px] font-medium border border-slate-700 shadow-xs flex items-center space-x-2 no-print shrink-0 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span className="font-bold text-white">A4 Page Preview</span>
+                <span className="text-slate-500">•</span>
+                <span className="font-mono text-emerald-300">210mm × 297mm</span>
+              </div>
+              <div className="w-[210mm] max-w-full min-h-[297mm] shadow-xl bg-white print:shadow-none print:w-[210mm] print:m-0 erp-a4-document-sheet">
+                <ThemedDocumentRenderer
+                  category={activeCategory}
+                  themeConfig={currentThemeConfig}
+                  isSample={true}
+                />
+              </div>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-gray-200 text-[11px] text-slate-600 flex items-center justify-between">

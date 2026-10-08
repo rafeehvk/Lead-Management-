@@ -13,6 +13,10 @@ import {
   LogOut,
   Camera,
   X,
+  Maximize2,
+  Minimize2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { User, UserRole, Settings } from '../types';
 import { ROLE_DEFINITIONS } from '../utils/rbac';
@@ -32,6 +36,8 @@ interface HeaderProps {
   notificationsCount: number;
   onOpenNotifications: () => void;
   settings?: Settings;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -48,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({
   notificationsCount,
   onOpenNotifications,
   settings,
+  isFullScreen = false,
+  onToggleFullScreen,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
@@ -67,9 +75,27 @@ export const Header: React.FC<HeaderProps> = ({
   const navLogo = settings?.navbarLogo || settings?.companyLogo;
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-4 md:px-8 sticky top-0 z-30 flex items-center justify-between gap-3">
+    <header className="h-16 bg-white border-b border-gray-200 px-3 md:px-5 sticky top-0 z-30 flex items-center justify-between gap-3">
       {/* Brand & Subtext */}
-      <div className="flex items-center space-x-3 shrink-0">
+      <div className="flex items-center space-x-2.5 shrink-0">
+        {onToggleFullScreen && (
+          <button
+            type="button"
+            onClick={onToggleFullScreen}
+            title={isFullScreen ? 'Show Navigation Sidebar' : 'Full Screen Subpage View (Hide Sidebar)'}
+            className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+              isFullScreen
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] border-[#168A45]/40 shadow-2xs'
+                : 'bg-slate-50 text-slate-600 hover:text-[#168A45] hover:bg-[#EAF7EF] border-gray-200'
+            }`}
+          >
+            {isFullScreen ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
         {navLogo ? (
           <div className="h-10 w-10 rounded-xl bg-white border border-gray-200 p-1 flex items-center justify-center overflow-hidden shadow-2xs">
             <img
@@ -123,6 +149,32 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center space-x-2 justify-end shrink-0">
+        {/* Full Screen Toggle Button */}
+        {onToggleFullScreen && (
+          <button
+            type="button"
+            onClick={onToggleFullScreen}
+            title={isFullScreen ? 'Exit Full Screen Mode' : 'Expand Subpage to Full Screen'}
+            className={`px-2.5 py-2 rounded-lg border text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer ${
+              isFullScreen
+                ? 'bg-[#168A45] text-white border-[#0B5D2A] shadow-2xs'
+                : 'bg-white text-slate-600 hover:text-[#168A45] hover:bg-[#EAF7EF] border-gray-200'
+            }`}
+          >
+            {isFullScreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Exit Full Screen</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Full Screen</span>
+              </>
+            )}
+          </button>
+        )}
+
         {/* Refresh */}
         <button
           onClick={onRefresh}

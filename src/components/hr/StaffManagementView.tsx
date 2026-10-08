@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -44,7 +44,9 @@ import {
 import { StaffRegistrationModal } from './StaffRegistrationModal';
 import { PrintableStaffProfile } from './PrintableStaffProfile';
 import { DepartmentMasterTable } from './DepartmentMasterTable';
+import { BranchMasterTable } from './BranchMasterTable';
 import { StaffIdCardRenderer } from './StaffIdCardRenderer';
+import { ProfilePhotoUploader } from '../ProfilePhotoUploader';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
 
@@ -58,6 +60,8 @@ interface StaffManagementViewProps {
   onUploadDocument?: (staffId: string, doc: StaffDocument) => void;
   onClearAllDummyData?: () => void;
   onNavigateToHrConfiguration?: () => void;
+  prefillStaffData?: Partial<StaffMember> | null;
+  onClearPrefillStaffData?: () => void;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -69,6 +73,8 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onDeleteStaff,
   onClearAllDummyData,
   onNavigateToHrConfiguration,
+  prefillStaffData,
+  onClearPrefillStaffData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -80,6 +86,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   // Department Master Table state
   const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
   const [isDeptMasterModalOpen, setIsDeptMasterModalOpen] = useState(false);
+  const [isBranchMasterModalOpen, setIsBranchMasterModalOpen] = useState(false);
 
   // Modals & Active Selections
   const [selectedStaffForView, setSelectedStaffForView] = useState<StaffMember | null>(null);
@@ -145,12 +152,21 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   };
 
   // Staff Edit & Creation Handlers
+  useEffect(() => {
+    if (prefillStaffData) {
+      setStaffToEdit(null);
+      setIsAddStaffOpen(true);
+    }
+  }, [prefillStaffData]);
+
   const handleOpenAddStaff = () => {
+    if (onClearPrefillStaffData) onClearPrefillStaffData();
     setStaffToEdit(null);
     setIsAddStaffOpen(true);
   };
 
   const handleEditStaff = (staffMember: StaffMember) => {
+    if (onClearPrefillStaffData) onClearPrefillStaffData();
     setStaffToEdit(staffMember);
     setIsAddStaffOpen(true);
   };
@@ -331,6 +347,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             <span>Department Master</span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setIsBranchMasterModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer border border-slate-300"
+            title="Manage Branch / Location Master Table"
+          >
+            <MapPin className="w-4 h-4 text-emerald-700" />
+            <span>Branch Master</span>
+          </button>
+
           {onNavigateToHrConfiguration && (
             <button
               type="button"
@@ -393,8 +419,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <tr key={staffMember.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs shrink-0">
-                        {staffMember.fullName.charAt(0)}
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs shrink-0 overflow-hidden border border-emerald-200/70">
+                        {staffMember.profilePhoto ? (
+                          <img
+                            src={staffMember.profilePhoto}
+                            alt={staffMember.fullName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          staffMember.fullName.charAt(0)
+                        )}
                       </div>
                       <div>
                         <div className="font-bold text-slate-900">{staffMember.fullName}</div>
@@ -412,6 +446,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       </span>
                       <span>{staffMember.department}</span>
                     </div>
+                    {staffMember.branchLocation && (
+                      <div className="text-[10px] text-emerald-800 font-semibold flex items-center space-x-1 mt-0.5">
+                        <MapPin className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[160px]">{staffMember.branchLocation}</span>
+                      </div>
+                    )}
                     <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[150px]">
                       Reports: {staffMember.reportingTo || staffMember.reportingManager || 'Principal'}
                     </div>
@@ -729,6 +769,27 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
               {activeProfileTab === 'profile' && (
                 <div className="space-y-4">
+                  {/* Direct Profile Photo Upload inside Staff Profile View */}
+                  <div className="bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80">
+                    <ProfilePhotoUploader
+                      currentAvatar={selectedStaffForView.profilePhoto}
+                      userName={selectedStaffForView.fullName}
+                      onAvatarChange={(newPhotoUrl) => {
+                        const updated = { ...selectedStaffForView, profilePhoto: newPhotoUrl };
+                        setSelectedStaffForView(updated);
+                        onSaveStaff(updated);
+                      }}
+                      onAvatarRemove={() => {
+                        const updated = { ...selectedStaffForView, profilePhoto: '' };
+                        setSelectedStaffForView(updated);
+                        onSaveStaff(updated);
+                      }}
+                      label="Staff Profile Photo"
+                      description="Upload a photo from your device, choose a preset, or paste an image URL."
+                      size="md"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="p-3 bg-slate-50 rounded-xl">
                       <div className="text-[10px] text-slate-400">Date of Birth</div>
@@ -985,26 +1046,69 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                      <div className="font-bold text-slate-800 mb-2">Bank & Statutory Details</div>
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Bank:</span>
-                          <span className="font-semibold text-slate-800">
-                            {selectedStaffForView.salary.bankDetails.bankName}
-                          </span>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div>
+                        <div className="font-bold text-slate-800 mb-2">Deductions Breakdown</div>
+                        <div className="space-y-1.5">
+                          {selectedStaffForView.salary.deductionItems && selectedStaffForView.salary.deductionItems.length > 0 ? (
+                            selectedStaffForView.salary.deductionItems.map((item, i) => (
+                              <div key={i} className="flex justify-between text-[11px] text-rose-700">
+                                <span>• {item.name}:</span>
+                                <span className="font-semibold text-rose-800">₹{item.amount.toLocaleString('en-IN')}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">PF Deduction:</span>
+                                <span className="font-semibold text-rose-700">
+                                  ₹{(selectedStaffForView.salary.pfDeduction || 0).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">Tax / PT Deduction:</span>
+                                <span className="font-semibold text-rose-700">
+                                  ₹{(selectedStaffForView.salary.taxDeduction || 0).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              {(selectedStaffForView.salary.otherDeductions || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Other Deductions:</span>
+                                  <span className="font-semibold text-rose-700">
+                                    ₹{(selectedStaffForView.salary.otherDeductions || 0).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <div className="flex justify-between pt-1.5 border-t border-slate-200 font-bold text-rose-800">
+                            <span>Total Deductions:</span>
+                            <span>₹{(selectedStaffForView.salary.totalDeductions || 0).toLocaleString('en-IN')}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Account:</span>
-                          <span className="font-semibold text-slate-800">
-                            {selectedStaffForView.salary.bankDetails.accountNo}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">IFSC:</span>
-                          <span className="font-semibold text-slate-800">
-                            {selectedStaffForView.salary.bankDetails.ifscCode}
-                          </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200">
+                        <div className="font-bold text-slate-800 mb-2">Bank & Statutory Details</div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Bank:</span>
+                            <span className="font-semibold text-slate-800">
+                              {selectedStaffForView.salary.bankDetails.bankName}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Account:</span>
+                            <span className="font-semibold text-slate-800">
+                              {selectedStaffForView.salary.bankDetails.accountNo}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">IFSC:</span>
+                            <span className="font-semibold text-slate-800">
+                              {selectedStaffForView.salary.bankDetails.ifscCode}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1342,19 +1446,36 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </div>
       )}
 
+      {/* MODAL: BRANCH / LOCATION MASTER TABLE */}
+      {isBranchMasterModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
+            <div className="overflow-y-auto p-4 sm:p-6">
+              <BranchMasterTable
+                isModal={true}
+                onClose={() => setIsBranchMasterModalOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: COMPREHENSIVE 10-SECTION ONBOARD / EDIT STAFF WIZARD */}
       <StaffRegistrationModal
         isOpen={isAddStaffOpen}
         onClose={() => {
           setIsAddStaffOpen(false);
           setStaffToEdit(null);
+          if (onClearPrefillStaffData) onClearPrefillStaffData();
         }}
         onSave={(staffData) => {
           onSaveStaff(staffData);
           setStaffToEdit(null);
+          if (onClearPrefillStaffData) onClearPrefillStaffData();
         }}
         existingStaffCount={staff.length}
         staffToEdit={staffToEdit}
+        prefillStaffData={prefillStaffData}
       />
     </div>
   );

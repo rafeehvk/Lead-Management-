@@ -702,3 +702,231 @@ export function resetUserMenuPermissions(userId: string): void {
     console.error(`Failed to reset menu permissions for user ${userId}`, e);
   }
 }
+
+export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
+  id: string;
+  label: string;
+  category: string;
+  navTabs: string[];
+}> = [
+  {
+    id: 'Dashboard',
+    label: 'Dashboard',
+    category: 'Executive & Branch Overview',
+    navTabs: ['dashboard', 'branch-dashboard', 'operations-dashboard'],
+  },
+  {
+    id: 'Leads & Admissions',
+    label: 'Leads & Admissions',
+    category: 'CRM & Admissions',
+    navTabs: ['lead-overview', 'leads', 'followups', 'proposals', 'meet', 'gmail', 'reports'],
+  },
+  {
+    id: 'HR & Staff Directory',
+    label: 'HR & Staff Directory',
+    category: 'Human Resources',
+    navTabs: [
+      'hr-dashboard',
+      'hr-staff',
+      'hr-staff-access',
+      'hr-recruitment',
+      'hr-recruitment-positions',
+      'hr-recruitment-applicants',
+      'hr-recruitment-interviews',
+      'hr-recruitment-offers',
+      'hr-recruitment-appointments',
+    ],
+  },
+  {
+    id: 'Attendance & Leave',
+    label: 'Attendance & Leave',
+    category: 'Human Resources',
+    navTabs: ['hr-attendance'],
+  },
+  {
+    id: 'Payroll Management',
+    label: 'Payroll Management',
+    category: 'Human Resources',
+    navTabs: ['hr-payroll'],
+  },
+  {
+    id: 'KPI & Performance',
+    label: 'KPI & Performance',
+    category: 'Human Resources',
+    navTabs: ['hr-kpi'],
+  },
+  {
+    id: 'Sales & Billing',
+    label: 'Sales & Billing',
+    category: 'Commercial Operations',
+    navTabs: [
+      'sales',
+      'sales-dashboard',
+      'sales-workflow',
+      'sales-quotation',
+      'sales-order',
+      'sales-invoice',
+      'sales-return-request',
+      'sales-return',
+      'sales-quotation-report',
+      'sales-order-report',
+      'sales-invoice-report',
+      'sales-return-request-report',
+      'sales-return-report',
+      'sales-ar',
+      'sales-receipts',
+    ],
+  },
+  {
+    id: 'Purchase & Procurement',
+    label: 'Purchase & Procurement',
+    category: 'Commercial Operations',
+    navTabs: [
+      'purchase',
+      'purchase-dashboard',
+      'purchase-workflow',
+      'purchase-request',
+      'purchase-quotation',
+      'purchase-quotation-comparison',
+      'purchase-order',
+      'goods-receipt',
+      'purchase-invoice',
+      'purchase-return-request',
+      'purchase-return',
+      'purchase-request-report',
+      'purchase-quotation-report',
+      'purchase-quotation-comparison-report',
+      'purchase-order-report',
+      'goods-receipt-report',
+      'purchase-invoice-report',
+      'purchase-return-request-report',
+      'purchase-return-report',
+      'purchase-payments',
+      'purchase-advances',
+    ],
+  },
+  {
+    id: 'Inventory & Stock',
+    label: 'Inventory & Stock',
+    category: 'Warehouse & Inventory',
+    navTabs: [
+      'inventory',
+      'inventory-dashboard',
+      'inventory-items',
+      'inventory-valuation',
+      'inventory-movements',
+      'item-master',
+    ],
+  },
+  {
+    id: 'Party & Vendor Ledger',
+    label: 'Party & Vendor Ledger',
+    category: 'Parties & Accounts',
+    navTabs: ['party-management', 'party-directory', 'party-ledger', 'finance-parties', 'finance-party-ledger'],
+  },
+  {
+    id: 'Finance & Accounts',
+    label: 'Finance & Accounts',
+    category: 'Finance & Accounting',
+    navTabs: [
+      'finance',
+      'finance-dashboard',
+      'finance-planner',
+      'finance-ledger',
+      'finance-projections',
+      'finance-sales-ar',
+      'finance-gl',
+      'finance-cash-bank',
+      'finance-loans',
+      'finance-payments',
+      'finance-receipts',
+      'finance-advances',
+      'finance-item-master',
+      'finance-controls-audit',
+      'finance-purchase',
+      'finance-sales',
+      'finance-tax',
+      'finance-budget',
+    ],
+  },
+  {
+    id: 'Document & Expiry',
+    label: 'Document & Expiry',
+    category: 'Compliance',
+    navTabs: [
+      'doc-expiry',
+      'doc-dashboard',
+      'doc-registry',
+      'doc-calendar',
+      'doc-reminders',
+      'doc-renewals',
+      'doc-types',
+    ],
+  },
+  {
+    id: 'Asset Management',
+    label: 'Asset Management',
+    category: 'Assets & Facilities',
+    navTabs: [
+      'assets',
+      'asset-overview',
+      'asset-register',
+      'asset-requests',
+      'asset-pos',
+      'asset-receiving',
+      'asset-movements',
+      'asset-maintenance',
+      'asset-warranties',
+      'asset-retirements',
+      'asset-reports',
+      'asset-settings',
+      'branch-dashboard',
+    ],
+  },
+  {
+    id: 'Academic Schedules',
+    label: 'Academic Schedules',
+    category: 'Academics',
+    navTabs: ['dashboard', 'meet', 'hr-attendance', 'hr-kpi'],
+  },
+  {
+    id: 'Reports & Analytics',
+    label: 'Reports & Analytics',
+    category: 'Analytics',
+    navTabs: ['reports', 'sales-invoice-report', 'purchase-order-report', 'asset-reports'],
+  },
+  {
+    id: 'System Settings',
+    label: 'System Settings',
+    category: 'Administration',
+    navTabs: ['settings', 'hr-settings', 'hr-staff-access', 'pricing', 'company', 'proposal', 'templates', 'users', 'import', 'integrations', 'themes'],
+  },
+];
+
+/**
+ * Resolves a staff member's assignedModules list (from Onboard Staff > System & Access)
+ * into concrete NavTab IDs. Supports both high-level module names (e.g., "Dashboard", "HR & Staff Directory")
+ * and direct NavTab IDs (e.g., "hr-attendance", "leads").
+ */
+export function resolveAssignedModulesToNavTabs(assignedModules?: string[]): string[] {
+  if (!assignedModules || assignedModules.length === 0) return [];
+  const resolved = new Set<string>();
+
+  assignedModules.forEach((mod) => {
+    const clean = mod.trim();
+    if (!clean) return;
+    // Direct NavTab ID
+    resolved.add(clean);
+
+    // Match high-level module label
+    const match = ONBOARDING_ASSIGNABLE_MODULES.find(
+      (m) => m.id.toLowerCase() === clean.toLowerCase() || m.label.toLowerCase() === clean.toLowerCase()
+    );
+    if (match) {
+      match.navTabs.forEach((t) => resolved.add(t));
+    }
+  });
+
+  return Array.from(resolved);
+}
+

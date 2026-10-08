@@ -21,6 +21,7 @@ import { IdCardSettingsView } from './IdCardSettingsView';
 import { DepartmentRolesMatrixView } from './DepartmentRolesMatrixView';
 import { AccessManagementView } from './AccessManagementView';
 import { DepartmentMasterTable } from './DepartmentMasterTable';
+import { BranchMasterTable } from './BranchMasterTable';
 import { DepartmentAccessMatrixView } from './DepartmentAccessMatrixView';
 
 interface HrSettingsViewProps {
@@ -30,6 +31,7 @@ interface HrSettingsViewProps {
   initialSection?:
     | 'access-matrix'
     | 'departments'
+    | 'branches'
     | 'attendance'
     | 'leave'
     | 'payroll'
@@ -48,6 +50,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
   const [activeSection, setActiveSection] = useState<
     | 'access-matrix'
     | 'departments'
+    | 'branches'
     | 'attendance'
     | 'leave'
     | 'payroll'
@@ -163,6 +166,18 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveSection('branches')}
+            className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+              activeSection === 'branches'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] font-bold shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-[#168A45]" />
+            <span>Branch Management</span>
+          </button>
+
+          <button
             onClick={() => setActiveSection('attendance')}
             className={`w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
               activeSection === 'attendance'
@@ -243,6 +258,32 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
         ) : activeSection === 'departments' ? (
           <div className="md:col-span-3">
             <DepartmentMasterTable />
+          </div>
+        ) : activeSection === 'branches' ? (
+          <div className="md:col-span-3 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <BranchMasterTable
+              onBranchChange={(updatedBranches) => {
+                const activeLocations = updatedBranches
+                  .filter((b) => b.status === 'Active')
+                  .map((b) => b.branchName);
+                const updatedSettings: HrSettingsConfig = {
+                  ...formState,
+                  workingHours: {
+                    ...(formState.workingHours || {
+                      officeStartTime: '08:30 AM',
+                      officeEndTime: '04:30 PM',
+                      gracePeriodMinutes: 15,
+                      minimumWorkingHours: 8,
+                      halfDayHours: 4,
+                      attendanceLocations: ['Kochi Main Campus'],
+                    }),
+                    attendanceLocations: activeLocations.length > 0 ? activeLocations : ['Kochi Main Campus'],
+                  },
+                };
+                setFormState(updatedSettings);
+                onSaveSettings(updatedSettings);
+              }}
+            />
           </div>
         ) : activeSection === 'idcards' ? (
           <div className="md:col-span-3">

@@ -230,12 +230,20 @@ export const PrintableVoucherModal: React.FC<PrintableVoucherModalProps> = ({
         </div>
 
         {/* Themed Document Sheet */}
-        <div className="bg-white p-2 rounded-xl shadow-xs">
-          <ThemedDocumentRenderer
-            category={type}
-            themeConfig={themeConfig}
-            data={documentData}
-          />
+        <div className="bg-slate-100/80 p-4 rounded-xl shadow-xs flex flex-col items-center overflow-auto max-h-[80vh]">
+          <div className="mb-3 px-3 py-1 rounded-full bg-slate-900 text-slate-300 text-[11px] font-medium border border-slate-700 shadow-xs flex items-center space-x-2 no-print shrink-0 select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span className="font-bold text-white">A4 Page Preview</span>
+            <span className="text-slate-500">•</span>
+            <span className="font-mono text-emerald-300">210mm × 297mm</span>
+          </div>
+          <div className="w-[210mm] max-w-full min-h-[297mm] shadow-2xl bg-white print:shadow-none print:w-[210mm] print:m-0 erp-a4-document-sheet">
+            <ThemedDocumentRenderer
+              category={type}
+              themeConfig={themeConfig}
+              data={documentData}
+            />
+          </div>
         </div>
       </div>
     </div>

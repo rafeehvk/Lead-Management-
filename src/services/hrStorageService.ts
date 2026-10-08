@@ -21,9 +21,12 @@ import {
   AppointmentStatus,
   InterviewEvaluation,
   DepartmentMaster,
+  BranchMaster,
   DepartmentRole,
   RoleMenuPermission,
   IdCardTemplateSettings,
+  AllowanceItem,
+  DeductionItem,
 } from '../types/hr';
 import { validateLeaveRequest } from '../utils/leaveValidation';
 import {
@@ -54,6 +57,7 @@ const HR_STORAGE_KEYS = {
   APPOINTMENT_LETTERS: 'mysar_hr_appointment_letters_v1',
   STAFF: 'mysar_hr_staff_v1',
   DEPARTMENTS: 'mysar_hr_departments_master_v1',
+  BRANCHES: 'mysar_hr_branches_master_v1',
   DEPARTMENT_ROLES: 'mysar_department_roles_matrix_v1',
   ATTENDANCE: 'mysar_hr_attendance_v1',
   LEAVE_REQUESTS: 'mysar_hr_leave_requests_v1',
@@ -345,8 +349,156 @@ class HrStorageService {
   }
 
   // --- OFFER LETTERS ---
+  private normalizeOfferLetter(offer: OfferLetter): OfferLetter {
+    const basic = Number(offer.basicSalary) || 0;
+
+    // Normalize allowanceItems
+    let allowanceItems = Array.isArray(offer.allowanceItems)
+      ? offer.allowanceItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `all-norm-${idx}`,
+            name: item.name || 'Allowance',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const legacyAllowancesSum =
+      (Number(offer.hra) || 0) +
+      (Number(offer.conveyanceAllowance) || 0) +
+      (Number(offer.communicationAllowance) || 0) +
+      (Number(offer.specialAllowance) || 0) +
+      (Number(offer.otherAllowance) || 0);
+
+    if (allowanceItems.length === 0) {
+      if (legacyAllowancesSum > 0) {
+        if (Number(offer.hra) > 0) {
+          allowanceItems.push({ id: 'all-hra', name: 'House Rent / Accommodation Allowance', amount: Number(offer.hra) });
+        }
+        if (Number(offer.conveyanceAllowance) > 0) {
+          allowanceItems.push({ id: 'all-conv', name: 'Travel / Conveyance Allowance', amount: Number(offer.conveyanceAllowance) });
+        }
+        if (Number(offer.communicationAllowance) > 0) {
+          allowanceItems.push({ id: 'all-comm', name: 'Communication Allowance', amount: Number(offer.communicationAllowance) });
+        }
+        if (Number(offer.specialAllowance) > 0) {
+          allowanceItems.push({ id: 'all-spl', name: 'Special Allowance', amount: Number(offer.specialAllowance) });
+        }
+        if (Number(offer.otherAllowance) > 0) {
+          allowanceItems.push({ id: 'all-oth', name: 'Other Allowance', amount: Number(offer.otherAllowance) });
+        }
+      } else if (Number(offer.allowances) > 0) {
+        allowanceItems = [
+          { id: 'all-total', name: 'Monthly Allowances', amount: Number(offer.allowances) },
+        ];
+      }
+    } else if (offer.allowances !== undefined) {
+      // If manual total allowances exceeds or differs from itemized sum, keep them reconciled
+      const itemizedSum = allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const explicitAllowances = Number(offer.allowances) || 0;
+      if (explicitAllowances > itemizedSum) {
+        allowanceItems.push({
+          id: `all-bal-${Date.now()}`,
+          name: 'Other Allowance',
+          amount: explicitAllowances - itemizedSum,
+        });
+      }
+    }
+
+    const totalAllowances =
+      allowanceItems.length > 0
+        ? allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : Number(offer.allowances) || 0;
+
+    // Normalize deductionItems
+    let deductionItems = Array.isArray(offer.deductionItems)
+      ? offer.deductionItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `ded-norm-${idx}`,
+            name: item.name || 'Deduction',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const legacyDeductionsSum =
+      (Number(offer.pfDeduction) || 0) +
+      (Number(offer.ptDeduction) || 0) +
+      (Number(offer.tdsDeduction) || 0) +
+      (Number(offer.otherDeductions) || 0);
+
+    if (deductionItems.length === 0) {
+      if (legacyDeductionsSum > 0) {
+        if (Number(offer.pfDeduction) > 0) {
+          deductionItems.push({ id: 'ded-pf', name: 'Employee PF Contribution', amount: Number(offer.pfDeduction) });
+        }
+        if (Number(offer.ptDeduction) > 0) {
+          deductionItems.push({ id: 'ded-pt', name: 'Professional Tax', amount: Number(offer.ptDeduction) });
+        }
+        if (Number(offer.tdsDeduction) > 0) {
+          deductionItems.push({ id: 'ded-tds', name: 'TDS / Income Tax', amount: Number(offer.tdsDeduction) });
+        }
+        if (Number(offer.otherDeductions) > 0) {
+          deductionItems.push({ id: 'ded-oth', name: 'Other Applicable Deductions', amount: Number(offer.otherDeductions) });
+        }
+      } else if (Number(offer.deductions) > 0) {
+        deductionItems = [
+          { id: 'ded-total', name: 'Applicable Deductions', amount: Number(offer.deductions) },
+        ];
+      }
+    } else if (offer.deductions !== undefined) {
+      const itemizedDedSum = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const explicitDeductions = Number(offer.deductions) || 0;
+      if (explicitDeductions > itemizedDedSum) {
+        deductionItems.push({
+          id: `ded-bal-${Date.now()}`,
+          name: 'Other Applicable Deductions',
+          amount: explicitDeductions - itemizedDedSum,
+        });
+      }
+    }
+
+    const totalDeductions =
+      deductionItems.length > 0
+        ? deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : Number(offer.deductions) || 0;
+
+    const grossSalary = basic + totalAllowances;
+    const netSalary = Math.max(0, grossSalary - totalDeductions);
+
+    return {
+      ...offer,
+      basicSalary: basic,
+      allowances: totalAllowances,
+      allowanceItems,
+      deductions: totalDeductions,
+      deductionItems,
+      grossSalary,
+      netSalary,
+    };
+  }
+
   public getOfferLetters(): OfferLetter[] {
-    return this.getStorage<OfferLetter[]>(HR_STORAGE_KEYS.OFFER_LETTERS, initialOfferLetters);
+    const rawOffers = this.getStorage<OfferLetter[]>(HR_STORAGE_KEYS.OFFER_LETTERS, initialOfferLetters);
+    let changed = false;
+    const normalized = rawOffers.map((offer) => {
+      const norm = this.normalizeOfferLetter(offer);
+      if (
+        norm.grossSalary !== offer.grossSalary ||
+        norm.allowances !== offer.allowances ||
+        norm.deductions !== offer.deductions ||
+        norm.netSalary !== offer.netSalary ||
+        !Array.isArray(offer.allowanceItems) ||
+        !Array.isArray(offer.deductionItems)
+      ) {
+        changed = true;
+      }
+      return norm;
+    });
+    if (changed) {
+      this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, normalized);
+    }
+    return normalized;
   }
 
   public generateOfferLetter(data: Partial<OfferLetter>, actorName = 'Admin'): OfferLetter {
@@ -355,9 +507,85 @@ class HrStorageService {
 
   public saveOfferLetter(data: Partial<OfferLetter>, actorName = 'Admin'): OfferLetter {
     const offers = this.getOfferLetters();
-    const basic = data.basicSalary ?? 30000;
-    const allowances = data.allowances ?? 15000;
+    const basic = data.basicSalary !== undefined ? Number(data.basicSalary) : 30000;
+
+    // Reconcile allowanceItems and total allowances
+    let allowanceItems: AllowanceItem[] = Array.isArray(data.allowanceItems)
+      ? data.allowanceItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `all-${Date.now()}-${idx}`,
+            name: item.name || 'Allowance',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const itemizedAllowancesSum = allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    let allowances =
+      allowanceItems.length > 0
+        ? itemizedAllowancesSum
+        : data.allowances !== undefined
+        ? Number(data.allowances)
+        : 0;
+
+    // If user typed a larger manual total in `allowances` than the sum of `allowanceItems`
+    if (data.allowances !== undefined && Number(data.allowances) > itemizedAllowancesSum && allowanceItems.length > 0) {
+      const diff = Number(data.allowances) - itemizedAllowancesSum;
+      allowanceItems.push({
+        id: `all-bal-${Date.now()}`,
+        name: 'Other Allowance',
+        amount: diff,
+      });
+      allowances = Number(data.allowances);
+    } else if (allowanceItems.length === 0 && allowances > 0) {
+      allowanceItems = [{ id: `all-default-${Date.now()}`, name: 'Monthly Allowances', amount: allowances }];
+    }
+
+    // Reconcile deductionItems and total deductions
+    let deductionItems: DeductionItem[] = Array.isArray(data.deductionItems)
+      ? data.deductionItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `ded-${Date.now()}-${idx}`,
+            name: item.name || 'Deduction',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const itemizedDeductionsSum = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    let deductions =
+      deductionItems.length > 0
+        ? itemizedDeductionsSum
+        : data.deductions !== undefined
+        ? Number(data.deductions)
+        : 0;
+
+    if (data.deductions !== undefined && Number(data.deductions) > itemizedDeductionsSum && deductionItems.length > 0) {
+      const diff = Number(data.deductions) - itemizedDeductionsSum;
+      deductionItems.push({
+        id: `ded-bal-${Date.now()}`,
+        name: 'Other Applicable Deductions',
+        amount: diff,
+      });
+      deductions = Number(data.deductions);
+    } else if (deductionItems.length === 0 && deductions > 0) {
+      deductionItems = [{ id: `ded-default-${Date.now()}`, name: 'Applicable Deductions', amount: deductions }];
+    }
+
     const grossSalary = basic + allowances;
+    const netSalary = Math.max(0, grossSalary - deductions);
+
+    // Sync legacy breakdown fields from itemized lists so any consumer reading legacy properties gets matching values
+    const hra = allowanceItems.find((i) => /room|hra|house|accommodation/i.test(i.name))?.amount || 0;
+    const conveyanceAllowance = allowanceItems.find((i) => /conveyance|travel|transport/i.test(i.name))?.amount || 0;
+    const communicationAllowance = allowanceItems.find((i) => /comm|phone|mobile|internet/i.test(i.name))?.amount || 0;
+    const specialAllowance = allowanceItems.find((i) => /special/i.test(i.name))?.amount || 0;
+    const otherAllowance = Math.max(0, allowances - (hra + conveyanceAllowance + communicationAllowance + specialAllowance));
+
+    const pfDeduction = deductionItems.find((i) => /pf|provident/i.test(i.name))?.amount || 0;
+    const ptDeduction = deductionItems.find((i) => /pt|professional/i.test(i.name))?.amount || 0;
+    const tdsDeduction = deductionItems.find((i) => /tds|income tax/i.test(i.name))?.amount || 0;
+    const otherDeductions = Math.max(0, deductions - (pfDeduction + ptDeduction + tdsDeduction));
 
     if (data.id) {
       const index = offers.findIndex((o) => o.id === data.id);
@@ -368,7 +596,20 @@ class HrStorageService {
           ...data,
           basicSalary: basic,
           allowances,
+          allowanceItems,
+          deductions,
+          deductionItems,
           grossSalary,
+          netSalary,
+          hra,
+          conveyanceAllowance,
+          communicationAllowance,
+          specialAllowance,
+          otherAllowance,
+          pfDeduction,
+          ptDeduction,
+          tdsDeduction,
+          otherDeductions,
         };
         offers[index] = updatedOffer;
         this.setStorage(HR_STORAGE_KEYS.OFFER_LETTERS, offers);
@@ -407,9 +648,13 @@ class HrStorageService {
       employmentType: data.employmentType || 'Full Time',
       basicSalary: basic,
       allowances,
-      allowanceItems: data.allowanceItems,
+      allowanceItems,
+      deductions,
+      deductionItems,
       grossSalary,
-      workingHours: data.workingHours || '8:15 AM – 4:00 PM (Monday to Friday)',
+      netSalary,
+      workingDays: data.workingDays || 'Monday to Saturday',
+      workingHours: data.workingHours || '09:30 AM to 06:00 PM',
       benefits: data.benefits || ['EPF & Gratuity', 'Medical Coverage', 'Performance Bonus'],
       termsAndConditions: data.termsAndConditions || 'Subject to document verification and 6-month probation period.',
       expiryDate: data.expiryDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
@@ -425,15 +670,15 @@ class HrStorageService {
       noticePeriod: data.noticePeriod || '30 Days',
       employeeAddress: data.employeeAddress || 'Door No. 12/48A, Green Valley Avenue',
       cityStatePin: data.cityStatePin || 'Kakkanad, Ernakulam, Kerala – 682030',
-      hra: data.hra,
-      conveyanceAllowance: data.conveyanceAllowance,
-      communicationAllowance: data.communicationAllowance,
-      specialAllowance: data.specialAllowance,
-      otherAllowance: data.otherAllowance,
-      pfDeduction: data.pfDeduction,
-      ptDeduction: data.ptDeduction,
-      tdsDeduction: data.tdsDeduction,
-      otherDeductions: data.otherDeductions,
+      hra,
+      conveyanceAllowance,
+      communicationAllowance,
+      specialAllowance,
+      otherAllowance,
+      pfDeduction,
+      ptDeduction,
+      tdsDeduction,
+      otherDeductions,
     };
 
     offers.unshift(newOffer);
@@ -506,9 +751,57 @@ class HrStorageService {
 
   public saveAppointmentLetter(data: Partial<AppointmentLetter>, actorName = 'Admin'): AppointmentLetter {
     const appts = this.getAppointmentLetters();
-    const basic = data.basicSalary ?? 30000;
-    const allowances = data.allowances ?? 15000;
+    const basic = data.basicSalary !== undefined ? Number(data.basicSalary) : 30000;
+
+    let allowanceItems: AllowanceItem[] = Array.isArray(data.allowanceItems)
+      ? data.allowanceItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `all-appt-${Date.now()}-${idx}`,
+            name: item.name || 'Allowance',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const itemizedAllowancesSum = allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    let allowances =
+      allowanceItems.length > 0
+        ? itemizedAllowancesSum
+        : data.allowances !== undefined
+        ? Number(data.allowances)
+        : 0;
+
+    if (data.allowances !== undefined && Number(data.allowances) > itemizedAllowancesSum && allowanceItems.length > 0) {
+      allowanceItems.push({
+        id: `all-appt-bal-${Date.now()}`,
+        name: 'Other Allowance',
+        amount: Number(data.allowances) - itemizedAllowancesSum,
+      });
+      allowances = Number(data.allowances);
+    } else if (allowanceItems.length === 0 && allowances > 0) {
+      allowanceItems = [{ id: `all-appt-default-${Date.now()}`, name: 'Monthly Allowances', amount: allowances }];
+    }
+
+    let deductionItems: DeductionItem[] = Array.isArray(data.deductionItems)
+      ? data.deductionItems
+          .filter((item) => item && (item.name || Number(item.amount) > 0))
+          .map((item, idx) => ({
+            id: item.id || `ded-appt-${Date.now()}-${idx}`,
+            name: item.name || 'Deduction',
+            amount: Number(item.amount) || 0,
+          }))
+      : [];
+
+    const itemizedDeductionsSum = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const deductions =
+      deductionItems.length > 0
+        ? itemizedDeductionsSum
+        : data.deductions !== undefined
+        ? Number(data.deductions)
+        : 0;
+
     const grossSalary = basic + allowances;
+    const netSalary = Math.max(0, grossSalary - deductions);
 
     if (data.id) {
       const index = appts.findIndex((a) => a.id === data.id);
@@ -519,7 +812,11 @@ class HrStorageService {
           ...data,
           basicSalary: basic,
           allowances,
+          allowanceItems,
+          deductions,
+          deductionItems,
           grossSalary,
+          netSalary,
         };
         appts[index] = updatedAppt;
         this.setStorage(HR_STORAGE_KEYS.APPOINTMENT_LETTERS, appts);
@@ -560,8 +857,11 @@ class HrStorageService {
       employmentType: data.employmentType || 'Full Time',
       basicSalary: basic,
       allowances,
-      allowanceItems: data.allowanceItems,
+      allowanceItems,
+      deductions,
+      deductionItems,
       grossSalary,
+      netSalary,
       probationPeriod: data.probationPeriod || '6 Months',
       workingHours: data.workingHours || '8:15 AM – 4:00 PM',
       workplace: data.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
@@ -614,6 +914,337 @@ class HrStorageService {
     this.addActivity(actorName, 'HR Admin', `Updated Appointment Letter status to ${status}`, 'Recruitment', appt.appointmentNumber);
   }
 
+  // --- BUILD PREFILLED STAFF PAYLOAD FOR ONBOARDING MODAL ---
+  public buildPrefilledStaffFromCandidate(applicantId: string, appointmentId?: string): Partial<StaffMember> {
+    const applicants = this.getApplicants();
+    const appts = this.getAppointmentLetters();
+    const offers = this.getOfferLetters();
+
+    const appt = appointmentId
+      ? appts.find((ap) => ap.id === appointmentId)
+      : appts.find((ap) => ap.applicantId === applicantId);
+
+    const applicant =
+      applicants.find((a) => a.id === (applicantId || appt?.applicantId)) ||
+      (appt?.employeeName
+        ? applicants.find((a) => a.name.trim().toLowerCase() === appt.employeeName.trim().toLowerCase())
+        : undefined);
+
+    const offer =
+      offers.find((o) => o.applicantId === (applicant?.id || applicantId || appt?.applicantId)) ||
+      (appt?.employeeName
+        ? offers.find((o) => o.applicantName.trim().toLowerCase() === appt.employeeName.trim().toLowerCase())
+        : undefined);
+
+    const fullName = appt?.employeeName || offer?.applicantName || applicant?.name || '';
+    const email = offer?.applicantEmail || applicant?.email || '';
+    const phone = offer?.applicantPhone || applicant?.phone || '';
+    const deptName = appt?.department || offer?.department || applicant?.department || 'Academic';
+    const deptCode = this.getDepartmentCodeByNameOrCode(deptName);
+    const deptMaster = this.getDepartmentsMaster().find(
+      (d) => d.departmentCode === deptCode || d.departmentName.toLowerCase() === deptName.toLowerCase()
+    );
+    const reportingManager = deptMaster?.reporting || offer?.reportingTo || 'Dr. Ramesh Nambiar';
+    const position = appt?.position || offer?.position || applicant?.positionName || 'Staff Member';
+    const joiningDate = appt?.joiningDate || offer?.joiningDate || new Date().toISOString().split('T')[0];
+    const employmentType = appt?.employmentType || offer?.employmentType || 'Full Time';
+    const workplace = appt?.workplace || offer?.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021';
+    const probationPeriod = appt?.probationPeriod || offer?.probationPeriod || '6 Months';
+    const assignedStaffId = appt?.employeeId || this.generateNextEmployeeId(deptCode);
+
+    // Salary & Compensation from Appointment Letter / Offer Letter
+    const basic = appt?.basicSalary ?? offer?.basicSalary ?? 30000;
+    const rawAllowanceItems =
+      appt?.allowanceItems && appt.allowanceItems.length > 0
+        ? appt.allowanceItems
+        : offer?.allowanceItems && offer.allowanceItems.length > 0
+        ? offer.allowanceItems
+        : [];
+    const allowanceItems = rawAllowanceItems.map((item, idx) => ({
+      id: item.id || `all-onb-${Date.now()}-${idx}`,
+      name: item.name,
+      amount: Number(item.amount) || 0,
+    }));
+    const allowances =
+      allowanceItems.length > 0
+        ? allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : appt?.allowances ?? offer?.allowances ?? 0;
+
+    const rawDeductionItems =
+      appt?.deductionItems && appt.deductionItems.length > 0
+        ? appt.deductionItems
+        : offer?.deductionItems && offer.deductionItems.length > 0
+        ? offer.deductionItems
+        : [];
+    const deductionItems = rawDeductionItems.map((item, idx) => ({
+      id: item.id || `ded-onb-${Date.now()}-${idx}`,
+      name: item.name,
+      amount: Number(item.amount) || 0,
+    }));
+    const totalDeductions =
+      deductionItems.length > 0
+        ? deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : appt?.deductions ?? offer?.deductions ?? 0;
+
+    const pf =
+      deductionItems
+        .filter((i) => /pf|provident/i.test(i.name))
+        .reduce((sum, i) => sum + (Number(i.amount) || 0), 0) ||
+      Number(offer?.pfDeduction) ||
+      0;
+    const tax = Math.max(0, totalDeductions - pf);
+    const gross = basic + allowances;
+    const net = Math.max(0, gross - totalDeductions);
+
+    // Build prefilled Experience & Qualifications from Applicant record
+    const prefilledExperiences =
+      applicant?.experience && !/fresher|^0\b/i.test(applicant.experience)
+        ? [
+            {
+              id: `exp-prefill-${Date.now()}`,
+              organization: 'Previous Organization',
+              designation: position,
+              department: deptName,
+              employmentType: employmentType,
+              dateOfJoining: '',
+              dateOfLeaving: '',
+              totalExperience: applicant.experience,
+              reasonForLeaving: 'Career Advancement',
+              remarks: applicant.notes || 'Verified during recruitment interview.',
+            },
+          ]
+        : [];
+
+    const prefilledQualifications = applicant?.qualification
+      ? [
+          {
+            id: `qual-prefill-${Date.now()}`,
+            level: /m\.|master|pg|mba|mca|msc|ma|phd|ph\.d/i.test(applicant.qualification)
+              ? ('Postgraduate' as const)
+              : ('Undergraduate' as const),
+            courseName: applicant.qualification,
+            specialization: deptName,
+            institution: '',
+            yearOfPassing: '',
+            grade: '',
+            remarks: 'Verified during recruitment screening.',
+          },
+        ]
+      : [];
+
+    // Build prefilled Document References from Appointment Letter, Offer Letter, and Resume
+    const prefilledDocRefs = [];
+    if (appt) {
+      prefilledDocRefs.push({
+        id: `doc-ref-appt-${Date.now()}`,
+        name: `Institutional Appointment Letter (${appt.appointmentNumber})`,
+        category: 'Appointment Letter',
+        fileName: `${appt.appointmentNumber.replace(/\//g, '_')}.pdf`,
+        fileSize: '1.2 MB',
+        verificationStatus: 'Verified' as const,
+        uploadDate: appt.issueDate || new Date().toISOString().split('T')[0],
+        documentNumber: appt.appointmentNumber,
+        notes: `Issued on ${appt.issueDate || joiningDate} for ${position}`,
+      });
+    }
+    if (offer) {
+      prefilledDocRefs.push({
+        id: `doc-ref-offer-${Date.now() + 1}`,
+        name: `Accepted Offer Letter (${offer.offerNumber})`,
+        category: 'Appointment Letter',
+        fileName: `${offer.offerNumber.replace(/\//g, '_')}.pdf`,
+        fileSize: '1.1 MB',
+        verificationStatus: 'Verified' as const,
+        uploadDate: offer.issueDate || new Date().toISOString().split('T')[0],
+        documentNumber: offer.offerNumber,
+        notes: `Offer Accepted • Gross ₹${gross.toLocaleString('en-IN')}/mo`,
+      });
+    }
+    if (applicant?.resumeUrl) {
+      prefilledDocRefs.push({
+        id: `doc-ref-resume-${Date.now() + 2}`,
+        name: 'Candidate Curriculum Vitae / Resume',
+        category: 'Other',
+        fileName: applicant.resumeUrl,
+        fileSize: '0.9 MB',
+        verificationStatus: 'Verified' as const,
+        uploadDate: applicant.appliedDate || new Date().toISOString().split('T')[0],
+        notes: 'Submitted during recruitment application',
+      });
+    }
+
+    const suggestedUsername = fullName
+      ? fullName
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '.')
+          .replace(/\.+/g, '.')
+          .replace(/^\.|\.$/g, '')
+      : 'staff.user';
+
+    return {
+      id: assignedStaffId,
+      staffId: assignedStaffId,
+      staffCode: assignedStaffId,
+      fullName,
+      profilePhoto: '',
+      gender: 'Female',
+      dateOfBirth: '1994-06-15',
+      email: email || `${suggestedUsername}@casbiro.com`,
+      personalEmail: email,
+      contactNumber: phone,
+      whatsappNumber: phone,
+      emergencyContact: {
+        name: '',
+        relationship: 'Spouse',
+        phone: '',
+      },
+      permanentAddress: {
+        addressLine1: '',
+        addressLine2: '',
+        city: 'Kochi',
+        district: 'Ernakulam',
+        state: 'Kerala',
+        country: 'India',
+        pinCode: '',
+      },
+      communicationAddress: {
+        sameAsPermanent: true,
+        addressLine1: '',
+        addressLine2: '',
+        city: 'Kochi',
+        district: 'Ernakulam',
+        state: 'Kerala',
+        country: 'India',
+        pinCode: '',
+      },
+      joiningDate,
+      division: appt?.division || `${deptName} Wing`,
+      department: deptName,
+      departmentCode: deptCode,
+      position,
+      employmentType,
+      reportingManager,
+      reportingTo: reportingManager,
+      workLocation: workplace,
+      branchLocation: 'Kochi Main Campus',
+      probationPeriod,
+      employmentStatus: 'Active',
+      experiences: prefilledExperiences,
+      qualifications: prefilledQualifications,
+      familyMembers: [],
+      documentReferences: prefilledDocRefs,
+      salary: {
+        basicSalary: basic,
+        hra: 0,
+        allowances,
+        allowanceItems,
+        deductionItems,
+        specialAllowance: 0,
+        bonus: 0,
+        otherEarnings: 0,
+        grossSalary: gross,
+        pfDeduction: pf,
+        taxDeduction: tax,
+        otherDeductions: 0,
+        totalDeductions,
+        netSalary: net,
+        salaryFrequency: 'Monthly',
+        paymentMethod: 'Bank Transfer',
+        bankDetails: {
+          bankName: 'State Bank of India',
+          accountNo: '',
+          ifscCode: 'SBIN0002144',
+          branch: 'Edappally, Kochi',
+        },
+      },
+      bankPayroll: {
+        bankName: 'State Bank of India',
+        accountHolderName: fullName,
+        accountNo: '',
+        ifscCode: 'SBIN0002144',
+        branch: 'Edappally, Kochi',
+        uan: '',
+        pfNumber: '',
+        esiNumber: '',
+        salaryStructure: `As per Appointment Letter (Gross ₹${gross.toLocaleString('en-IN')}/mo)`,
+      },
+      systemAccess: {
+        enableLogin: true,
+        userType: 'Faculty / Staff',
+        username: suggestedUsername,
+        role: 'Staff',
+        accessLevel: 'Standard',
+        assignedModules: ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
+        branchAccess: 'Kochi Main Campus',
+        accountStatus: 'Active',
+      },
+      notes: appt
+        ? `Onboarded from Appointment Letter ${appt.appointmentNumber}${offer ? ` & Offer Letter ${offer.offerNumber}` : ''}.`
+        : 'Onboarded from Recruitment Pipeline.',
+    };
+  }
+
+  public completeCandidateConversionToStaff(
+    applicantId?: string,
+    appointmentId?: string,
+    staffId?: string,
+    actorName = 'Admin'
+  ): void {
+    const applicants = this.getApplicants();
+    const appts = this.getAppointmentLetters();
+
+    const appt = appointmentId
+      ? appts.find((ap) => ap.id === appointmentId)
+      : applicantId
+      ? appts.find((ap) => ap.applicantId === applicantId)
+      : undefined;
+
+    const applicant = applicantId
+      ? applicants.find((a) => a.id === applicantId)
+      : appt?.applicantId
+      ? applicants.find((a) => a.id === appt.applicantId)
+      : undefined;
+
+    if (applicant) {
+      applicant.stage = 'Joined';
+      applicant.status = 'Joined';
+      if (staffId) {
+        applicant.staffId = staffId;
+      }
+      this.setStorage(HR_STORAGE_KEYS.APPLICANTS, applicants);
+
+      if (applicant.positionId) {
+        const positions = this.getPositions();
+        const pos = positions.find((p) => p.id === applicant.positionId);
+        if (pos) {
+          pos.filled += 1;
+          pos.remainingVacancies = Math.max(0, pos.vacancies - pos.filled);
+          if (pos.remainingVacancies === 0) {
+            pos.status = 'Filled';
+          }
+          this.setStorage(HR_STORAGE_KEYS.POSITIONS, positions);
+        }
+      }
+    }
+
+    if (appt) {
+      appt.status = 'Completed';
+      if (staffId) {
+        appt.employeeId = staffId;
+      }
+      this.setStorage(HR_STORAGE_KEYS.APPOINTMENT_LETTERS, appts);
+    }
+
+    this.addActivity(
+      actorName,
+      'HR Admin',
+      'Onboarded Appointed Candidate as Staff Member',
+      'Staff',
+      `${appt?.employeeName || applicant?.name || 'Candidate'} → Employee ID ${staffId || appt?.employeeId || ''}`
+    );
+  }
+
   // --- CONVERT APPLICANT TO STAFF (Automated Workflow) ---
   public convertApplicantToStaff(applicantId: string, appointmentId?: string, actorName = 'Admin'): StaffMember | null {
     const applicants = this.getApplicants();
@@ -631,14 +1262,27 @@ class HrStorageService {
     const staffList = this.getStaff();
     const newStaffId = appt?.employeeId || this.generateNextEmployeeId(applicant.department || 'Academic');
 
-    const basic = appt?.basicSalary || offer?.basicSalary || 30000;
-    const allowances = appt?.allowances || offer?.allowances || 15000;
-    const hra = Math.round(basic * 0.4);
+    const basic = appt?.basicSalary ?? offer?.basicSalary ?? 30000;
+    const allowanceItems = appt?.allowanceItems || offer?.allowanceItems || [];
+    const allowances =
+      allowanceItems.length > 0
+        ? allowanceItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : appt?.allowances ?? offer?.allowances ?? 0;
+    const hra = allowanceItems.find((i) => /room|hra|house|accommodation/i.test(i.name))?.amount || 0;
+    const specialAllowance = allowanceItems.find((i) => /special/i.test(i.name))?.amount || 0;
     const gross = basic + allowances;
-    const pf = 1800;
-    const tax = gross > 50000 ? Math.round(gross * 0.05) : 0;
-    const totalDeductions = pf + tax;
-    const net = gross - totalDeductions;
+
+    const deductionItems = appt?.deductionItems || offer?.deductionItems || [];
+    const pf = deductionItems.find((i) => /pf|provident/i.test(i.name))?.amount ?? offer?.pfDeduction ?? 0;
+    const tax =
+      deductionItems.find((i) => /pt|professional|tds|tax/i.test(i.name))?.amount ??
+      ((offer?.ptDeduction || 0) + (offer?.tdsDeduction || 0));
+    const totalDeductions =
+      deductionItems.length > 0
+        ? deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+        : appt?.deductions ?? offer?.deductions ?? (pf + tax);
+    const otherDeductions = Math.max(0, totalDeductions - (pf + tax));
+    const net = Math.max(0, gross - totalDeductions);
 
     const newStaff: StaffMember = {
       id: newStaffId,
@@ -689,19 +1333,16 @@ class HrStorageService {
       salary: {
         basicSalary: basic,
         hra,
-        allowances: allowances - hra > 0 ? allowances - hra : 5000,
-        allowanceItems: appt?.allowanceItems || offer?.allowanceItems || [
-          { id: 'all-room', name: 'Room Allowance', amount: 3000 },
-          { id: 'all-trans', name: 'Transportation', amount: 2000 },
-          { id: 'all-ot', name: 'Over time', amount: 1000 },
-        ],
-        specialAllowance: 2000,
+        allowances,
+        allowanceItems,
+        deductionItems,
+        specialAllowance,
         bonus: 0,
         otherEarnings: 0,
         grossSalary: gross,
         pfDeduction: pf,
         taxDeduction: tax,
-        otherDeductions: 0,
+        otherDeductions,
         totalDeductions,
         netSalary: net,
         salaryFrequency: 'Monthly',
@@ -846,6 +1487,117 @@ class HrStorageService {
     const filtered = depts.filter((d) => d.id !== id);
     this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, filtered);
     this.addActivity(actorName, 'HR Admin', 'Deleted Department Master', 'Settings', target.departmentCode);
+    return true;
+  }
+
+  // --- BRANCH / LOCATION MASTER ---
+  public getBranchesMaster(): BranchMaster[] {
+    const defaultBranches: BranchMaster[] = [
+      {
+        id: 'BR-001',
+        branchCode: 'KCH-01',
+        branchName: 'Kochi Main Campus',
+        city: 'Kochi',
+        address: 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
+        contactPerson: 'Dr. Ramesh Nambiar',
+        contactPhone: '+91 7994 807 907',
+        status: 'Active',
+        createdDate: '2026-01-01',
+      },
+      {
+        id: 'BR-002',
+        branchCode: 'CLT-02',
+        branchName: 'Calicut Regional Centre',
+        city: 'Calicut',
+        address: 'Mavoor Road, Kozhikode, Kerala – 673004',
+        contactPerson: 'Sri. Ananthan K.',
+        contactPhone: '+91 94471 22334',
+        status: 'Active',
+        createdDate: '2026-01-01',
+      },
+      {
+        id: 'BR-003',
+        branchCode: 'TVM-03',
+        branchName: 'Trivandrum South Wing',
+        city: 'Trivandrum',
+        address: 'Technopark Phase 1 Campus Rd, Kazhakkoottam, Trivandrum – 695581',
+        contactPerson: 'Smt. Deepa Nair',
+        contactPhone: '+91 98460 55667',
+        status: 'Active',
+        createdDate: '2026-01-01',
+      },
+      {
+        id: 'BR-004',
+        branchCode: 'WYD-04',
+        branchName: 'Wayanad Academic Outreach',
+        city: 'Kalpetta',
+        address: 'Civil Station Road, Kalpetta North, Wayanad – 673122',
+        contactPerson: 'Sri. Vijayan P.',
+        contactPhone: '+91 94462 88990',
+        status: 'Active',
+        createdDate: '2026-01-01',
+      },
+    ];
+    return this.getStorage<BranchMaster[]>(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
+  }
+
+  public saveBranch(data: Partial<BranchMaster>, actorName = 'Admin'): BranchMaster {
+    const branches = this.getBranchesMaster();
+    if (data.id) {
+      const idx = branches.findIndex((b) => b.id === data.id);
+      if (idx !== -1) {
+        const updated: BranchMaster = {
+          ...branches[idx],
+          ...data,
+          branchCode: (data.branchCode || branches[idx].branchCode).toUpperCase().trim(),
+          branchName: (data.branchName || branches[idx].branchName).trim(),
+        };
+        branches[idx] = updated;
+        this.setStorage(HR_STORAGE_KEYS.BRANCHES, branches);
+        this.addActivity(actorName, 'HR Admin', 'Updated Branch / Location Master', 'Settings', `${updated.branchCode} - ${updated.branchName}`);
+        return updated;
+      }
+    }
+
+    const count = branches.length + 1;
+    const newCode = (data.branchCode || `BR-${String(count).padStart(2, '0')}`).toUpperCase().trim();
+    const newBranch: BranchMaster = {
+      id: data.id || `BR-${String(count).padStart(3, '0')}-${Date.now().toString(36).slice(-3)}`,
+      branchCode: newCode,
+      branchName: (data.branchName || 'New Campus Branch').trim(),
+      city: data.city || 'Kochi',
+      address: data.address || '',
+      contactPerson: data.contactPerson || '',
+      contactPhone: data.contactPhone || '',
+      status: data.status || 'Active',
+      createdDate: new Date().toISOString().split('T')[0],
+    };
+
+    branches.push(newBranch);
+    this.setStorage(HR_STORAGE_KEYS.BRANCHES, branches);
+
+    // Also sync to attendanceLocations in HrSettingsConfig
+    const hrSettings = this.getHrSettings();
+    if (hrSettings.workingHours) {
+      const locs = hrSettings.workingHours.attendanceLocations || [];
+      if (!locs.includes(newBranch.branchName)) {
+        hrSettings.workingHours.attendanceLocations = [...locs, newBranch.branchName];
+        this.setStorage(HR_STORAGE_KEYS.SETTINGS, hrSettings);
+      }
+    }
+
+    this.addActivity(actorName, 'HR Admin', 'Created Branch / Location Master', 'Settings', `${newBranch.branchCode} - ${newBranch.branchName}`);
+    return newBranch;
+  }
+
+  public deleteBranch(id: string, actorName = 'Admin'): boolean {
+    const branches = this.getBranchesMaster();
+    const target = branches.find((b) => b.id === id);
+    if (!target) return false;
+
+    const filtered = branches.filter((b) => b.id !== id);
+    this.setStorage(HR_STORAGE_KEYS.BRANCHES, filtered);
+    this.addActivity(actorName, 'HR Admin', 'Deleted Branch / Location Master', 'Settings', `${target.branchCode} - ${target.branchName}`);
     return true;
   }
 
@@ -1222,6 +1974,9 @@ class HrStorageService {
           mobile: staff.contactNumber || users[existingIdx].mobile,
           role: userRole,
           userType: staff.systemAccess?.userType || users[existingIdx].userType || 'Staff',
+          assignedModules: staff.systemAccess?.assignedModules || users[existingIdx].assignedModules || ['Dashboard'],
+          branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || users[existingIdx].branchAccess,
+          accessLevel: staff.systemAccess?.accessLevel || users[existingIdx].accessLevel || 'Standard',
           // Access restricted if staff is Inactive!
           status: isStaffActive && isLoginEnabled ? 'Active' : 'Inactive',
           password: sPassword || users[existingIdx].password || 'Password@123',
@@ -1239,6 +1994,9 @@ class HrStorageService {
           mobile: staff.contactNumber || '+91 98470 00000',
           role: userRole,
           userType: staff.systemAccess?.userType || 'Staff',
+          assignedModules: staff.systemAccess?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
+          branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || 'Kochi Main Campus',
+          accessLevel: staff.systemAccess?.accessLevel || 'Standard',
           status: isStaffActive ? 'Active' : 'Inactive',
           avatar: staff.profilePhoto || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
           staffId: sId,
@@ -1249,6 +2007,9 @@ class HrStorageService {
       }
 
       localStorage.setItem('mysar_users_data_v1', JSON.stringify(users));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_staff_access_changed'));
+      }
     } catch (e) {
       console.error('Failed to sync staff to user account', e);
     }
@@ -1758,6 +2519,7 @@ class HrStorageService {
     localStorage.removeItem(HR_STORAGE_KEYS.APPOINTMENT_LETTERS);
     localStorage.removeItem(HR_STORAGE_KEYS.STAFF);
     localStorage.removeItem(HR_STORAGE_KEYS.DEPARTMENTS);
+    localStorage.removeItem(HR_STORAGE_KEYS.BRANCHES);
     localStorage.removeItem(HR_STORAGE_KEYS.DEPARTMENT_ROLES);
     localStorage.removeItem(HR_STORAGE_KEYS.ATTENDANCE);
     localStorage.removeItem(HR_STORAGE_KEYS.LEAVE_REQUESTS);

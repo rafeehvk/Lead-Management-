@@ -19,9 +19,12 @@ import {
   DollarSign,
   ClipboardList,
   Building,
+  Printer,
+  Palette,
 } from 'lucide-react';
 import {
   ProposalContentConfig,
+  ProposalThemeConfig,
   ProposalModuleItem,
   ProposalReportCategory,
   ProposalServiceItem,
@@ -29,7 +32,7 @@ import {
   Settings,
   User,
 } from '../types';
-import { DEFAULT_PROPOSAL_CONTENT, getEffectiveProposalContent } from '../utils/defaultProposalContent';
+import { DEFAULT_PROPOSAL_CONTENT, DEFAULT_PROPOSAL_THEME, getEffectiveProposalContent } from '../utils/defaultProposalContent';
 import { hasPermission } from '../utils/rbac';
 
 interface ProposalContentManagerProps {
@@ -48,7 +51,7 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
     getEffectiveProposalContent(settings)
   );
   const [activeSection, setActiveSection] = useState<
-    'modules' | 'reports' | 'services' | 'roadmap' | 'about' | 'contact' | 'pricing'
+    'modules' | 'reports' | 'services' | 'roadmap' | 'about' | 'contact' | 'pricing' | 'theme'
   >('modules');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
@@ -346,6 +349,7 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
           { id: 'pricing', label: '6. Pricing Notes', icon: DollarSign },
           { id: 'about', label: '1 & 2. About Company & Product', icon: BookOpen },
           { id: 'contact', label: '7. Contact Info', icon: Phone },
+          { id: 'theme', label: 'Proposal Themes (Print/PDF Header & Footer)', icon: Printer },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSection === tab.id;
@@ -1526,6 +1530,251 @@ export const ProposalContentManager: React.FC<ProposalContentManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* SECTION: PROPOSAL THEMES (PRINT/PDF CUSTOM HEADER & FOOTER) */}
+      {activeSection === 'theme' && (() => {
+        const theme: ProposalThemeConfig = content.proposalTheme || DEFAULT_PROPOSAL_THEME;
+        const updateTheme = (updates: Partial<ProposalThemeConfig>) => {
+          setContent((prev) => ({
+            ...prev,
+            proposalTheme: {
+              ...(prev.proposalTheme || DEFAULT_PROPOSAL_THEME),
+              ...updates,
+            },
+          }));
+        };
+
+        return (
+          <div className="space-y-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-[#168A45]" />
+                    Proposal Themes: Print & PDF Custom Header & Footer Configuration
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Configure custom header and footer text fields that display specifically on the printed and downloaded PDF versions of your proposals.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-[#0B5D2A] bg-[#EAF7EF] border border-[#D9E5DD] px-2.5 py-1 rounded-full shrink-0">
+                  A4 Print & PDF Exclusive
+                </span>
+              </div>
+
+              {/* Dynamic Placeholders Reference */}
+              <div className="bg-[#F7FAF8] border border-emerald-200/80 rounded-xl p-3.5 text-xs space-y-1.5">
+                <div className="font-bold text-[#0B5D2A] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#168A45]" />
+                  <span>Supported Dynamic Variables (Auto-filled per Proposal):</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {[
+                    '{{INSTITUTE_NAME}}',
+                    '{{PROPOSAL_NUMBER}}',
+                    '{{PROPOSAL_DATE}}',
+                    '{{COMPANY_NAME}}',
+                    '{{BRAND_NAME}}',
+                    '{{STUDENT_COUNT}}',
+                    '{{AGREEMENT_PERIOD}}',
+                  ].map((token) => (
+                    <code
+                      key={token}
+                      className="px-2 py-0.5 bg-white border border-emerald-200 rounded text-[11px] font-mono text-[#0B5D2A] font-semibold"
+                    >
+                      {token}
+                    </code>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Print / PDF Custom Header Card */}
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3.5 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Print / PDF Custom Header
+                      </h5>
+                      <p className="text-[11px] text-slate-500">
+                        Displayed at the top of each A4 proposal sheet when printed or saved as PDF
+                      </p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        disabled={!canManage}
+                        checked={theme.printHeaderEnabled}
+                        onChange={(e) => updateTheme({ printHeaderEnabled: e.target.checked })}
+                        className="rounded text-[#168A45] focus:ring-[#168A45] w-4 h-4 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Enable</span>
+                    </label>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Primary Print Header Text (Left Aligned)
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!canManage || !theme.printHeaderEnabled}
+                        value={theme.printHeaderText}
+                        onChange={(e) => updateTheme({ printHeaderText: e.target.value })}
+                        placeholder="e.g. CONFIDENTIAL COMMERCIAL PROPOSAL • CASBIRO SOLUTIONS PVT LTD"
+                        className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-[#168A45]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Secondary Print Header Subtext / Reference (Right Aligned)
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!canManage || !theme.printHeaderEnabled}
+                        value={theme.printHeaderSubtext || ''}
+                        onChange={(e) => updateTheme({ printHeaderSubtext: e.target.value })}
+                        placeholder="e.g. Ref: {{PROPOSAL_NUMBER}} | Date: {{PROPOSAL_DATE}}"
+                        className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-[#168A45]"
+                      />
+                    </div>
+
+                    <label className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 cursor-pointer">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Show Custom Header on Cover Page (Page 1)</span>
+                        <span className="text-[10px] text-slate-400">By default, the cover page remains clean and header starts from Page 2</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        disabled={!canManage || !theme.printHeaderEnabled}
+                        checked={!!theme.showHeaderOnCoverPage}
+                        onChange={(e) => updateTheme({ showHeaderOnCoverPage: e.target.checked })}
+                        className="rounded text-[#168A45] focus:ring-[#168A45] w-4 h-4 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Print / PDF Custom Footer Card */}
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3.5 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Print / PDF Custom Footer
+                      </h5>
+                      <p className="text-[11px] text-slate-500">
+                        Displayed above the bottom page bar on printed and PDF proposal sheets
+                      </p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        disabled={!canManage}
+                        checked={theme.printFooterEnabled}
+                        onChange={(e) => updateTheme({ printFooterEnabled: e.target.checked })}
+                        className="rounded text-[#168A45] focus:ring-[#168A45] w-4 h-4 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Enable</span>
+                    </label>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Primary Print Footer Text (Left Aligned)
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!canManage || !theme.printFooterEnabled}
+                        value={theme.printFooterText}
+                        onChange={(e) => updateTheme({ printFooterText: e.target.value })}
+                        placeholder="e.g. Issued for {{INSTITUTE_NAME}} • Casbiro Solutions Private Limited"
+                        className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-[#168A45]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Secondary Print Footer Subtext (Right Aligned)
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!canManage || !theme.printFooterEnabled}
+                        value={theme.printFooterSubtext || ''}
+                        onChange={(e) => updateTheme({ printFooterSubtext: e.target.value })}
+                        placeholder="e.g. Official Printed / PDF Copy • Valid for 30 Days • www.mysar.in"
+                        className="w-full bg-white disabled:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-[#168A45]"
+                      />
+                    </div>
+
+                    <label className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 cursor-pointer">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Show Custom Footer on Cover Page (Page 1)</span>
+                        <span className="text-[10px] text-slate-400">Display the custom print footer band on the cover sheet as well</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        disabled={!canManage || !theme.printFooterEnabled}
+                        checked={theme.showFooterOnCoverPage !== false}
+                        onChange={(e) => updateTheme({ showFooterOnCoverPage: e.target.checked })}
+                        className="rounded text-[#168A45] focus:ring-[#168A45] w-4 h-4 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Print/PDF Header & Footer Strip Preview */}
+              <div className="border border-gray-200 rounded-xl p-4 bg-white space-y-3">
+                <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Live A4 Print / PDF Header & Footer Preview</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Rendered automatically when printing or downloading PDF</span>
+                </div>
+
+                {theme.printHeaderEnabled ? (
+                  <div className="w-full border border-emerald-200 bg-[#F7FAF8] px-4 py-2 rounded-lg flex items-center justify-between gap-4 text-[10px] text-slate-600">
+                    <span className="font-bold text-[#0B5D2A] uppercase truncate">
+                      {(theme.printHeaderText || '').replace('{{PROPOSAL_NUMBER}}', 'MYSAR/2026/104').replace('{{PROPOSAL_DATE}}', '05/10/2026').replace('{{INSTITUTE_NAME}}', 'St. Marys Higher Secondary School')}
+                    </span>
+                    <span className="font-mono font-semibold text-slate-600 shrink-0">
+                      {(theme.printHeaderSubtext || '').replace('{{PROPOSAL_NUMBER}}', 'MYSAR/2026/104').replace('{{PROPOSAL_DATE}}', '05/10/2026')}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-400 italic px-3 py-1.5 bg-slate-50 rounded border border-dashed border-gray-200">
+                    Print Header is currently disabled.
+                  </div>
+                )}
+
+                {theme.printFooterEnabled ? (
+                  <div className="w-full border border-emerald-200 rounded-lg overflow-hidden">
+                    <div className="bg-[#F7FAF8] px-4 py-1.5 flex items-center justify-between gap-4 text-[10px] text-slate-600 border-b border-emerald-200">
+                      <span className="font-semibold text-slate-700 truncate">
+                        {(theme.printFooterText || '').replace('{{INSTITUTE_NAME}}', 'St. Marys Higher Secondary School').replace('{{PROPOSAL_NUMBER}}', 'MYSAR/2026/104')}
+                      </span>
+                      <span className="font-medium text-[#0B5D2A] shrink-0">
+                        {(theme.printFooterSubtext || '').replace('{{PROPOSAL_NUMBER}}', 'MYSAR/2026/104')}
+                      </span>
+                    </div>
+                    <div className="h-7 bg-[#168A45] flex items-center justify-between px-4 text-white text-[10px]">
+                      <span className="font-semibold tracking-wider uppercase">
+                        MYSAR • {(settings.companyName || 'CASBIRO SOLUTIONS PRIVATE LIMITED').toUpperCase()}
+                      </span>
+                      <span className="font-bold tracking-widest uppercase">PAGE 2</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-400 italic px-3 py-1.5 bg-slate-50 rounded border border-dashed border-gray-200">
+                    Custom Print Footer is currently disabled.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Bottom Save Bar */}
       {canManage && (

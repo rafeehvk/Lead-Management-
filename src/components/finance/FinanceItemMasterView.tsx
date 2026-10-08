@@ -32,21 +32,96 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>('All');
 
   // New Item Modal
-  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
-  const [newItemForm, setNewItemForm] = useState({
+  const initialNewItemState = {
     code: '',
     name: '',
     isService: false,
     category: 'Hardware & IT Goods',
-    hsnCode: '84713010',
+    hsnCode: '',
     baseUnit: 'NOS',
     purchasePrice: '',
     salesPrice: '',
+    isPriceInclusiveOfTax: false,
     taxRatePercent: '18',
+    cgstPercent: '9',
+    sgstPercent: '9',
+    igstPercent: '18',
+    cessPercent: '0',
     openingStock: '0',
     reorderLevel: '5',
     valuationMethod: 'FIFO' as 'FIFO' | 'Weighted Average' | 'Standard Cost',
-  });
+  };
+
+  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [newItemForm, setNewItemForm] = useState(initialNewItemState);
+
+  const handleGstPresetChange = (rate: number) => {
+    const half = rate / 2;
+    setNewItemForm((prev) => ({
+      ...prev,
+      taxRatePercent: String(rate),
+      igstPercent: String(rate),
+      cgstPercent: String(half),
+      sgstPercent: String(half),
+      cessPercent: '0',
+    }));
+  };
+
+  const handleIgstChange = (val: string) => {
+    const num = parseFloat(val) || 0;
+    const half = num / 2;
+    const cess = parseFloat(newItemForm.cessPercent) || 0;
+    setNewItemForm((prev) => ({
+      ...prev,
+      igstPercent: val,
+      cgstPercent: String(half),
+      sgstPercent: String(half),
+      taxRatePercent: String(num + cess),
+    }));
+  };
+
+  const handleCgstChange = (val: string) => {
+    const num = parseFloat(val) || 0;
+    setNewItemForm((prev) => {
+      const sgst = num;
+      const igst = num + sgst;
+      const cess = parseFloat(prev.cessPercent) || 0;
+      return {
+        ...prev,
+        cgstPercent: val,
+        sgstPercent: String(sgst),
+        igstPercent: String(igst),
+        taxRatePercent: String(igst + cess),
+      };
+    });
+  };
+
+  const handleSgstChange = (val: string) => {
+    const num = parseFloat(val) || 0;
+    setNewItemForm((prev) => {
+      const cgst = parseFloat(prev.cgstPercent) || 0;
+      const igst = cgst + num;
+      const cess = parseFloat(prev.cessPercent) || 0;
+      return {
+        ...prev,
+        sgstPercent: val,
+        igstPercent: String(igst),
+        taxRatePercent: String(igst + cess),
+      };
+    });
+  };
+
+  const handleCessChange = (val: string) => {
+    const cess = parseFloat(val) || 0;
+    setNewItemForm((prev) => {
+      const igst = parseFloat(prev.igstPercent) || 0;
+      return {
+        ...prev,
+        cessPercent: val,
+        taxRatePercent: String(igst + cess),
+      };
+    });
+  };
 
   const loadData = () => {
     setItems(erpFinanceStorage.getItems());
@@ -68,7 +143,7 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
         return (
           item.code.toLowerCase().includes(q) ||
           item.name.toLowerCase().includes(q) ||
-          item.hsnCode.includes(q) ||
+          (item.hsnCode || '').toLowerCase().includes(q) ||
           item.category.toLowerCase().includes(q)
         );
       }
@@ -93,20 +168,29 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
     const sRate = parseFloat(newItemForm.salesPrice) || 0;
     const stock = parseFloat(newItemForm.openingStock) || 0;
     const reorder = parseFloat(newItemForm.reorderLevel) || 0;
-    const gst = parseFloat(newItemForm.taxRatePercent) || 18;
+    const igst = parseFloat(newItemForm.igstPercent) || parseFloat(newItemForm.taxRatePercent) || 18;
+    const cgst = parseFloat(newItemForm.cgstPercent) || igst / 2;
+    const sgst = parseFloat(newItemForm.sgstPercent) || igst / 2;
+    const cess = parseFloat(newItemForm.cessPercent) || 0;
+    const totalGst = parseFloat(newItemForm.taxRatePercent) || (igst + cess);
 
     erpFinanceStorage.saveItem({
-      code: newItemForm.code || `ITM-${items.length + 101}`,
-      name: newItemForm.name,
+      code: newItemForm.code.trim() || `ITM-${items.length + 101}`,
+      name: newItemForm.name.trim(),
       isService: newItemForm.isService,
       category: newItemForm.category,
-      hsnCode: newItemForm.hsnCode,
+      hsnCode: newItemForm.hsnCode.trim(),
       baseUnit: newItemForm.baseUnit,
       purchaseUnit: newItemForm.baseUnit,
       salesUnit: newItemForm.baseUnit,
       purchasePrice: pRate,
       salesPrice: sRate,
-      taxRatePercent: gst,
+      isPriceInclusiveOfTax: newItemForm.isPriceInclusiveOfTax,
+      taxRatePercent: totalGst,
+      cgstPercent: cgst,
+      sgstPercent: sgst,
+      igstPercent: igst,
+      cessPercent: cess,
       openingStock: stock,
       currentStock: stock,
       reorderLevel: reorder,
@@ -114,20 +198,7 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
     });
 
     setIsNewItemOpen(false);
-    setNewItemForm({
-      code: '',
-      name: '',
-      isService: false,
-      category: 'Hardware & IT Goods',
-      hsnCode: '84713010',
-      baseUnit: 'NOS',
-      purchasePrice: '',
-      salesPrice: '',
-      taxRatePercent: '18',
-      openingStock: '0',
-      reorderLevel: '5',
-      valuationMethod: 'FIFO',
-    });
+    setNewItemForm(initialNewItemState);
     loadData();
   };
 
@@ -258,11 +329,24 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
                       </span>
                       <div className="text-[11px] text-slate-500 mt-0.5">{item.category}</div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{item.hsnCode}</td>
+                    <td className="py-3 px-4 font-mono text-slate-700">
+                      {item.hsnCode ? (
+                        item.hsnCode
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Optional / None</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{item.baseUnit}</td>
                     <td className="py-3 px-4 text-right font-mono text-slate-800">{formatINR(item.purchasePrice)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                      {formatINR(item.salesPrice)}
+                    <td className="py-3 px-4 text-right font-mono">
+                      <div className="font-bold text-slate-900">{formatINR(item.salesPrice)}</div>
+                      <div className="text-[10px] font-sans">
+                        {item.isPriceInclusiveOfTax ? (
+                          <span className="text-emerald-700 font-semibold">Incl. {item.taxRatePercent}% GST</span>
+                        ) : (
+                          <span className="text-slate-500">+{item.taxRatePercent}% GST</span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-right font-mono">
                       {!item.isService ? (
@@ -294,9 +378,9 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
 
       {/* CREATE ITEM MODAL */}
       {isNewItemOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 max-h-[92vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center space-x-2">
                 <span className="p-1.5 bg-amber-50 rounded-lg text-amber-800">
                   <Plus className="w-4 h-4" />
@@ -306,13 +390,13 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsNewItemOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateItem} className="mt-4 space-y-4">
+            <form onSubmit={handleCreateItem} className="mt-4 space-y-4 overflow-y-auto pr-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Item Code</label>
@@ -351,14 +435,15 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">HSN / SAC Code *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    HSN / SAC Code <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
                   <input
                     type="text"
-                    required
-                    placeholder="8471"
+                    placeholder="e.g. 8471 (optional)"
                     value={newItemForm.hsnCode}
                     onChange={(e) => setNewItemForm({ ...newItemForm, hsnCode: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono placeholder:text-slate-400"
                   />
                 </div>
                 <div>
@@ -366,13 +451,16 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
                   <select
                     value={newItemForm.baseUnit}
                     onChange={(e) => setNewItemForm({ ...newItemForm, baseUnit: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs cursor-pointer"
                   >
                     <option value="NOS">NOS (Numbers / Units)</option>
                     <option value="KG">KG (Kilograms)</option>
                     <option value="BOX">BOX (Packaging boxes)</option>
                     <option value="LITRE">LITRE (Liquid volume)</option>
                     <option value="HOUR">HOUR (Consulting)</option>
+                    <option value="MTR">MTR (Metres)</option>
+                    <option value="SET">SET (Sets)</option>
+                    <option value="PCS">PCS (Pieces)</option>
                   </select>
                 </div>
               </div>
@@ -404,6 +492,228 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
                 </div>
               </div>
 
+              {/* Does Item Price Include Tax (Yes or No) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800">
+                    Does item price include tax? <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-500">
+                    Specify whether Default Selling Rate and Purchase Cost include GST (MRP) or are tax-exclusive base prices.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setNewItemForm((prev) => ({ ...prev, isPriceInclusiveOfTax: true }))}
+                    className={`p-2.5 rounded-xl border text-left flex items-start space-x-2.5 transition-all cursor-pointer ${
+                      newItemForm.isPriceInclusiveOfTax
+                        ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900 ring-1 ring-emerald-500 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full mt-0.5 border flex items-center justify-center shrink-0 ${
+                        newItemForm.isPriceInclusiveOfTax
+                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {newItemForm.isPriceInclusiveOfTax && <span className="text-[10px] font-bold">✓</span>}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">Yes (Tax Included)</div>
+                      <div className="text-[10px] text-slate-500">Price is MRP / includes GST</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewItemForm((prev) => ({ ...prev, isPriceInclusiveOfTax: false }))}
+                    className={`p-2.5 rounded-xl border text-left flex items-start space-x-2.5 transition-all cursor-pointer ${
+                      !newItemForm.isPriceInclusiveOfTax
+                        ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900 ring-1 ring-emerald-500 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full mt-0.5 border flex items-center justify-center shrink-0 ${
+                        !newItemForm.isPriceInclusiveOfTax
+                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {!newItemForm.isPriceInclusiveOfTax && <span className="text-[10px] font-bold">✓</span>}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">No (Tax Excluded)</div>
+                      <div className="text-[10px] text-slate-500">Tax will be added on top of price</div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* If NO: Ask for tax % (CGST, IGST, Cess, etc.) */}
+                {!newItemForm.isPriceInclusiveOfTax ? (
+                  <div className="pt-2 border-t border-slate-200/80 space-y-3 animate-in fade-in duration-150">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-800">
+                          Select GST Tax Slab & Percentage <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                          Total Rate: {newItemForm.taxRatePercent}%
+                        </span>
+                      </div>
+
+                      {/* GST Preset Slabs */}
+                      <div className="grid grid-cols-5 gap-1.5 mb-3">
+                        {[0, 5, 12, 18, 28].map((slab) => {
+                          const isSelected =
+                            parseFloat(newItemForm.igstPercent) === slab &&
+                            parseFloat(newItemForm.cessPercent || '0') === 0;
+                          return (
+                            <button
+                              key={slab}
+                              type="button"
+                              onClick={() => handleGstPresetChange(slab)}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#168A45] text-white border-[#168A45] shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {slab}% {slab === 0 ? '(Exempt)' : ''}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Detailed Tax Breakdown Fields: CGST, SGST, IGST, Cess */}
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Tax Rate Breakdown (%):</span>
+                        <span className="text-[10px] font-normal text-slate-400">
+                          Intra-State: CGST+SGST | Inter-State: IGST
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">CGST %</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="e.g. 9"
+                              value={newItemForm.cgstPercent}
+                              onChange={(e) => handleCgstChange(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">Central GST</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">SGST / UTGST %</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="e.g. 9"
+                              value={newItemForm.sgstPercent}
+                              onChange={(e) => handleSgstChange(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">State / UT GST</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">IGST %</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="e.g. 18"
+                              value={newItemForm.igstPercent}
+                              onChange={(e) => handleIgstChange(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">Inter-State GST</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            Cess % <span className="text-slate-400 font-normal">(Optional)</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={newItemForm.cessPercent}
+                              onChange={(e) => handleCessChange(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-mono font-bold pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-0.5 block">Compensation Cess</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-white border border-slate-200 rounded-lg flex flex-wrap items-center justify-between text-[11px] gap-2">
+                      <span className="text-slate-600">
+                        Intra-State: <b>{newItemForm.cgstPercent}% CGST + {newItemForm.sgstPercent}% SGST</b>
+                        {parseFloat(newItemForm.cessPercent) > 0 ? ` + ${newItemForm.cessPercent}% Cess` : ''}
+                      </span>
+                      <span className="text-slate-600">
+                        Inter-State: <b>{newItemForm.igstPercent}% IGST</b>
+                        {parseFloat(newItemForm.cessPercent) > 0 ? ` + ${newItemForm.cessPercent}% Cess` : ''}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-slate-200/80 space-y-2 animate-in fade-in duration-150">
+                    <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-center space-x-2">
+                      <span className="text-emerald-700 font-bold">✓</span>
+                      <span>
+                        <b>Tax-Inclusive Pricing:</b> Prices entered above are treated as gross MRP amounts including GST.
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs font-semibold text-slate-600">Embedded GST Rate Slab:</label>
+                      <div className="flex items-center space-x-1">
+                        {[0, 5, 12, 18, 28].map((slab) => (
+                          <button
+                            key={slab}
+                            type="button"
+                            onClick={() => handleGstPresetChange(slab)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-colors cursor-pointer ${
+                              parseFloat(newItemForm.igstPercent) === slab
+                                ? 'bg-emerald-700 text-white border-emerald-700'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            {slab}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {!newItemForm.isService && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -429,17 +739,17 @@ export const FinanceItemMasterView: React.FC<FinanceItemMasterViewProps> = ({
                 </div>
               )}
 
-              <div className="pt-3 flex justify-end space-x-2">
+              <div className="pt-3 flex justify-end space-x-2 shrink-0 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsNewItemOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold shadow-2xs"
+                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer transition-colors"
                 >
                   Register Master Item
                 </button>

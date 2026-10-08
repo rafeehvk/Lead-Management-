@@ -55,7 +55,7 @@ export const AssetCategoriesView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-12 animate-in fade-in max-w-4xl">
+    <div className="space-y-4 pb-12 animate-in fade-in w-full">
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-slate-900">Asset Categories Master</h2>
@@ -172,7 +172,7 @@ export const AssetLocationsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-12 animate-in fade-in max-w-4xl">
+    <div className="space-y-4 pb-12 animate-in fade-in w-full">
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-slate-900">Asset Locations Master</h2>
@@ -302,7 +302,7 @@ export const AssetVendorsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-12 animate-in fade-in max-w-5xl">
+    <div className="space-y-4 pb-12 animate-in fade-in w-full">
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-slate-900">Approved Hardware Vendors & Suppliers</h2>
@@ -417,7 +417,7 @@ export const AssetSettingsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-12 animate-in fade-in max-w-3xl">
+    <div className="space-y-4 pb-12 animate-in fade-in w-full">
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-slate-900">Asset Management Configuration & Policies</h2>

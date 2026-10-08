@@ -107,7 +107,7 @@ export const ProposalPaymentDashboard: React.FC<ProposalPaymentDashboardProps> =
       : 0;
 
   return (
-    <div className="space-y-6 w-full max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Top Banner & Context */}
       <div className="bg-gradient-to-r from-emerald-900 to-[#0B5D2A] text-white rounded-2xl p-5 sm:p-6 shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />

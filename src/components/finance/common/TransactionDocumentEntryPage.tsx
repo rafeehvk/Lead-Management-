@@ -214,6 +214,29 @@ export const TransactionDocumentEntryPage: React.FC<TransactionDocumentEntryPage
   }, [partiesList, selectedPartyId, availableParties]);
 
   // Document Number & Auto-generation
+  const getDocumentName = (type: EntryDocumentType): string => {
+    switch (type) {
+      case 'sales-invoice':
+        return 'Tax Invoice';
+      case 'sales-order':
+        return 'Sales Order';
+      case 'sales-quotation':
+        return 'Sales Quotation';
+      case 'sales-return':
+        return 'Credit Note';
+      case 'purchase-invoice':
+        return 'Purchase Bill';
+      case 'purchase-order':
+        return 'Purchase Order';
+      case 'purchase-quotation':
+        return 'Purchase Quotation';
+      case 'purchase-return':
+        return 'Debit Note';
+      default:
+        return 'Tax Invoice';
+    }
+  };
+
   const generateDocNumber = (type: EntryDocumentType): string => {
     const rand = Math.floor(1000 + Math.random() * 9000);
     switch (type) {
@@ -1188,10 +1211,13 @@ export const TransactionDocumentEntryPage: React.FC<TransactionDocumentEntryPage
               </span>
             </div>
 
-            {/* Document Number with toggle to customize */}
+            {/* Document Number with document name before document number in bold */}
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700">Document Number:</label>
+                <label className="text-xs text-slate-700 flex items-center space-x-1">
+                  <span className="font-extrabold text-slate-900 uppercase tracking-tight">{getDocumentName(docType)}</span>
+                  <span className="font-semibold text-slate-600">Number:</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => setIsDocNumberCustom(!isDocNumberCustom)}
@@ -1200,17 +1226,22 @@ export const TransactionDocumentEntryPage: React.FC<TransactionDocumentEntryPage
                   {isDocNumberCustom ? 'Auto Sequence' : 'Custom Number'}
                 </button>
               </div>
-              <input
-                type="text"
-                readOnly={!isDocNumberCustom}
-                value={documentNumber}
-                onChange={(e) => setDocumentNumber(e.target.value)}
-                className={`w-full rounded-xl px-3 py-2 text-sm font-mono font-bold tracking-wide border transition-all ${
-                  isDocNumberCustom
-                    ? 'bg-amber-50/50 border-amber-300 text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500'
-                    : 'bg-slate-100 border-gray-200 text-slate-800'
-                }`}
-              />
+              <div className="flex rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-[#0B5D2A] bg-white shadow-2xs">
+                <span className="inline-flex items-center px-3 bg-slate-100 border-r border-gray-200 text-xs font-black text-slate-800 uppercase tracking-tight select-none">
+                  {getDocumentName(docType)}
+                </span>
+                <input
+                  type="text"
+                  readOnly={!isDocNumberCustom}
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  className={`w-full px-3 py-2 text-sm font-mono font-bold tracking-wide outline-none ${
+                    isDocNumberCustom
+                      ? 'bg-amber-50/60 text-slate-900'
+                      : 'bg-slate-50 text-slate-800'
+                  }`}
+                />
+              </div>
             </div>
 
             {/* Document Date & Due Date */}
@@ -1991,12 +2022,20 @@ export const TransactionDocumentEntryPage: React.FC<TransactionDocumentEntryPage
               };
 
               return (
-                <div className="bg-white p-2 rounded-xl shadow-xs">
-                  <ThemedDocumentRenderer
-                    category={currentCategory}
-                    themeConfig={docThemeConfig}
-                    data={previewData}
-                  />
+                <div className="bg-slate-100/80 p-4 rounded-xl shadow-xs flex flex-col items-center overflow-auto max-h-[80vh]">
+                  <div className="mb-3 px-3 py-1 rounded-full bg-slate-900 text-slate-300 text-[11px] font-medium border border-slate-700 shadow-xs flex items-center space-x-2 no-print shrink-0 select-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span className="font-bold text-white">A4 Page Preview</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="font-mono text-emerald-300">210mm × 297mm</span>
+                  </div>
+                  <div className="w-[210mm] max-w-full min-h-[297mm] shadow-2xl bg-white print:shadow-none print:w-[210mm] print:m-0 erp-a4-document-sheet">
+                    <ThemedDocumentRenderer
+                      category={currentCategory}
+                      themeConfig={docThemeConfig}
+                      data={previewData}
+                    />
+                  </div>
                 </div>
               );
             })()}

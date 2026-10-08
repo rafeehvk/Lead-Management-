@@ -203,10 +203,20 @@ export function printProposalDocument(elementId: string): void {
             page-break-after: avoid;
             break-after: avoid;
           }
+          .proposal-print-header-band,
+          .proposal-print-footer-band {
+            display: flex !important;
+          }
+          .no-print,
+          .proposal-no-print {
+            display: none !important;
+          }
         </style>
       </head>
-      <body>
-        ${element.outerHTML}
+      <body class="proposal-print-active">
+        <div class="proposal-sheet-print-mode proposal-sheet-a4-print">
+          ${element.outerHTML}
+        </div>
       </body>
     </html>
   `);

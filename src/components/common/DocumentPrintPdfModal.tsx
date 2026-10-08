@@ -202,6 +202,12 @@ export const DocumentPrintPdfModal: React.FC<DocumentPrintPdfModalProps> = ({
 
           {/* Center / Right Action Controls */}
           <div className="flex items-center space-x-2 shrink-0">
+            {/* A4 Size Indicator Badge */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>A4 (210×297mm)</span>
+            </div>
+
             {/* Zoom Controls */}
             <div className="hidden sm:flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 text-xs text-slate-300">
               <button
@@ -337,7 +343,17 @@ export const DocumentPrintPdfModal: React.FC<DocumentPrintPdfModalProps> = ({
         )}
 
         {/* Scrollable Document Canvas Viewport */}
-        <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center items-start bg-slate-200/80 relative">
+        <div className="flex-1 overflow-auto p-4 sm:p-8 flex flex-col items-center justify-start bg-slate-200/90 relative">
+          {/* A4 Sheet Indicator */}
+          <div className="mb-4 px-3.5 py-1.5 rounded-full bg-slate-900/90 text-slate-300 text-[11px] font-medium border border-slate-700/80 shadow-xs flex items-center space-x-2.5 no-print shrink-0 select-none">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-bold text-white">A4 Document Sheet</span>
+            <span className="text-slate-500">•</span>
+            <span className="font-mono text-emerald-300 font-semibold">210mm × 297mm</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-slate-300">GST Statutory Standard</span>
+          </div>
+
           <div
             id="erp-printable-document-root"
             ref={documentContentRef}
@@ -346,7 +362,7 @@ export const DocumentPrintPdfModal: React.FC<DocumentPrintPdfModalProps> = ({
               transformOrigin: 'top center',
               transition: 'transform 0.15s ease-out',
             }}
-            className="shadow-2xl bg-white rounded-sm shrink-0 border border-slate-300 print:shadow-none print:border-none print:m-0 print:transform-none"
+            className="w-[210mm] max-w-[210mm] min-h-[297mm] shadow-2xl bg-white rounded-none shrink-0 border border-slate-300 print:shadow-none print:border-none print:m-0 print:transform-none box-border mb-16 erp-a4-document-sheet"
           >
             <ThemedDocumentRenderer
               category={category}

@@ -664,7 +664,7 @@ export interface ItemMaster {
   description: string;
   brand: string;
   category: string;
-  hsnCode: string; // 8 digit HSN or 6 digit SAC
+  hsnCode?: string; // 8 digit HSN or 6 digit SAC (Optional)
   isService: boolean;
   baseUnit: string; // e.g. 'NOS'
   purchaseUnit: string; // e.g. 'BOX'
@@ -673,9 +673,14 @@ export interface ItemMaster {
   salesUnitFactor: number; // e.g. 1
   purchasePrice: number;
   salesPrice: number;
+  isPriceInclusiveOfTax?: boolean; // Whether price includes tax (Yes / No)
   wholesalePrice?: number;
   minSellingPrice: number;
-  taxRatePercent: number; // e.g. 18
+  taxRatePercent: number; // Overall GST Rate % (e.g. 18)
+  cgstPercent?: number; // Central GST % (e.g. 9)
+  sgstPercent?: number; // State GST % (e.g. 9)
+  igstPercent?: number; // Integrated GST % (e.g. 18)
+  cessPercent?: number; // Cess % (e.g. 0)
   openingStock: number;
   currentStock: number;
   minStock: number;
@@ -937,6 +942,7 @@ export interface PurchaseOrder {
   roundOff: number;
   grandTotal: number;
   notes?: string;
+  remarks?: string;
   attachments?: string[];
   invoicedAmount: number;
   budgetCategoryCode?: string;
@@ -1002,6 +1008,8 @@ export interface PurchaseInvoiceRecord {
   dueDate: string;
   paymentTerms: string;
   isReverseCharge: boolean;
+  referenceNumber?: string;
+  remarks?: string;
   eInvoiceIrn?: string;
   eInvoiceQr?: string;
   attachments?: string[];

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StaffMember } from '../../types/hr';
+import { storage } from '../../services/storageService';
 
 interface PrintableStaffProfileProps {
   staff: StaffMember;
@@ -10,6 +11,18 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
   staff,
   id = 'printable-staff-profile-doc',
 }) => {
+  const settings = storage.getSettings();
+  const parentCompanyLegalName = settings.companyName || 'Casbiro Solutions Private Limited';
+  const brandName = settings.brandName || 'MYSAr';
+  const navLogo =
+    storage.getNavbarLogo() ||
+    storage.getDocumentLogo() ||
+    storage.getCompanyLogo() ||
+    settings.navbarLogo ||
+    settings.documentLogo ||
+    settings.companyLogo ||
+    '';
+
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -24,18 +37,26 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
         <div>
           <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-4 mb-4">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-black text-xl tracking-tight shadow-xs">
-                M
-              </div>
-              <div>
-                <div className="text-[10px] font-bold tracking-widest text-[#0B5D2A] uppercase">
-                  CASBIRO SOLUTIONS PRIVATE LIMITED
+              {navLogo ? (
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center overflow-hidden shadow-2xs shrink-0">
+                  <img
+                    src={navLogo}
+                    alt={brandName}
+                    className="max-h-full max-w-full object-contain"
+                    crossOrigin="anonymous"
+                  />
                 </div>
-                <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
-                  MYSAR INSTITUTIONAL ERP
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#168A45] text-white flex items-center justify-center font-black text-xl tracking-tight shadow-xs shrink-0">
+                  {brandName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
+                  {parentCompanyLegalName}
                 </h1>
-                <div className="text-[11px] font-semibold text-emerald-800">
-                  Human Resources & Faculty Administration Division
+                <div className="text-xs font-bold text-[#0B5D2A] mt-0.5">
+                  Staff Registration &amp; Onboarding
                 </div>
               </div>
             </div>
@@ -46,21 +67,6 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
               </span>
               <div className="text-[10px] text-slate-500 font-mono font-medium">Ref: {staff.id}</div>
               <div className="text-[9px] text-slate-400">Generated: {currentDate}</div>
-            </div>
-          </div>
-
-          {/* Document Title Banner */}
-          <div className="bg-gradient-to-r from-[#0B5D2A] to-[#168A45] text-white px-5 py-3 rounded-xl flex items-center justify-between mb-4 shadow-xs">
-            <div>
-              <div className="text-[10px] uppercase font-bold tracking-widest text-emerald-200">
-                Institutional Service & Demographic Profile
-              </div>
-              <div className="text-base font-bold tracking-tight">CONFIDENTIAL STAFF RECORD</div>
-            </div>
-            <div className="text-right text-[11px]">
-              <span className="bg-white/20 px-3 py-1 rounded-lg font-bold">
-                Status: {staff.employmentStatus}
-              </span>
             </div>
           </div>
 
@@ -245,38 +251,14 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Page 1 Footer */}
-        <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[9px] text-slate-400">
-          <div>CONFIDENTIAL • FOR AUTHORIZED INSTITUTIONAL HR ARCHIVE ONLY</div>
-          <div className="font-bold tracking-widest text-[#168A45]">PAGE 1 OF 2</div>
-        </div>
-      </div>
-
-      {/* ======================= PAGE 2 ======================= */}
-      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-10 box-border mt-6">
-        <div>
-          {/* Page 2 Mini Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs">
-                M
-              </div>
-              <span className="font-bold text-slate-900 text-xs">
-                MYSAR ERP • Staff Profile Dossier • {staff.fullName} ({staff.id})
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Page 2 of 2</div>
-          </div>
-
-          {/* Section 4: Academic & Professional Qualifications */}
-          <div className="mb-4">
+          {/* Section 4: Academic & Professional Qualifications (Moved to Page 1 to eliminate bottom blank space) */}
+          <div className="mt-4">
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 4
               </span>
-              <span>Academic & Professional Qualifications</span>
+              <span>Academic &amp; Professional Qualifications</span>
             </div>
 
             <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
@@ -292,7 +274,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {!staff.qualifications || staff.qualifications.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-3 text-center text-slate-400 italic">
+                    <td colSpan={5} className="p-2.5 text-center text-slate-400 italic">
                       No qualification credentials cataloged.
                     </td>
                   </tr>
@@ -312,6 +294,46 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Page 1 Footer */}
+        <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[9px] text-slate-400">
+          <div className="uppercase">{parentCompanyLegalName} • STAFF REGISTRATION &amp; ONBOARDING • FOR HR ARCHIVE ONLY</div>
+          <div className="font-bold tracking-widest text-[#168A45]">PAGE 1 OF 2</div>
+        </div>
+      </div>
+
+      {/* ======================= PAGE 2 ======================= */}
+      <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-10 box-border mt-6">
+        <div>
+          {/* Page 2 Mini Header */}
+          <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-3 mb-4">
+            <div className="flex items-center space-x-2.5">
+              {navLogo ? (
+                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
+                  <img
+                    src={navLogo}
+                    alt={brandName}
+                    className="max-h-full max-w-full object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-lg bg-[#168A45] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {brandName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                  {parentCompanyLegalName}
+                </div>
+                <div className="font-bold text-[#0B5D2A] text-[10px]">
+                  Staff Registration &amp; Onboarding • {staff.fullName} ({staff.id})
+                </div>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 font-semibold">Page 2 of 2</div>
           </div>
 
           {/* Section 5: Previous Employment & Experience History */}

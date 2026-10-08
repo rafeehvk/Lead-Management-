@@ -47,7 +47,9 @@ import {
   AppointmentStatus,
   EmploymentType,
   AllowanceItem,
+  DeductionItem,
 } from '../../types/hr';
+import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 
 interface RecruitmentViewProps {
   positions: Position[];
@@ -214,6 +216,8 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       { id: 'all-3', name: 'Communication Allowance', amount: 1500 },
       { id: 'all-4', name: 'Special Allowance', amount: 2000 },
     ],
+    deductions: 0,
+    deductionItems: [],
     joiningDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
     employmentType: 'Full-Time',
     businessOrProduct: 'MYSAR / Casbiro',
@@ -241,14 +245,11 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     division: 'Academic Wing',
     joiningDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
     employmentType: 'Full Time',
-    basicSalary: 30000,
-    allowances: 15000,
-    allowanceItems: [
-      { id: 'all-room', name: 'Room Allowance', amount: 6000 },
-      { id: 'all-trans', name: 'Transportation', amount: 4000 },
-      { id: 'all-ot', name: 'Over time', amount: 2000 },
-      { id: 'all-spl', name: 'Special Allowance', amount: 3000 },
-    ],
+    basicSalary: 0,
+    allowances: 0,
+    allowanceItems: [],
+    deductions: 0,
+    deductionItems: [],
     probationPeriod: '6 Months',
     workingHours: '8:15 AM – 4:00 PM (Monday to Friday)',
     workplace: 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
@@ -264,21 +265,45 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
   const [apptForm, setApptForm] = useState<Partial<AppointmentLetter>>(defaultApptForm);
 
   const handleAddApptAllowance = (name: string, amount: number) => {
-    const newItems = [...(apptForm.allowanceItems || []), { id: `all-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`, name, amount }];
-    const total = newItems.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const newItems = [
+      ...(apptForm.allowanceItems || []),
+      { id: `all-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`, name, amount },
+    ];
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     setApptForm({ ...apptForm, allowanceItems: newItems, allowances: total });
   };
 
   const handleUpdateApptAllowance = (id: string, updates: Partial<AllowanceItem>) => {
     const newItems = (apptForm.allowanceItems || []).map((it) => (it.id === id ? { ...it, ...updates } : it));
-    const total = newItems.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     setApptForm({ ...apptForm, allowanceItems: newItems, allowances: total });
   };
 
   const handleRemoveApptAllowance = (id: string) => {
     const newItems = (apptForm.allowanceItems || []).filter((it) => it.id !== id);
-    const total = newItems.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     setApptForm({ ...apptForm, allowanceItems: newItems, allowances: total });
+  };
+
+  const handleAddApptDeduction = (name: string, amount: number) => {
+    const newItems = [
+      ...(apptForm.deductionItems || []),
+      { id: `ded-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`, name, amount },
+    ];
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setApptForm({ ...apptForm, deductionItems: newItems, deductions: total });
+  };
+
+  const handleUpdateApptDeduction = (id: string, updates: Partial<DeductionItem>) => {
+    const newItems = (apptForm.deductionItems || []).map((it) => (it.id === id ? { ...it, ...updates } : it));
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setApptForm({ ...apptForm, deductionItems: newItems, deductions: total });
+  };
+
+  const handleRemoveApptDeduction = (id: string) => {
+    const newItems = (apptForm.deductionItems || []).filter((it) => it.id !== id);
+    const total = newItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    setApptForm({ ...apptForm, deductionItems: newItems, deductions: total });
   };
 
   // Helper openers for Offer & Appointment Modals
@@ -301,6 +326,8 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
         { id: 'all-3', name: 'Communication Allowance', amount: Math.round(allowances * 0.15) },
         { id: 'all-4', name: 'Special Allowance', amount: Math.round(allowances * 0.15) },
       ],
+      deductions: 0,
+      deductionItems: [],
       joiningDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       employmentType: 'Full-Time',
       businessOrProduct: 'MYSAR / Casbiro',
@@ -332,31 +359,102 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       email: offer.applicantEmail,
       stage: 'Offer Sent',
     } as Applicant);
+    const sal = calculateOfferSalaryBreakdown(offer);
+    const syncedAllowanceItems: AllowanceItem[] = sal.earningsItems
+      .slice(1)
+      .map((item, idx) => ({
+        id: offer.allowanceItems?.[idx]?.id || `all-edit-${idx}`,
+        name: item.name,
+        amount: item.amount,
+      }));
+    const syncedDeductionItems: DeductionItem[] = sal.deductionItems.map((item, idx) => ({
+      id: offer.deductionItems?.[idx]?.id || `ded-edit-${idx}`,
+      name: item.name,
+      amount: item.amount,
+    }));
+
     setSelectedApplicantForOffer(applicant);
     setEditingOfferId(offer.id);
-    setOfferForm({ ...offer });
+    setOfferForm({
+      ...offer,
+      basicSalary: sal.basic,
+      allowances: sal.totalAllowances,
+      allowanceItems: syncedAllowanceItems,
+      deductions: sal.totalDeductions,
+      deductionItems: syncedDeductionItems,
+      grossSalary: sal.gross,
+      netSalary: sal.netSalary,
+    });
     setIsGenerateOfferOpen(true);
   };
 
-  const handleOpenCreateAppt = (applicant: Applicant) => {
-    setSelectedApplicantForAppt(applicant);
-    setEditingApptId(null);
-    const matchingOffer = offerLetters.find((o) => o.applicantId === applicant.id || o.id === applicant.offerLetterId);
-    const basic = matchingOffer?.basicSalary || 30000;
-    const allowances = matchingOffer?.allowances || 15000;
-    setApptForm({
-      employeeName: applicant.name,
-      employeeId: `EMP-2026-${String(appointmentLetters.length + 101).padStart(3, '0')}`,
-      position: applicant.positionName,
-      department: applicant.department,
-      division: 'Academic Wing',
-      joiningDate: matchingOffer?.joiningDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
-      employmentType: matchingOffer?.employmentType || 'Full Time',
+  const findMatchingOfferForCandidate = (applicant?: Applicant | null, explicitOffer?: OfferLetter | null) => {
+    if (explicitOffer) return explicitOffer;
+    if (!applicant) return undefined;
+    const candidateOffers = offerLetters.filter(
+      (o) =>
+        o.applicantId === applicant.id ||
+        (applicant.offerLetterId && o.id === applicant.offerLetterId) ||
+        (applicant.name &&
+          o.applicantName &&
+          o.applicantName.trim().toLowerCase() === applicant.name.trim().toLowerCase())
+    );
+    return (
+      candidateOffers.find((o) => o.status === 'Accepted') ||
+      candidateOffers[candidateOffers.length - 1]
+    );
+  };
+
+  const buildApptSalaryFromOffer = (matchingOffer?: OfferLetter) => {
+    const offerSal = matchingOffer ? calculateOfferSalaryBreakdown(matchingOffer) : null;
+    const basic = offerSal ? offerSal.basic : 0;
+    const allowances = offerSal ? offerSal.totalAllowances : 0;
+    const allowanceItems: AllowanceItem[] = offerSal
+      ? offerSal.earningsItems.slice(1).map((it, idx) => ({
+          id: matchingOffer?.allowanceItems?.[idx]?.id || `all-from-offer-${idx}`,
+          name: it.name,
+          amount: it.amount,
+        }))
+      : [];
+    const deductionItems: DeductionItem[] = offerSal
+      ? offerSal.deductionItems.map((it, idx) => ({
+          id: matchingOffer?.deductionItems?.[idx]?.id || `ded-from-offer-${idx}`,
+          name: it.name,
+          amount: it.amount,
+        }))
+      : [];
+    const deductions = offerSal ? offerSal.totalDeductions : 0;
+    const grossSalary = basic + allowances;
+    const netSalary = Math.max(0, grossSalary - deductions);
+
+    return {
       basicSalary: basic,
       allowances,
-      allowanceItems: matchingOffer?.allowanceItems && matchingOffer.allowanceItems.length > 0 ? matchingOffer.allowanceItems : defaultApptForm.allowanceItems,
-      probationPeriod: matchingOffer?.probationPeriod || '6 Months',
-      workingHours: matchingOffer?.workingHours || '8:15 AM – 4:00 PM (Monday to Friday)',
+      allowanceItems,
+      deductions,
+      deductionItems,
+      grossSalary,
+      netSalary,
+    };
+  };
+
+  const handleOpenCreateAppt = (applicant: Applicant, explicitOffer?: OfferLetter) => {
+    setSelectedApplicantForAppt(applicant);
+    setEditingApptId(null);
+    const matchingOffer = findMatchingOfferForCandidate(applicant, explicitOffer);
+    const syncedSalary = buildApptSalaryFromOffer(matchingOffer);
+
+    setApptForm({
+      employeeName: matchingOffer?.applicantName || applicant.name,
+      employeeId: `EMP-2026-${String(appointmentLetters.length + 101).padStart(3, '0')}`,
+      position: matchingOffer?.position || applicant.positionName,
+      department: matchingOffer?.department || applicant.department,
+      division: 'Academic Wing',
+      joiningDate: matchingOffer?.joiningDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      employmentType: (matchingOffer?.employmentType === 'Full-Time' ? 'Full Time' : matchingOffer?.employmentType) || 'Full Time',
+      ...syncedSalary,
+      probationPeriod: matchingOffer?.probationPeriod || '3 Months',
+      workingHours: matchingOffer?.workingHours || '09:30 AM to 06:00 PM',
       workplace: matchingOffer?.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
       responsibilities: [
         'Fulfill institutional duties and classroom mentorship.',
@@ -377,9 +475,38 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       department: appt.department,
       stage: 'Appointment',
     } as Applicant);
+    const matchingOffer = findMatchingOfferForCandidate(applicant);
+    const apptSal = calculateOfferSalaryBreakdown({
+      basicSalary: appt.basicSalary,
+      allowances: appt.allowances,
+      allowanceItems: appt.allowanceItems,
+      deductions: appt.deductions ?? matchingOffer?.deductions,
+      deductionItems:
+        appt.deductionItems && appt.deductionItems.length > 0
+          ? appt.deductionItems
+          : matchingOffer?.deductionItems,
+    });
+
     setSelectedApplicantForAppt(applicant);
     setEditingApptId(appt.id);
-    setApptForm({ ...appt });
+    setApptForm({
+      ...appt,
+      basicSalary: apptSal.basic,
+      allowances: apptSal.totalAllowances,
+      allowanceItems: apptSal.earningsItems.slice(1).map((it, idx) => ({
+        id: appt.allowanceItems?.[idx]?.id || `all-appt-edit-${idx}`,
+        name: it.name,
+        amount: it.amount,
+      })),
+      deductions: apptSal.totalDeductions,
+      deductionItems: apptSal.deductionItems.map((it, idx) => ({
+        id: appt.deductionItems?.[idx]?.id || `ded-appt-edit-${idx}`,
+        name: it.name,
+        amount: it.amount,
+      })),
+      grossSalary: apptSal.gross,
+      netSalary: apptSal.netSalary,
+    });
     setIsGenerateApptOpen(true);
   };
 
@@ -418,53 +545,130 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     return { start, end, duration: period || `${days} Days` };
   };
 
-  const calculateOfferSalaryBreakdown = (offer: OfferLetter) => {
-    const gross =
-      Number(offer.grossSalary) ||
-      (Number(offer.basicSalary) || 0) + (Number(offer.allowances) || 0) ||
-      36000;
-    const basic = Number(offer.basicSalary) || Math.round(gross * 0.6);
+  const calculateOfferSalaryBreakdown = (offer: Partial<OfferLetter>) => {
+    const basic = offer.basicSalary !== undefined ? Number(offer.basicSalary) || 0 : 0;
 
-    const items = offer.allowanceItems || [];
-    const hraItem = items.find((i) => /room|hra|house|accommodation/i.test(i.name))?.amount;
-    const convItem = items.find((i) => /conveyance|travel|transport/i.test(i.name))?.amount;
-    const commItem = items.find((i) => /comm|phone|mobile|internet/i.test(i.name))?.amount;
-    const specItem = items.find((i) => /special/i.test(i.name))?.amount;
+    // Build exact Earnings items from what the user configured
+    const earningsItems: Array<{ name: string; amount: number }> = [
+      { name: 'Basic Salary', amount: basic },
+    ];
 
-    const hra = offer.hra ?? (hraItem !== undefined ? hraItem : Math.round(basic * 0.25));
-    const conveyance = offer.conveyanceAllowance ?? (convItem !== undefined ? convItem : 2500);
-    const communication = offer.communicationAllowance ?? (commItem !== undefined ? commItem : 1500);
+    if (Array.isArray(offer.allowanceItems) && offer.allowanceItems.length > 0) {
+      offer.allowanceItems.forEach((item) => {
+        if (item && (item.name || Number(item.amount) > 0)) {
+          earningsItems.push({
+            name: item.name || 'Allowance',
+            amount: Number(item.amount) || 0,
+          });
+        }
+      });
+      const itemizedSum = earningsItems.slice(1).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const explicitAllowances = Number(offer.allowances) || 0;
+      if (explicitAllowances > itemizedSum) {
+        earningsItems.push({
+          name: 'Other Allowance',
+          amount: explicitAllowances - itemizedSum,
+        });
+      }
+    } else if (
+      Number(offer.hra) > 0 ||
+      Number(offer.conveyanceAllowance) > 0 ||
+      Number(offer.communicationAllowance) > 0 ||
+      Number(offer.specialAllowance) > 0 ||
+      Number(offer.otherAllowance) > 0
+    ) {
+      if (Number(offer.hra) > 0) earningsItems.push({ name: 'House Rent / Accommodation Allowance', amount: Number(offer.hra) });
+      if (Number(offer.conveyanceAllowance) > 0) earningsItems.push({ name: 'Travel / Conveyance Allowance', amount: Number(offer.conveyanceAllowance) });
+      if (Number(offer.communicationAllowance) > 0) earningsItems.push({ name: 'Communication Allowance', amount: Number(offer.communicationAllowance) });
+      if (Number(offer.specialAllowance) > 0) earningsItems.push({ name: 'Special Allowance', amount: Number(offer.specialAllowance) });
+      if (Number(offer.otherAllowance) > 0) earningsItems.push({ name: 'Other Allowance', amount: Number(offer.otherAllowance) });
+    } else if (Number(offer.allowances) > 0) {
+      earningsItems.push({
+        name: 'Monthly Allowances',
+        amount: Number(offer.allowances) || 0,
+      });
+    }
 
-    const allocated = basic + hra + conveyance + communication;
-    const remaining = Math.max(0, gross - allocated);
-    const special =
-      offer.specialAllowance ??
-      (specItem !== undefined ? specItem : Math.round(remaining * 0.6));
-    const other =
-      offer.otherAllowance ?? Math.max(0, gross - (allocated + special));
+    const totalAllowances = earningsItems
+      .slice(1)
+      .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const totalGross = basic + totalAllowances;
 
-    const totalGross = basic + hra + conveyance + communication + special + other;
+    // Build exact Deduction items from what the user configured
+    const deductionItems: Array<{ name: string; amount: number }> = [];
 
-    const pf = offer.pfDeduction ?? Math.min(1800, Math.round(basic * 0.12));
-    const pt = offer.ptDeduction ?? 200;
-    const tds =
-      offer.tdsDeduction ?? (gross > 50000 ? Math.round((gross - 50000) * 0.05) : 0);
-    const otherDeductions = offer.otherDeductions ?? 0;
-    const totalDeductions = pf + pt + tds + otherDeductions;
+    if (Array.isArray(offer.deductionItems) && offer.deductionItems.length > 0) {
+      offer.deductionItems.forEach((item) => {
+        if (item && (item.name || Number(item.amount) > 0)) {
+          deductionItems.push({
+            name: item.name || 'Deduction',
+            amount: Number(item.amount) || 0,
+          });
+        }
+      });
+      const itemizedDedSum = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const explicitDeductions = Number(offer.deductions) || 0;
+      if (explicitDeductions > itemizedDedSum) {
+        deductionItems.push({
+          name: 'Other Applicable Deductions',
+          amount: explicitDeductions - itemizedDedSum,
+        });
+      }
+    } else if (
+      Number(offer.pfDeduction) > 0 ||
+      Number(offer.ptDeduction) > 0 ||
+      Number(offer.tdsDeduction) > 0 ||
+      Number(offer.otherDeductions) > 0
+    ) {
+      if (Number(offer.pfDeduction) > 0) {
+        deductionItems.push({ name: 'Employee PF Contribution', amount: Number(offer.pfDeduction) });
+      }
+      if (Number(offer.ptDeduction) > 0) {
+        deductionItems.push({ name: 'Professional Tax', amount: Number(offer.ptDeduction) });
+      }
+      if (Number(offer.tdsDeduction) > 0) {
+        deductionItems.push({ name: 'TDS / Income Tax', amount: Number(offer.tdsDeduction) });
+      }
+      if (Number(offer.otherDeductions) > 0) {
+        deductionItems.push({ name: 'Other Applicable Deductions', amount: Number(offer.otherDeductions) });
+      }
+    } else if (Number(offer.deductions) > 0) {
+      deductionItems.push({
+        name: 'Applicable Deductions',
+        amount: Number(offer.deductions) || 0,
+      });
+    }
+
+    const totalDeductions = deductionItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const netSalary = Math.max(0, totalGross - totalDeductions);
+
+    // Individual named fields for backwards compatibility if referenced
+    const hra = earningsItems.find((i) => /room|hra|house|accommodation/i.test(i.name))?.amount || 0;
+    const conveyance = earningsItems.find((i) => /conveyance|travel|transport/i.test(i.name))?.amount || 0;
+    const communication = earningsItems.find((i) => /comm|phone|mobile|internet/i.test(i.name))?.amount || 0;
+    const special = earningsItems.find((i) => /special/i.test(i.name))?.amount || 0;
+    const other = Math.max(0, totalAllowances - (hra + conveyance + communication + special));
+
+    const pf = deductionItems.find((i) => /pf|provident/i.test(i.name))?.amount || 0;
+    const pt = deductionItems.find((i) => /pt|professional/i.test(i.name))?.amount || 0;
+    const tds = deductionItems.find((i) => /tds|income tax/i.test(i.name))?.amount || 0;
+    const otherDeductions = Math.max(0, totalDeductions - (pf + pt + tds));
 
     return {
       basic,
+      totalAllowances,
       hra,
       conveyance,
       communication,
       special,
       other,
+      earningsItems,
       gross: totalGross,
       pf,
       pt,
       tds,
       otherDeductions,
+      deductionItems,
       totalDeductions,
       netSalary,
     };
@@ -560,12 +764,12 @@ Your gross monthly salary will be **₹${sal.gross.toLocaleString('en-IN')}**, s
 
 | Salary Component | Monthly (₹) | Annual (₹) |
 | --- | ---: | ---: |
-| Basic Salary | ₹${sal.basic.toLocaleString('en-IN')} | ₹${(sal.basic * 12).toLocaleString('en-IN')} |
-| House Rent / Accommodation Allowance | ₹${sal.hra.toLocaleString('en-IN')} | ₹${(sal.hra * 12).toLocaleString('en-IN')} |
-| Travel / Conveyance Allowance | ₹${sal.conveyance.toLocaleString('en-IN')} | ₹${(sal.conveyance * 12).toLocaleString('en-IN')} |
-| Communication Allowance | ₹${sal.communication.toLocaleString('en-IN')} | ₹${(sal.communication * 12).toLocaleString('en-IN')} |
-| Special Allowance | ₹${sal.special.toLocaleString('en-IN')} | ₹${(sal.special * 12).toLocaleString('en-IN')} |
-| Other Allowance | ₹${sal.other.toLocaleString('en-IN')} | ₹${(sal.other * 12).toLocaleString('en-IN')} |
+${sal.earningsItems
+  .map(
+    (item) =>
+      `| ${item.name} | ₹${item.amount.toLocaleString('en-IN')} | ₹${(item.amount * 12).toLocaleString('en-IN')} |`
+  )
+  .join('\n')}
 | **Gross Salary** | **₹${sal.gross.toLocaleString('en-IN')}** | **₹${(sal.gross * 12).toLocaleString('en-IN')}** |
 
 ### B. Deductions
@@ -574,10 +778,16 @@ Applicable deductions may include, as per company policy and applicable law:
 
 | Deduction | Monthly (₹) | Annual (₹) |
 | --- | ---: | ---: |
-| Employee PF Contribution | ₹${sal.pf.toLocaleString('en-IN')} | ₹${(sal.pf * 12).toLocaleString('en-IN')} |
-| Professional Tax | ₹${sal.pt.toLocaleString('en-IN')} | ₹${(sal.pt * 12).toLocaleString('en-IN')} |
-| TDS / Income Tax | ₹${sal.tds.toLocaleString('en-IN')} | ₹${(sal.tds * 12).toLocaleString('en-IN')} |
-| Other Applicable Deductions | ₹${sal.otherDeductions.toLocaleString('en-IN')} | ₹${(sal.otherDeductions * 12).toLocaleString('en-IN')} |
+${
+  sal.deductionItems.length > 0
+    ? sal.deductionItems
+        .map(
+          (item) =>
+            `| ${item.name} | ₹${item.amount.toLocaleString('en-IN')} | ₹${(item.amount * 12).toLocaleString('en-IN')} |`
+        )
+        .join('\n')
+    : `| No Fixed Deductions | ₹0 | ₹0 |`
+}
 | **Total Deductions** | **₹${sal.totalDeductions.toLocaleString('en-IN')}** | **₹${(sal.totalDeductions * 12).toLocaleString('en-IN')}** |
 
 ### C. Net Salary
@@ -764,17 +974,23 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
 
 | Component | Monthly (₹) | Annual (₹) |
 | --- | ---: | ---: |
-| Basic Salary | ₹${sal.basic.toLocaleString('en-IN')} | ₹${(sal.basic * 12).toLocaleString('en-IN')} |
-| HRA / Accommodation | ₹${sal.hra.toLocaleString('en-IN')} | ₹${(sal.hra * 12).toLocaleString('en-IN')} |
-| Conveyance / Travel | ₹${sal.conveyance.toLocaleString('en-IN')} | ₹${(sal.conveyance * 12).toLocaleString('en-IN')} |
-| Communication | ₹${sal.communication.toLocaleString('en-IN')} | ₹${(sal.communication * 12).toLocaleString('en-IN')} |
-| Special Allowance | ₹${sal.special.toLocaleString('en-IN')} | ₹${(sal.special * 12).toLocaleString('en-IN')} |
-| Other Allowance | ₹${sal.other.toLocaleString('en-IN')} | ₹${(sal.other * 12).toLocaleString('en-IN')} |
+${sal.earningsItems
+  .map(
+    (item) =>
+      `| ${item.name} | ₹${item.amount.toLocaleString('en-IN')} | ₹${(item.amount * 12).toLocaleString('en-IN')} |`
+  )
+  .join('\n')}
 | **Gross Salary** | **₹${sal.gross.toLocaleString('en-IN')}** | **₹${(sal.gross * 12).toLocaleString('en-IN')}** |
-| Employee PF | ₹${sal.pf.toLocaleString('en-IN')} | ₹${(sal.pf * 12).toLocaleString('en-IN')} |
-| Professional Tax | ₹${sal.pt.toLocaleString('en-IN')} | ₹${(sal.pt * 12).toLocaleString('en-IN')} |
-| TDS | ₹${sal.tds.toLocaleString('en-IN')} | ₹${(sal.tds * 12).toLocaleString('en-IN')} |
-| Other Deductions | ₹${sal.otherDeductions.toLocaleString('en-IN')} | ₹${(sal.otherDeductions * 12).toLocaleString('en-IN')} |
+${
+  sal.deductionItems.length > 0
+    ? sal.deductionItems
+        .map(
+          (item) =>
+            `| ${item.name} | ₹${item.amount.toLocaleString('en-IN')} | ₹${(item.amount * 12).toLocaleString('en-IN')} |`
+        )
+        .join('\n')
+    : `| Deductions | ₹0 | ₹0 |`
+}
 | **Total Deductions** | **₹${sal.totalDeductions.toLocaleString('en-IN')}** | **₹${(sal.totalDeductions * 12).toLocaleString('en-IN')}** |
 | **Estimated Net Salary** | **₹${sal.netSalary.toLocaleString('en-IN')}** | **₹${(sal.netSalary * 12).toLocaleString('en-IN')}** |
 
@@ -812,6 +1028,30 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
     const newItems = currentItems.filter((item) => item.id !== id);
     const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     setOfferForm({ ...offerForm, allowanceItems: newItems, allowances: total });
+  };
+
+  const handleAddOfferDeduction = (name = 'Employee PF Contribution', amount = 360) => {
+    const currentItems = offerForm.deductionItems || [];
+    const newItems: DeductionItem[] = [
+      ...currentItems,
+      { id: `ded-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, name, amount },
+    ];
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, deductionItems: newItems, deductions: total });
+  };
+
+  const handleUpdateOfferDeduction = (id: string, updates: Partial<DeductionItem>) => {
+    const currentItems = offerForm.deductionItems || [];
+    const newItems = currentItems.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, deductionItems: newItems, deductions: total });
+  };
+
+  const handleRemoveOfferDeduction = (id: string) => {
+    const currentItems = offerForm.deductionItems || [];
+    const newItems = currentItems.filter((item) => item.id !== id);
+    const total = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setOfferForm({ ...offerForm, deductionItems: newItems, deductions: total });
   };
 
   // Position Handlers
@@ -2056,14 +2296,16 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                     <th className="px-4 py-3">Candidate Name</th>
                     <th className="px-4 py-3">Position & Dept</th>
                     <th className="px-4 py-3">Joining Date</th>
-                    <th className="px-4 py-3">Gross Salary</th>
+                    <th className="px-4 py-3">Compensation Breakdown</th>
                     <th className="px-4 py-3">Issue / Expiry</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {offerLetters.map((offer) => (
+                  {offerLetters.map((offer) => {
+                    const sal = calculateOfferSalaryBreakdown(offer);
+                    return (
                     <tr key={offer.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 py-3 font-bold text-slate-900">{offer.offerNumber}</td>
                       <td className="px-4 py-3">
@@ -2075,8 +2317,28 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                         <div className="text-[10px] text-slate-400">{offer.department}</div>
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-800">{offer.joiningDate}</td>
-                      <td className="px-4 py-3 font-bold text-emerald-700">
-                        ₹{offer.grossSalary.toLocaleString()} / mo
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-emerald-700">
+                          Gross: ₹{sal.gross.toLocaleString('en-IN')} / mo
+                        </div>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          <span>Basic: ₹{sal.basic.toLocaleString('en-IN')}</span>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-medium">
+                            +Allowances ({sal.earningsItems.length - 1}): ₹{sal.totalAllowances.toLocaleString('en-IN')}
+                          </span>
+                          {sal.totalDeductions > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-rose-600 font-medium">
+                                -Ded ({sal.deductionItems.length}): ₹{sal.totalDeductions.toLocaleString('en-IN')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-800 mt-0.5">
+                          Net Pay: ₹{sal.netSalary.toLocaleString('en-IN')} / mo
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-[11px] text-slate-500">
                         <div>Issue: {offer.issueDate}</div>
@@ -2111,13 +2373,35 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          {offer.status !== 'Accepted' && (
+                          {offer.status !== 'Accepted' ? (
                             <button
                               onClick={() => onUpdateOfferStatus(offer.id, 'Accepted')}
                               title="Mark Accepted"
                               className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg transition-colors cursor-pointer"
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const app =
+                                  applicants.find((a) => a.id === offer.applicantId) ||
+                                  ({
+                                    id: offer.applicantId,
+                                    name: offer.applicantName,
+                                    positionName: offer.position,
+                                    department: offer.department,
+                                    phone: offer.applicantPhone,
+                                    email: offer.applicantEmail,
+                                    stage: 'Offer Accepted',
+                                  } as Applicant);
+                                handleOpenCreateAppt(app, offer);
+                              }}
+                              title="Generate Appointment Letter from this Offer Letter"
+                              className="px-2 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[10px] font-bold transition-all shadow-2xs cursor-pointer flex items-center space-x-1"
+                            >
+                              <FileCheck2 className="w-3 h-3" />
+                              <span>Issue Appt</span>
                             </button>
                           )}
                           {onDeleteOffer && (
@@ -2132,7 +2416,8 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {offerLetters.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
@@ -2160,8 +2445,12 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
             {applicants.length > 0 && (
               <button
                 onClick={() => {
-                  const target = applicants.find((a) => ['Offer Accepted', 'Appointment', 'Offer Sent'].includes(a.stage)) || applicants[0];
-                  handleOpenCreateAppt(target);
+                  const acceptedOffer = offerLetters.find((o) => o.status === 'Accepted') || offerLetters[offerLetters.length - 1];
+                  const target =
+                    (acceptedOffer && applicants.find((a) => a.id === acceptedOffer.applicantId)) ||
+                    applicants.find((a) => ['Offer Accepted', 'Appointment', 'Offer Sent'].includes(a.stage)) ||
+                    applicants[0];
+                  handleOpenCreateAppt(target, acceptedOffer);
                 }}
                 className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
               >
@@ -2187,7 +2476,19 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {appointmentLetters.map((appt) => (
+                  {appointmentLetters.map((appt) => {
+                    const matchingOff = offerLetters.find((o) => o.applicantId === appt.applicantId);
+                    const apptSal = calculateOfferSalaryBreakdown({
+                      basicSalary: appt.basicSalary,
+                      allowances: appt.allowances,
+                      allowanceItems: appt.allowanceItems,
+                      deductions: appt.deductions ?? matchingOff?.deductions,
+                      deductionItems:
+                        appt.deductionItems && appt.deductionItems.length > 0
+                          ? appt.deductionItems
+                          : matchingOff?.deductionItems,
+                    });
+                    return (
                     <tr key={appt.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 py-3 font-bold text-slate-900">{appt.appointmentNumber}</td>
                       <td className="px-4 py-3 font-bold text-slate-900">{appt.employeeName}</td>
@@ -2197,8 +2498,28 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                         <div className="text-[10px] text-slate-400">{appt.department}</div>
                       </td>
                       <td className="px-4 py-3 text-slate-700">{appt.joiningDate}</td>
-                      <td className="px-4 py-3 font-bold text-emerald-700">
-                        ₹{appt.grossSalary.toLocaleString()}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-emerald-700">
+                          Gross: ₹{apptSal.gross.toLocaleString('en-IN')} / mo
+                        </div>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span>Basic: ₹{apptSal.basic.toLocaleString('en-IN')}</span>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-medium">
+                            +Allowances ({apptSal.earningsItems.length - 1}): ₹{apptSal.totalAllowances.toLocaleString('en-IN')}
+                          </span>
+                          {apptSal.totalDeductions > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-rose-600 font-medium">
+                                -Ded ({apptSal.deductionItems.length}): ₹{apptSal.totalDeductions.toLocaleString('en-IN')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-800 mt-0.5">
+                          Net Pay: ₹{apptSal.netSalary.toLocaleString('en-IN')} / mo
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -2227,15 +2548,14 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          {appt.status !== 'Completed' && (
-                            <button
-                              onClick={() => onConvertApplicantToStaff(appt.applicantId, appt.id)}
-                              className="px-2.5 py-1 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1"
-                            >
-                              <UserCheck className="w-3 h-3" />
-                              <span>Convert to Staff</span>
-                            </button>
-                          )}
+                          <button
+                            onClick={() => onConvertApplicantToStaff(appt.applicantId, appt.id)}
+                            title="Open Onboard New Staff Member with prefilled data from this Appointment Letter"
+                            className="px-2.5 py-1 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1"
+                          >
+                            <UserCheck className="w-3 h-3" />
+                            <span>Convert to Staff</span>
+                          </button>
                           {onDeleteAppointment && (
                             <button
                               onClick={() => onDeleteAppointment(appt.id)}
@@ -2248,7 +2568,8 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {appointmentLetters.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
@@ -3293,17 +3614,31 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
 
       {/* MODAL: GENERATE OFFER LETTER */}
       {isGenerateOfferOpen && selectedApplicantForOffer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-xl rounded-2xl p-6 shadow-xl border border-slate-200 text-xs">
-            <h2 className="text-lg font-bold text-slate-900 mb-1">
-              {editingOfferId ? 'Edit Offer Letter: ' : 'Generate Offer Letter: '}
-              {offerForm.applicantName || selectedApplicantForOffer.name}
-            </h2>
-            <p className="text-slate-500 mb-4">
-              {offerForm.position || selectedApplicantForOffer.positionName} • {offerForm.department || selectedApplicantForOffer.department}
-            </p>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 text-xs my-auto max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Sticky Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                  {editingOfferId ? 'Edit Offer Letter: ' : 'Generate Offer Letter: '}
+                  {offerForm.applicantName || selectedApplicantForOffer.name}
+                </h2>
+                <p className="text-slate-500 mt-0.5">
+                  {offerForm.position || selectedApplicantForOffer.positionName} • {offerForm.department || selectedApplicantForOffer.department}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGenerateOfferOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                title="Close"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
 
-            <div className="space-y-3">
+            {/* Scrollable Form Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {!editingOfferId && applicants.length > 1 && (
                 <div>
                   <label className="font-semibold text-slate-700">Applicant / Candidate</label>
@@ -3323,32 +3658,140 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                   </select>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Candidate & Role Fields (Editable) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700">Basic Salary (₹ / Month)</label>
+                  <label className="font-semibold text-slate-700">Candidate Name</label>
                   <input
-                    type="number"
-                    value={offerForm.basicSalary}
-                    onChange={(e) => setOfferForm({ ...offerForm, basicSalary: parseInt(e.target.value) || 0 })}
+                    type="text"
+                    value={offerForm.applicantName ?? selectedApplicantForOffer.name}
+                    onChange={(e) => setOfferForm({ ...offerForm, applicantName: e.target.value })}
+                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700">Designation / Position</label>
+                  <input
+                    type="text"
+                    value={offerForm.position ?? selectedApplicantForOffer.positionName}
+                    onChange={(e) => setOfferForm({ ...offerForm, position: e.target.value })}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-700">Total Allowances (₹ / Month)</label>
-                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      {(offerForm.allowanceItems || []).length} Components
+                  <label className="font-semibold text-slate-700">Department</label>
+                  <input
+                    type="text"
+                    value={offerForm.department ?? selectedApplicantForOffer.department}
+                    onChange={(e) => setOfferForm({ ...offerForm, department: e.target.value })}
+                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* PROMINENT SALARY & COMPENSATION SECTION */}
+              <div className="bg-emerald-50/60 border-2 border-emerald-500/40 rounded-2xl p-4 space-y-3 shadow-2xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-emerald-200/70">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#168A45]"></span>
+                    <span className="font-extrabold text-slate-900 text-xs sm:text-sm uppercase tracking-wide">
+                      1. Monthly Salary &amp; Compensation Structure
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    value={offerForm.allowances}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0;
-                      setOfferForm({ ...offerForm, allowances: val });
-                    }}
-                    className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-slate-50 font-semibold"
-                  />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-slate-500 font-semibold">Preset Basic:</span>
+                    {[12000, 15000, 20000, 25000, 35000, 50000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setOfferForm({ ...offerForm, basicSalary: amt })}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          offerForm.basicSalary === amt
+                            ? 'bg-[#168A45] text-white border-[#0B5D2A]'
+                            : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                      >
+                        ₹{(amt / 1000).toFixed(0)}K
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-800 block mb-1">
+                      Basic Salary (₹ / Month) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700 font-bold text-sm">
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="Enter Basic Salary"
+                        value={offerForm.basicSalary === 0 ? '' : offerForm.basicSalary}
+                        onChange={(e) =>
+                          setOfferForm({
+                            ...offerForm,
+                            basicSalary: e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="w-full border-2 border-emerald-500/60 focus:border-[#168A45] rounded-xl pl-7 pr-3 py-2 text-slate-900 bg-white font-extrabold text-sm focus:outline-none shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-800">Total Allowances (₹ / Month)</label>
+                      <span className="text-[10px] text-emerald-800 font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                        {(offerForm.allowanceItems || []).length} Items
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="0"
+                        value={offerForm.allowances === 0 ? '' : offerForm.allowances}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0;
+                          const currentItems = offerForm.allowanceItems || [];
+                          if (currentItems.length === 0 && val > 0) {
+                            setOfferForm({
+                              ...offerForm,
+                              allowances: val,
+                              allowanceItems: [{ id: `all-${Date.now()}`, name: 'Monthly Allowances', amount: val }],
+                            });
+                          } else if (currentItems.length === 1) {
+                            setOfferForm({
+                              ...offerForm,
+                              allowances: val,
+                              allowanceItems: [{ ...currentItems[0], amount: val }],
+                            });
+                          } else {
+                            setOfferForm({ ...offerForm, allowances: val });
+                          }
+                        }}
+                        className="w-full border border-slate-300 focus:border-[#168A45] rounded-xl pl-7 pr-3 py-2 text-slate-900 bg-white font-bold text-sm focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 block mb-1">
+                      Gross Salary (Basic + Allowances)
+                    </label>
+                    <div className="w-full border border-emerald-300 rounded-xl px-3 py-2 bg-emerald-900 text-white font-extrabold text-sm flex items-center justify-between">
+                      <span>₹{((offerForm.basicSalary || 0) + (offerForm.allowances || 0)).toLocaleString('en-IN')}</span>
+                      <span className="text-[10px] font-semibold text-emerald-200">/ month</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -3452,6 +3895,124 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
               <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-900 font-bold flex justify-between">
                 <span>Calculated Gross Compensation:</span>
                 <span>₹{((offerForm.basicSalary || 0) + (offerForm.allowances || 0)).toLocaleString('en-IN')} / mo</span>
+              </div>
+
+              {/* MULTIPLE DEDUCTIONS COMPONENT BUILDER */}
+              <div className="bg-rose-50/40 border border-rose-200/80 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      Deductions (PF, Professional Tax, TDS, ESI, etc.)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddOfferDeduction('Custom Deduction', 200)}
+                    className="text-[11px] text-rose-700 hover:text-rose-800 font-semibold flex items-center space-x-1 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-slate-200 hover:border-rose-300 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Deduction</span>
+                  </button>
+                </div>
+
+                {/* Quick Add Deduction Chips */}
+                <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-slate-400 font-medium">Quick Add:</span>
+                  {[
+                    {
+                      label: '+ Employee PF (12%)',
+                      name: 'Employee PF Contribution',
+                      amount: Math.min(1800, Math.round((offerForm.basicSalary || 0) * 0.12)) || 360,
+                    },
+                    { label: '+ Professional Tax', name: 'Professional Tax', amount: 200 },
+                    { label: '+ ESI Contribution', name: 'ESI Contribution', amount: 150 },
+                    { label: '+ TDS / Income Tax', name: 'TDS / Income Tax', amount: 500 },
+                    { label: '+ Other Deduction', name: 'Other Applicable Deductions', amount: 200 },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAddOfferDeduction(preset.name, preset.amount)}
+                      className="text-[10px] bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic Deduction Rows */}
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {(offerForm.deductionItems || []).length === 0 ? (
+                    <div className="text-center py-2 text-[11px] text-slate-400 bg-white rounded-lg border border-dashed border-slate-200">
+                      No deductions added (₹0 deductions). Click a &quot;Quick Add&quot; chip above or &quot;Add Deduction&quot; to include PF, Professional Tax, TDS, etc.
+                    </div>
+                  ) : (
+                    (offerForm.deductionItems || []).map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-slate-200"
+                      >
+                        <input
+                          type="text"
+                          value={item.name}
+                          placeholder="Deduction Name (e.g. Employee PF)"
+                          onChange={(e) => handleUpdateOfferDeduction(item.id, { name: e.target.value })}
+                          className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-rose-500"
+                        />
+                        <div className="relative w-32">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            value={item.amount}
+                            placeholder="Amount"
+                            onChange={(e) =>
+                              handleUpdateOfferDeduction(item.id, { amount: parseInt(e.target.value) || 0 })
+                            }
+                            className="w-full border border-slate-200 rounded-lg pl-6 pr-2 py-1 text-xs text-slate-900 font-semibold focus:outline-rose-500"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOfferDeduction(item.id)}
+                          title="Remove Deduction"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-rose-200/70 text-[11px]">
+                  <span className="text-slate-500">
+                    Total Deductions ({offerForm.deductionItems?.length || 0} items):
+                  </span>
+                  <span className="font-bold text-rose-800">
+                    ₹{(
+                      (offerForm.deductionItems || []).reduce((s, d) => s + (Number(d.amount) || 0), 0) ||
+                      offerForm.deductions ||
+                      0
+                    ).toLocaleString('en-IN')} / mo
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-900 text-white rounded-xl font-bold flex justify-between items-center">
+                <span>Estimated Net Monthly Salary (Take-Home):</span>
+                <span className="text-emerald-400 text-sm">
+                  ₹{Math.max(
+                    0,
+                    (offerForm.basicSalary || 0) +
+                      (offerForm.allowances || 0) -
+                      ((offerForm.deductionItems || []).reduce((s, d) => s + (Number(d.amount) || 0), 0) ||
+                        offerForm.deductions ||
+                        0)
+                  ).toLocaleString('en-IN')} / mo
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -3605,43 +4166,106 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end space-x-2">
-              <button
-                onClick={() => setIsGenerateOfferOpen(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  onGenerateOffer({
-                    id: editingOfferId || undefined,
-                    applicantId: selectedApplicantForOffer.id,
-                    applicantName: offerForm.applicantName || selectedApplicantForOffer.name,
-                    applicantEmail: offerForm.applicantEmail || selectedApplicantForOffer.email,
-                    applicantPhone: offerForm.applicantPhone || selectedApplicantForOffer.phone,
-                    position: offerForm.position || selectedApplicantForOffer.positionName,
-                    department: offerForm.department || selectedApplicantForOffer.department,
-                    ...offerForm,
-                  });
-                  setIsGenerateOfferOpen(false);
-                }}
-                className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs"
-              >
-                {editingOfferId ? 'Save Changes' : 'Generate & Dispatch Offer'}
-              </button>
+            {/* Sticky Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
+              <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                <span>
+                  Basic: <strong className="text-slate-900">₹{(offerForm.basicSalary || 0).toLocaleString('en-IN')}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Allowances: <strong className="text-emerald-700">+₹{(offerForm.allowances || 0).toLocaleString('en-IN')}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Net Take-Home:{' '}
+                  <strong className="text-[#0B5D2A]">
+                    ₹{Math.max(
+                      0,
+                      (offerForm.basicSalary || 0) +
+                        (offerForm.allowances || 0) -
+                        ((offerForm.deductionItems || []).reduce((s, d) => s + (Number(d.amount) || 0), 0) ||
+                          offerForm.deductions ||
+                          0)
+                    ).toLocaleString('en-IN')} / mo
+                  </strong>
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsGenerateOfferOpen(false)}
+                  className="px-4 py-2 border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const sal = calculateOfferSalaryBreakdown(offerForm);
+                    const finalAllowanceItems: AllowanceItem[] = sal.earningsItems
+                      .slice(1)
+                      .map((item, idx) => ({
+                        id: offerForm.allowanceItems?.[idx]?.id || `all-save-${Date.now()}-${idx}`,
+                        name: item.name,
+                        amount: item.amount,
+                      }));
+                    const finalDeductionItems: DeductionItem[] = sal.deductionItems.map((item, idx) => ({
+                      id: offerForm.deductionItems?.[idx]?.id || `ded-save-${Date.now()}-${idx}`,
+                      name: item.name,
+                      amount: item.amount,
+                    }));
+
+                    const payload: Partial<OfferLetter> = {
+                      ...offerForm,
+                      id: editingOfferId || undefined,
+                      applicantId: selectedApplicantForOffer.id,
+                      applicantName: offerForm.applicantName || selectedApplicantForOffer.name,
+                      applicantEmail: offerForm.applicantEmail || selectedApplicantForOffer.email,
+                      applicantPhone: offerForm.applicantPhone || selectedApplicantForOffer.phone,
+                      position: offerForm.position || selectedApplicantForOffer.positionName,
+                      department: offerForm.department || selectedApplicantForOffer.department,
+                      basicSalary: sal.basic,
+                      allowances: sal.totalAllowances,
+                      allowanceItems: finalAllowanceItems,
+                      deductions: sal.totalDeductions,
+                      deductionItems: finalDeductionItems,
+                      grossSalary: sal.gross,
+                      netSalary: sal.netSalary,
+                    };
+
+                    onGenerateOffer(payload);
+                    if (previewOffer && editingOfferId && previewOffer.id === editingOfferId) {
+                      setPreviewOffer({ ...previewOffer, ...payload } as OfferLetter);
+                    }
+                    setIsGenerateOfferOpen(false);
+                  }}
+                  className="px-5 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs"
+                >
+                  {editingOfferId ? 'Save Changes' : 'Generate & Dispatch Offer'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* MODAL: GENERATE / EDIT APPOINTMENT LETTER */}
-      {isGenerateApptOpen && selectedApplicantForAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-xl border border-slate-200 text-xs max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      {isGenerateApptOpen && selectedApplicantForAppt && (() => {
+        const linkedOffer = findMatchingOfferForCandidate(selectedApplicantForAppt);
+        const linkedOfferSal = linkedOffer ? calculateOfferSalaryBreakdown(linkedOffer) : null;
+        const apptDeductionsTotal =
+          (apptForm.deductionItems || []).reduce((s, d) => s + (Number(d.amount) || 0), 0) ||
+          Number(apptForm.deductions) ||
+          0;
+        const apptGrossTotal = (Number(apptForm.basicSalary) || 0) + (Number(apptForm.allowances) || 0);
+        const apptNetTotal = Math.max(0, apptGrossTotal - apptDeductionsTotal);
+
+        return (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 text-xs my-auto max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Sticky Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   {editingApptId ? 'Edit Appointment Letter: ' : 'Generate Appointment Letter: '}
                   {apptForm.employeeName || selectedApplicantForAppt.name}
                 </h2>
@@ -3649,12 +4273,23 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                   {apptForm.position || selectedApplicantForAppt.positionName} • {apptForm.department || selectedApplicantForAppt.department}
                 </p>
               </div>
-              <span className="text-[11px] font-bold px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg border border-teal-200">
-                Official Institutional Letter
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-[11px] font-bold px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg border border-teal-200">
+                  Official Institutional Letter
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsGenerateApptOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4 mt-4">
+            {/* Scrollable Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {!editingApptId && applicants.length > 1 && (
                 <div>
                   <label className="font-semibold text-slate-700">Select Candidate / Appointee</label>
@@ -3666,12 +4301,54 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                     }}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-medium"
                   >
-                    {applicants.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.positionName} - {a.stage})
-                      </option>
-                    ))}
+                    {applicants.map((a) => {
+                      const off = findMatchingOfferForCandidate(a);
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.positionName} - {a.stage}{off ? ` • Offer: ${off.offerNumber} [${off.status}]` : ''})
+                        </option>
+                      );
+                    })}
                   </select>
+                </div>
+              )}
+
+              {/* Offer Letter Sync Banner */}
+              {linkedOffer && linkedOfferSal && (
+                <div className="p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-emerald-950 flex items-center space-x-1.5">
+                      <CheckCircle className="w-4 h-4 text-[#168A45]" />
+                      <span>
+                        Linked to Offer Letter <strong>{linkedOffer.offerNumber}</strong> ({linkedOffer.status})
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-800">
+                      Offer Salary: Basic <strong>₹{linkedOfferSal.basic.toLocaleString('en-IN')}</strong> + Allowances{' '}
+                      <strong>₹{linkedOfferSal.totalAllowances.toLocaleString('en-IN')}</strong> ({linkedOfferSal.earningsItems.length - 1} items) - Deductions{' '}
+                      <strong>₹{linkedOfferSal.totalDeductions.toLocaleString('en-IN')}</strong> ({linkedOfferSal.deductionItems.length} items) = Net{' '}
+                      <strong>₹{linkedOfferSal.netSalary.toLocaleString('en-IN')}/mo</strong>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const synced = buildApptSalaryFromOffer(linkedOffer);
+                      setApptForm({
+                        ...apptForm,
+                        ...synced,
+                        position: linkedOffer.position || apptForm.position,
+                        department: linkedOffer.department || apptForm.department,
+                        joiningDate: linkedOffer.joiningDate || apptForm.joiningDate,
+                        probationPeriod: linkedOffer.probationPeriod || apptForm.probationPeriod,
+                        workingHours: linkedOffer.workingHours || apptForm.workingHours,
+                        workplace: linkedOffer.workLocation || apptForm.workplace,
+                      });
+                    }}
+                    className="px-3 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer shrink-0"
+                  >
+                    Reset Salary as per Offer Letter
+                  </button>
                 </div>
               )}
 
@@ -3728,17 +4405,17 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                 </div>
               </div>
 
-              {/* Salary & Allowances */}
+              {/* Salary & Allowances (As per Offer Letter) */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-slate-900 flex items-center space-x-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                    <span>Remuneration & Monthly Allowances</span>
+                    <span>Remuneration &amp; Monthly Allowances (As per Offer Letter)</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-500">Gross Monthly Remuneration:</span>
                     <span className="ml-1.5 text-xs font-extrabold text-emerald-700">
-                      ₹{((apptForm.basicSalary || 0) + (apptForm.allowances || 0)).toLocaleString()} / mo
+                      ₹{apptGrossTotal.toLocaleString('en-IN')} / mo
                     </span>
                   </div>
                 </div>
@@ -3748,18 +4425,50 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                     <label className="font-semibold text-slate-700">Basic Monthly Salary (₹)</label>
                     <input
                       type="number"
-                      value={apptForm.basicSalary || 0}
-                      onChange={(e) => setApptForm({ ...apptForm, basicSalary: parseInt(e.target.value) || 0 })}
+                      min={0}
+                      placeholder="Enter Basic Salary"
+                      value={apptForm.basicSalary === 0 ? '' : apptForm.basicSalary}
+                      onChange={(e) =>
+                        setApptForm({
+                          ...apptForm,
+                          basicSalary: e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0,
+                        })
+                      }
                       className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-700">Total Monthly Allowances (₹)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="font-semibold text-slate-700">Total Monthly Allowances (₹)</label>
+                      <span className="text-[10px] text-teal-800 font-bold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                        {(apptForm.allowanceItems || []).length} Items
+                      </span>
+                    </div>
                     <input
                       type="number"
-                      value={apptForm.allowances || 0}
-                      onChange={(e) => setApptForm({ ...apptForm, allowances: parseInt(e.target.value) || 0 })}
-                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-slate-100 font-semibold"
+                      min={0}
+                      placeholder="0"
+                      value={apptForm.allowances === 0 ? '' : apptForm.allowances}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0;
+                        const currentItems = apptForm.allowanceItems || [];
+                        if (currentItems.length === 0 && val > 0) {
+                          setApptForm({
+                            ...apptForm,
+                            allowances: val,
+                            allowanceItems: [{ id: `all-appt-${Date.now()}`, name: 'Monthly Allowances', amount: val }],
+                          });
+                        } else if (currentItems.length === 1) {
+                          setApptForm({
+                            ...apptForm,
+                            allowances: val,
+                            allowanceItems: [{ ...currentItems[0], amount: val }],
+                          });
+                        } else {
+                          setApptForm({ ...apptForm, allowances: val });
+                        }
+                      }}
+                      className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold"
                     />
                   </div>
                 </div>
@@ -3768,48 +4477,133 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                 <div className="space-y-2 pt-2 border-t border-slate-200/80">
                   <div className="flex flex-wrap items-center justify-between gap-1">
                     <span className="text-[11px] font-semibold text-slate-700">
-                      Detailed Allowance Components:
+                      Detailed Allowance Components (Synced from Offer Letter):
                     </span>
                     <div className="flex flex-wrap gap-1">
                       <button
                         type="button"
-                        onClick={() => handleAddApptAllowance('Room Allowance', 6000)}
+                        onClick={() => handleAddApptAllowance('Room Allowance', 5000)}
                         className="text-[10px] bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 rounded-md px-1.5 py-0.5 cursor-pointer font-medium"
                       >
-                        + Room (₹6K)
+                        + Room
                       </button>
                       <button
                         type="button"
                         onClick={() => handleAddApptAllowance('Transportation', 4000)}
                         className="text-[10px] bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 rounded-md px-1.5 py-0.5 cursor-pointer font-medium"
                       >
-                        + Travel (₹4K)
+                        + Transportation
                       </button>
                       <button
                         type="button"
                         onClick={() => handleAddApptAllowance('Over time', 2000)}
                         className="text-[10px] bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 rounded-md px-1.5 py-0.5 cursor-pointer font-medium"
                       >
-                        + OT (₹2K)
+                        + Over time
                       </button>
                       <button
                         type="button"
                         onClick={() => handleAddApptAllowance('Special Allowance', 3000)}
                         className="text-[10px] bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 rounded-md px-1.5 py-0.5 cursor-pointer font-medium"
                       >
-                        + Special (₹3K)
+                        + Special
                       </button>
                     </div>
                   </div>
 
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {(apptForm.allowanceItems || []).map((item) => (
+                    {(apptForm.allowanceItems || []).length === 0 ? (
+                      <div className="text-center py-2 text-[11px] text-slate-400 bg-white rounded-lg border border-dashed border-slate-200">
+                        No allowances added (₹0 allowances).
+                      </div>
+                    ) : (
+                      (apptForm.allowanceItems || []).map((item) => (
+                        <div key={item.id} className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleUpdateApptAllowance(item.id, { name: e.target.value })}
+                            placeholder="Allowance description"
+                            className="flex-1 px-2 py-1 text-slate-800 text-xs border border-slate-100 rounded-lg"
+                          />
+                          <div className="flex items-center space-x-1">
+                            <span className="text-slate-400 font-medium">₹</span>
+                            <input
+                              type="number"
+                              value={item.amount}
+                              onChange={(e) => handleUpdateApptAllowance(item.id, { amount: parseInt(e.target.value) || 0 })}
+                              className="w-24 px-2 py-1 text-slate-800 font-bold text-xs border border-slate-100 rounded-lg text-right"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveApptAllowance(item.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-md cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Deductions Section (Synced from Offer Letter) */}
+              <div className="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      Deductions (PF, Professional Tax, TDS, ESI — As per Offer Letter)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddApptDeduction('Custom Deduction', 200)}
+                    className="text-[11px] text-rose-700 hover:text-rose-800 font-semibold flex items-center space-x-1 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-slate-200 hover:border-rose-300 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Deduction</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-slate-400 font-medium">Quick Add:</span>
+                  {[
+                    {
+                      label: '+ Employee PF (12%)',
+                      name: 'Employee PF Contribution',
+                      amount: Math.min(1800, Math.round((apptForm.basicSalary || 0) * 0.12)) || 360,
+                    },
+                    { label: '+ Professional Tax', name: 'Professional Tax', amount: 200 },
+                    { label: '+ ESI Contribution', name: 'ESI Contribution', amount: 150 },
+                    { label: '+ TDS / Income Tax', name: 'TDS / Income Tax', amount: 500 },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAddApptDeduction(preset.name, preset.amount)}
+                      className="text-[10px] bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {(apptForm.deductionItems || []).length === 0 ? (
+                    <div className="text-center py-2 text-[11px] text-slate-400 bg-white rounded-lg border border-dashed border-slate-200">
+                      No deductions added (₹0 deductions).
+                    </div>
+                  ) : (
+                    (apptForm.deductionItems || []).map((item) => (
                       <div key={item.id} className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs">
                         <input
                           type="text"
                           value={item.name}
-                          onChange={(e) => handleUpdateApptAllowance(item.id, { name: e.target.value })}
-                          placeholder="Allowance description"
+                          onChange={(e) => handleUpdateApptDeduction(item.id, { name: e.target.value })}
+                          placeholder="Deduction description"
                           className="flex-1 px-2 py-1 text-slate-800 text-xs border border-slate-100 rounded-lg"
                         />
                         <div className="flex items-center space-x-1">
@@ -3817,21 +4611,37 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                           <input
                             type="number"
                             value={item.amount}
-                            onChange={(e) => handleUpdateApptAllowance(item.id, { amount: parseInt(e.target.value) || 0 })}
-                            className="w-20 px-2 py-1 text-slate-800 font-bold text-xs border border-slate-100 rounded-lg text-right"
+                            onChange={(e) => handleUpdateApptDeduction(item.id, { amount: parseInt(e.target.value) || 0 })}
+                            className="w-24 px-2 py-1 text-slate-800 font-bold text-xs border border-slate-100 rounded-lg text-right"
                           />
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleRemoveApptAllowance(item.id)}
+                          onClick={() => handleRemoveApptDeduction(item.id)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-md cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-rose-200/70 text-[11px]">
+                  <span className="text-slate-500">
+                    Total Deductions ({apptForm.deductionItems?.length || 0} items):
+                  </span>
+                  <span className="font-bold text-rose-800">
+                    ₹{apptDeductionsTotal.toLocaleString('en-IN')} / mo
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-900 text-white rounded-xl font-bold flex justify-between items-center">
+                <span>Estimated Net Monthly Salary (Take-Home):</span>
+                <span className="text-emerald-400 text-sm">
+                  ₹{apptNetTotal.toLocaleString('en-IN')} / mo
+                </span>
               </div>
 
               {/* Appointment Terms */}
@@ -3848,10 +4658,11 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                 <div>
                   <label className="font-semibold text-slate-700">Probation Period</label>
                   <select
-                    value={apptForm.probationPeriod || '6 Months'}
+                    value={apptForm.probationPeriod || '3 Months'}
                     onChange={(e) => setApptForm({ ...apptForm, probationPeriod: e.target.value })}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   >
+                    <option value="1 Month">1 Month</option>
                     <option value="3 Months">3 Months</option>
                     <option value="6 Months">6 Months</option>
                     <option value="1 Year">1 Year</option>
@@ -3876,7 +4687,7 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                   <label className="font-semibold text-slate-700">Working Hours & Days</label>
                   <input
                     type="text"
-                    value={apptForm.workingHours || '8:15 AM – 4:00 PM (Monday to Friday)'}
+                    value={apptForm.workingHours || '09:30 AM to 06:00 PM'}
                     onChange={(e) => setApptForm({ ...apptForm, workingHours: e.target.value })}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
@@ -3920,68 +4731,172 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
               </div>
             </div>
 
-            <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setIsGenerateApptOpen(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const gross = (apptForm.basicSalary || 0) + (apptForm.allowances || 0);
-                  onGenerateAppointment({
-                    ...apptForm,
-                    grossSalary: gross,
-                    id: editingApptId || undefined,
-                    applicantId: selectedApplicantForAppt.id,
-                  });
-                  setIsGenerateApptOpen(false);
-                }}
-                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-1.5"
-              >
-                <FileCheck2 className="w-4 h-4" />
-                <span>{editingApptId ? 'Save Changes' : 'Generate & Issue Appointment'}</span>
-              </button>
+            {/* Sticky Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
+              <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                <span>
+                  Basic: <strong className="text-slate-900">₹{(apptForm.basicSalary || 0).toLocaleString('en-IN')}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Allowances: <strong className="text-emerald-700">+₹{(apptForm.allowances || 0).toLocaleString('en-IN')}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Deductions: <strong className="text-rose-700">-₹{apptDeductionsTotal.toLocaleString('en-IN')}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Net Pay: <strong className="text-[#0B5D2A]">₹{apptNetTotal.toLocaleString('en-IN')} / mo</strong>
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsGenerateApptOpen(false)}
+                  className="px-4 py-2 border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sal = calculateOfferSalaryBreakdown({
+                      basicSalary: apptForm.basicSalary,
+                      allowances: apptForm.allowances,
+                      allowanceItems: apptForm.allowanceItems,
+                      deductions: apptDeductionsTotal,
+                      deductionItems: apptForm.deductionItems,
+                    });
+                    const finalAllowanceItems: AllowanceItem[] = sal.earningsItems.slice(1).map((item, idx) => ({
+                      id: apptForm.allowanceItems?.[idx]?.id || `all-appt-save-${Date.now()}-${idx}`,
+                      name: item.name,
+                      amount: item.amount,
+                    }));
+                    const finalDeductionItems: DeductionItem[] = sal.deductionItems.map((item, idx) => ({
+                      id: apptForm.deductionItems?.[idx]?.id || `ded-appt-save-${Date.now()}-${idx}`,
+                      name: item.name,
+                      amount: item.amount,
+                    }));
+                    const payload: Partial<AppointmentLetter> = {
+                      ...apptForm,
+                      basicSalary: sal.basic,
+                      allowances: sal.totalAllowances,
+                      allowanceItems: finalAllowanceItems,
+                      deductions: sal.totalDeductions,
+                      deductionItems: finalDeductionItems,
+                      grossSalary: sal.gross,
+                      netSalary: sal.netSalary,
+                      id: editingApptId || undefined,
+                      applicantId: selectedApplicantForAppt.id,
+                    };
+                    onGenerateAppointment(payload);
+                    if (previewAppt && editingApptId && previewAppt.id === editingApptId) {
+                      setPreviewAppt({ ...previewAppt, ...payload } as AppointmentLetter);
+                    }
+                    setIsGenerateApptOpen(false);
+                  }}
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-1.5"
+                >
+                  <FileCheck2 className="w-4 h-4" />
+                  <span>{editingApptId ? 'Save Changes' : 'Generate & Issue Appointment'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sal = calculateOfferSalaryBreakdown({
+                      basicSalary: apptForm.basicSalary,
+                      allowances: apptForm.allowances,
+                      allowanceItems: apptForm.allowanceItems,
+                      deductions: apptDeductionsTotal,
+                      deductionItems: apptForm.deductionItems,
+                    });
+                    const finalAllowanceItems: AllowanceItem[] = sal.earningsItems.slice(1).map((item, idx) => ({
+                      id: apptForm.allowanceItems?.[idx]?.id || `all-appt-save-${Date.now()}-${idx}`,
+                      name: item.name,
+                      amount: item.amount,
+                    }));
+                    const finalDeductionItems: DeductionItem[] = sal.deductionItems.map((item, idx) => ({
+                      id: apptForm.deductionItems?.[idx]?.id || `ded-appt-save-${Date.now()}-${idx}`,
+                      name: item.name,
+                      amount: item.amount,
+                    }));
+                    const payload: Partial<AppointmentLetter> = {
+                      ...apptForm,
+                      basicSalary: sal.basic,
+                      allowances: sal.totalAllowances,
+                      allowanceItems: finalAllowanceItems,
+                      deductions: sal.totalDeductions,
+                      deductionItems: finalDeductionItems,
+                      grossSalary: sal.gross,
+                      netSalary: sal.netSalary,
+                      id: editingApptId || undefined,
+                      applicantId: selectedApplicantForAppt.id,
+                    };
+                    onGenerateAppointment(payload);
+                    setIsGenerateApptOpen(false);
+                    onConvertApplicantToStaff(selectedApplicantForAppt.id, editingApptId || undefined);
+                  }}
+                  className="px-4 py-2 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-1.5"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>{editingApptId ? 'Save & Convert to Staff' : 'Generate & Convert to Staff'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* MODAL: PREVIEW OFFER LETTER */}
       {previewOffer && (() => {
-        const sal = calculateOfferSalaryBreakdown(previewOffer);
-        const training = getOfferTrainingPeriod(previewOffer.joiningDate, previewOffer.trainingPeriod);
-        const issueDateStr = formatOfferLetterDate(previewOffer.issueDate);
-        const joiningDateStr = formatOfferLetterDate(previewOffer.joiningDate);
-        const employeeName = previewOffer.applicantName || '[Employee Name]';
-        const designation = previewOffer.position || '[Designation]';
-        const departmentName = previewOffer.department || '[Department Name]';
-        const businessProduct = previewOffer.businessOrProduct || 'MYSAR / Casbiro / Both';
-        const reportingTo = previewOffer.reportingTo || 'Reporting Manager / Department Head';
-        const workLocation = previewOffer.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021';
-        const employmentType = previewOffer.employmentType || 'Full-Time';
-        const reportingPerson = previewOffer.reportingPerson || 'Reporting Person / Department';
-        const reportingTime = previewOffer.reportingTime || '09:30 AM';
-        const probationPeriod = previewOffer.probationPeriod || '3 / 6 Months';
-        const noticePeriod = previewOffer.noticePeriod || '30 Days';
-        const employeeAddress = previewOffer.employeeAddress || 'Door No. 18/52, Green Meadows';
-        const cityStatePin = previewOffer.cityStatePin || 'Kakkanad, Kochi, Kerala – 682021';
-        const workingDays = previewOffer.workingHours?.includes('Friday') ? 'Monday to Friday' : 'Monday to Saturday';
-        const workingHours = previewOffer.workingHours || '09:30 AM to 06:00 PM';
+        const liveOffer = offerLetters.find((o) => o.id === previewOffer.id) || previewOffer;
+        const sal = calculateOfferSalaryBreakdown(liveOffer);
+        const training = getOfferTrainingPeriod(liveOffer.joiningDate, liveOffer.trainingPeriod);
+        const issueDateStr = formatOfferLetterDate(liveOffer.issueDate);
+        const joiningDateStr = formatOfferLetterDate(liveOffer.joiningDate);
+        const employeeName = liveOffer.applicantName || '[Employee Name]';
+        const designation = liveOffer.position || '[Designation]';
+        const departmentName = liveOffer.department || '[Department Name]';
+        const businessProduct = liveOffer.businessOrProduct || 'MYSAR / Casbiro / Both';
+        const reportingTo = liveOffer.reportingTo || 'Reporting Manager / Department Head';
+        const workLocation = liveOffer.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021';
+        const employmentType = liveOffer.employmentType || 'Full-Time';
+        const reportingPerson = liveOffer.reportingPerson || 'Reporting Person / Department';
+        const reportingTime = liveOffer.reportingTime || '09:30 AM';
+        const probationPeriod = liveOffer.probationPeriod || '3 / 6 Months';
+        const noticePeriod = liveOffer.noticePeriod || '30 Days';
+        const employeeAddress = liveOffer.employeeAddress || 'Door No. 18/52, Green Meadows';
+        const cityStatePin = liveOffer.cityStatePin || 'Kakkanad, Kochi, Kerala – 682021';
+        const workingDays = liveOffer.workingHours?.includes('Friday') ? 'Monday to Friday' : 'Monday to Saturday';
+        const workingHours = liveOffer.workingHours || '09:30 AM to 06:00 PM';
 
         const copyOfferLetterText = () => {
-          const text = getOfferLetterMarkdownText(previewOffer);
+          const text = getOfferLetterMarkdownText(liveOffer);
           navigator.clipboard.writeText(text);
           setCopiedOfferLetter(true);
           setTimeout(() => setCopiedOfferLetter(false), 2500);
         };
 
+        const handleDownloadOfferPdf = async () => {
+          const sanitizedName = (liveOffer.applicantName || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const filename = `Offer_Letter_${(liveOffer.offerNumber || 'CAS_OFFER').replace(/\//g, '_')}_${sanitizedName}.pdf`;
+          const ok = await generateHrPdfFromElement('casbiro-offer-doc', { filename });
+          if (!ok) {
+            handlePrintOfferLetter();
+          }
+        };
+
+        const handlePrintOfferLetter = () => {
+          const sanitizedName = (liveOffer.applicantName || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const docTitle = `Offer_Letter_${(liveOffer.offerNumber || 'CAS_OFFER').replace(/\//g, '_')}_${sanitizedName}`;
+          printHrDocument('casbiro-offer-doc', docTitle);
+        };
+
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="offer-letter-modal-root fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="offer-letter-modal-card bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col overflow-hidden">
               {/* Modal Top Toolbar (Non-printable) */}
               <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
                 <div className="flex items-center space-x-2">
@@ -3998,11 +4913,18 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                     <span>{copiedOfferLetter ? 'Copied!' : 'Copy Letter Text'}</span>
                   </button>
                   <button
-                    onClick={() => window.print()}
+                    onClick={handleDownloadOfferPdf}
                     className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
                   >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    onClick={handlePrintOfferLetter}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer border border-slate-700"
+                  >
                     <Printer className="w-3.5 h-3.5" />
-                    <span>Print / PDF</span>
+                    <span>Print</span>
                   </button>
                   <button
                     onClick={() => setPreviewOffer(null)}
@@ -4014,8 +4936,8 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
               </div>
 
               {/* Document Scrollable Area */}
-              <div className="overflow-y-auto flex-1 p-6 sm:p-10 md:p-12 text-slate-800 text-[13px] leading-relaxed bg-white font-sans selection:bg-emerald-100">
-                <div id="casbiro-offer-doc" className="max-w-3xl mx-auto space-y-6">
+              <div className="offer-letter-scroll-area overflow-y-auto flex-1 p-4 sm:p-8 bg-slate-200/80 text-slate-800 text-[13px] leading-relaxed font-sans selection:bg-emerald-100 flex flex-col items-center">
+                <div id="casbiro-offer-doc" className="offer-letter-a4-sheet w-[210mm] max-w-full min-h-[297mm] bg-white shadow-xl border border-slate-200 p-8 sm:p-12 mx-auto space-y-6">
                   {/* Company Header */}
                   <div className="border-b-2 border-slate-900 pb-5">
                     <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-slate-950 uppercase font-serif">
@@ -4178,36 +5100,17 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Basic Salary</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.basic.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.basic * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">House Rent / Accommodation Allowance</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.hra.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.hra * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Travel / Conveyance Allowance</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.conveyance.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.conveyance * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Communication Allowance</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.communication.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.communication * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Special Allowance</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.special.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.special * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Other Allowance</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.other.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.other * 12).toLocaleString('en-IN')}</td>
-                            </tr>
+                            {sal.earningsItems.map((item, idx) => (
+                              <tr key={idx}>
+                                <td className="px-3 py-1.5 border-r border-slate-300 font-medium">{item.name}</td>
+                                <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-3 py-1.5 text-right font-mono">
+                                  ₹{(item.amount * 12).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            ))}
                             <tr className="bg-emerald-50/70 font-bold text-slate-900 border-t-2 border-slate-300">
                               <td className="px-3 py-2 border-r border-slate-300 text-emerald-950 font-bold">Gross Salary</td>
                               <td className="px-3 py-2 text-right border-r border-slate-300 font-mono text-emerald-900 font-bold">₹{sal.gross.toLocaleString('en-IN')}</td>
@@ -4236,26 +5139,27 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Employee PF Contribution</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.pf.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.pf * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Professional Tax</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.pt.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.pt * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">TDS / Income Tax</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.tds.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.tds * 12).toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                              <td className="px-3 py-1.5 border-r border-slate-300 font-medium">Other Applicable Deductions</td>
-                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.otherDeductions.toLocaleString('en-IN')}</td>
-                              <td className="px-3 py-1.5 text-right font-mono">₹{(sal.otherDeductions * 12).toLocaleString('en-IN')}</td>
-                            </tr>
+                            {sal.deductionItems.length > 0 ? (
+                              sal.deductionItems.map((item, idx) => (
+                                <tr key={idx}>
+                                  <td className="px-3 py-1.5 border-r border-slate-300 font-medium">{item.name}</td>
+                                  <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">
+                                    ₹{item.amount.toLocaleString('en-IN')}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right font-mono">
+                                    ₹{(item.amount * 12).toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td className="px-3 py-1.5 border-r border-slate-300 font-medium text-slate-500">
+                                  No Fixed Deductions Configured
+                                </td>
+                                <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹0</td>
+                                <td className="px-3 py-1.5 text-right font-mono">₹0</td>
+                              </tr>
+                            )}
                             <tr className="bg-rose-50/70 font-bold text-slate-900 border-t-2 border-slate-300">
                               <td className="px-3 py-2 border-r border-slate-300 text-rose-950 font-bold">Total Deductions</td>
                               <td className="px-3 py-2 text-right border-r border-slate-300 font-mono text-rose-900 font-bold">₹{sal.totalDeductions.toLocaleString('en-IN')}</td>
@@ -4573,61 +5477,33 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Basic Salary</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.basic.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.basic * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">HRA / Accommodation</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.hra.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.hra * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Conveyance / Travel</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.conveyance.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.conveyance * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Communication</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.communication.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.communication * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Special Allowance</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.special.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.special * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Other Allowance</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.other.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.other * 12).toLocaleString('en-IN')}</td>
-                          </tr>
+                          {sal.earningsItems.map((item, idx) => (
+                            <tr key={`annex-earn-${idx}`}>
+                              <td className="px-3 py-1.5 border-r border-slate-300">{item.name}</td>
+                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">
+                                ₹{item.amount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-mono">
+                                ₹{(item.amount * 12).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
                           <tr className="bg-emerald-50/70 font-bold border-t-2 border-slate-300 text-emerald-950">
                             <td className="px-3 py-2 border-r border-slate-300 font-bold">Gross Salary</td>
                             <td className="px-3 py-2 text-right border-r border-slate-300 font-mono font-bold">₹{sal.gross.toLocaleString('en-IN')}</td>
                             <td className="px-3 py-2 text-right font-mono font-bold">₹{(sal.gross * 12).toLocaleString('en-IN')}</td>
                           </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Employee PF</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.pf.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.pf * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Professional Tax</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.pt.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.pt * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">TDS</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.tds.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.tds * 12).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td className="px-3 py-1.5 border-r border-slate-300">Other Deductions</td>
-                            <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">₹{sal.otherDeductions.toLocaleString('en-IN')}</td>
-                            <td className="px-3 py-1.5 text-right font-mono">₹{(sal.otherDeductions * 12).toLocaleString('en-IN')}</td>
-                          </tr>
+                          {sal.deductionItems.map((item, idx) => (
+                            <tr key={`annex-ded-${idx}`}>
+                              <td className="px-3 py-1.5 border-r border-slate-300 text-rose-900">{item.name}</td>
+                              <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono text-rose-800">
+                                ₹{item.amount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-mono text-rose-800">
+                                ₹{(item.amount * 12).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
                           <tr className="bg-rose-50/70 font-bold border-t border-slate-300 text-rose-950">
                             <td className="px-3 py-2 border-r border-slate-300 font-bold">Total Deductions</td>
                             <td className="px-3 py-2 text-right border-r border-slate-300 font-mono font-bold">₹{sal.totalDeductions.toLocaleString('en-IN')}</td>
@@ -4680,11 +5556,18 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
                     <span>{copiedOfferLetter ? 'Copied' : 'Copy Text'}</span>
                   </button>
                   <button
-                    onClick={() => window.print()}
+                    onClick={handleDownloadOfferPdf}
                     className="flex items-center space-x-1.5 px-4 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
                   >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    onClick={handlePrintOfferLetter}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 border border-slate-300 hover:bg-white text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
                     <Printer className="w-3.5 h-3.5" />
-                    <span>Print Document</span>
+                    <span>Print</span>
                   </button>
                   <button
                     onClick={() => setPreviewOffer(null)}
@@ -4700,72 +5583,247 @@ I, **${offer.applicantName || '[Employee Name]'}**, hereby accept the offer of e
       })()}
 
       {/* MODAL: PREVIEW APPOINTMENT LETTER */}
-      {previewAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-2xl p-8 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto text-xs font-serif leading-relaxed">
-            <div className="border-b-2 border-teal-600 pb-4 mb-6 flex justify-between items-start font-sans">
-              <div>
-                <h1 className="text-xl font-bold text-teal-800">MYSAR – Institutional Services</h1>
-                <p className="text-xs text-slate-500">Casbiro Solutions Private Limited</p>
-                <p className="text-[10px] text-slate-400">Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021</p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold bg-teal-50 text-teal-800 px-2.5 py-1 rounded-full border border-teal-200">
-                  APPOINTMENT LETTER
-                </span>
-                <p className="text-[10px] text-slate-500 mt-1">Ref: {previewAppt.appointmentNumber}</p>
-                <p className="text-[10px] text-indigo-700 font-bold">Emp ID: {previewAppt.employeeId}</p>
-              </div>
-            </div>
+      {previewAppt && (() => {
+        const liveAppt = appointmentLetters.find((a) => a.id === previewAppt.id) || previewAppt;
+        const matchingOffer = offerLetters.find((o) => o.applicantId === liveAppt.applicantId);
+        const apptSal = calculateOfferSalaryBreakdown({
+          basicSalary: liveAppt.basicSalary,
+          allowances: liveAppt.allowances,
+          allowanceItems: liveAppt.allowanceItems && liveAppt.allowanceItems.length > 0 ? liveAppt.allowanceItems : matchingOffer?.allowanceItems,
+          deductions: liveAppt.deductions ?? matchingOffer?.deductions,
+          deductionItems: liveAppt.deductionItems && liveAppt.deductionItems.length > 0 ? liveAppt.deductionItems : matchingOffer?.deductionItems,
+        });
 
-            <div className="space-y-4 text-slate-800">
-              <p>
-                Dear <strong className="font-bold text-slate-900">{previewAppt.employeeName}</strong>,
-              </p>
-              <p>
-                Pursuant to your acceptance of the offer letter, we are delighted to formally appoint you as{' '}
-                <strong className="text-teal-900">{previewAppt.position}</strong> under the{' '}
-                <strong>{previewAppt.division}</strong>, effective from{' '}
-                <strong className="text-teal-800">{previewAppt.joiningDate}</strong>.
-              </p>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 my-3 font-sans">
-                <div className="font-bold text-slate-900 mb-2">Terms of Institutional Appointment:</div>
-                <ul className="list-disc pl-4 space-y-1 text-xs text-slate-700">
-                  <li>Workplace Location: {previewAppt.workplace}</li>
-                  <li>Probation Period: {previewAppt.probationPeriod}</li>
-                  <li>Gross Monthly Remuneration: ₹{previewAppt.grossSalary.toLocaleString()}</li>
-                  <li>Working Hours: {previewAppt.workingHours}</li>
-                </ul>
-              </div>
-              <p>
-                <strong>Responsibilities:</strong> {previewAppt.responsibilities.join(' • ')}
-              </p>
-            </div>
+        const handleDownloadApptPdf = async () => {
+          const sanitizedName = (liveAppt.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const filename = `Appointment_Letter_${(liveAppt.appointmentNumber || 'CAS_APPT').replace(/\//g, '_')}_${sanitizedName}.pdf`;
+          const ok = await generateHrPdfFromElement('casbiro-appt-doc', { filename });
+          if (!ok) {
+            handlePrintApptLetter();
+          }
+        };
 
-            <div className="mt-8 pt-6 border-t border-slate-200 flex items-center justify-between font-sans">
-              <div>
-                <div className="font-bold text-slate-900">Dr. Ramesh Nambiar</div>
-                <div className="text-[10px] text-slate-500">Director of Academics & Administration</div>
+        const handlePrintApptLetter = () => {
+          const sanitizedName = (liveAppt.employeeName || 'Employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const docTitle = `Appointment_Letter_${(liveAppt.appointmentNumber || 'CAS_APPT').replace(/\//g, '_')}_${sanitizedName}`;
+          printHrDocument('casbiro-appt-doc', docTitle);
+        };
+
+        return (
+          <div className="offer-letter-modal-root fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+            <div className="offer-letter-modal-card bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col overflow-hidden">
+              <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-teal-400"></div>
+                  <span className="font-bold text-sm tracking-wide">Casbiro Solutions – Institutional Appointment Letter</span>
+                  <span className="text-xs text-slate-400 font-mono hidden sm:inline">({liveAppt.appointmentNumber})</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleDownloadApptPdf}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    onClick={handlePrintApptLetter}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer border border-slate-700"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print</span>
+                  </button>
+                  <button
+                    onClick={() => setPreviewAppt(null)}
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center space-x-1 px-3 py-1.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 cursor-pointer text-xs"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print</span>
-                </button>
-                <button
-                  onClick={() => setPreviewAppt(null)}
-                  className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold cursor-pointer text-xs"
-                >
-                  Close
-                </button>
+
+              <div className="offer-letter-scroll-area overflow-y-auto flex-1 p-4 sm:p-8 bg-slate-200/80 text-slate-800 text-[13px] leading-relaxed font-sans flex flex-col items-center">
+                <div id="casbiro-appt-doc" className="offer-letter-a4-sheet w-[210mm] max-w-full min-h-[297mm] bg-white shadow-xl border border-slate-200 p-8 sm:p-12 mx-auto space-y-6">
+                  <div className="border-b-2 border-teal-700 pb-4 flex justify-between items-start">
+                    <div>
+                      <h1 className="text-xl sm:text-2xl font-bold text-teal-800 uppercase">MYSAR – Institutional Services</h1>
+                      <p className="text-xs font-semibold text-slate-600">Casbiro Solutions Private Limited</p>
+                      <p className="text-[11px] text-slate-500">Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold bg-teal-50 text-teal-800 px-3 py-1 rounded-full border border-teal-200">
+                        APPOINTMENT LETTER
+                      </span>
+                      <p className="text-xs text-slate-600 mt-1.5 font-medium">Ref: {liveAppt.appointmentNumber}</p>
+                      <p className="text-xs text-indigo-700 font-bold">Emp ID: {liveAppt.employeeId}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 text-slate-800">
+                    <p>
+                      Dear <strong className="font-bold text-slate-900">{liveAppt.employeeName}</strong>,
+                    </p>
+                    <p className="text-justify">
+                      Pursuant to your acceptance of the offer letter, we are delighted to formally appoint you as{' '}
+                      <strong className="text-teal-900">{liveAppt.position}</strong> under the{' '}
+                      <strong>{liveAppt.division}</strong> ({liveAppt.department}), effective from{' '}
+                      <strong className="text-teal-800">{liveAppt.joiningDate}</strong>.
+                    </p>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 my-3">
+                      <div className="font-bold text-slate-900 mb-2">Terms of Institutional Appointment:</div>
+                      <ul className="list-disc pl-4 space-y-1 text-xs text-slate-700">
+                        <li>Workplace Location: {liveAppt.workplace}</li>
+                        <li>Probation Period: {liveAppt.probationPeriod}</li>
+                        <li>Gross Monthly Remuneration: ₹{apptSal.gross.toLocaleString('en-IN')} / Month</li>
+                        <li>Estimated Net Monthly Remuneration: ₹{apptSal.netSalary.toLocaleString('en-IN')} / Month</li>
+                        <li>Working Hours: {liveAppt.workingHours}</li>
+                      </ul>
+                    </div>
+
+                    {/* Itemized Compensation Breakdown Table */}
+                    <div className="space-y-2 pt-2">
+                      <div className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                        Compensation &amp; Benefits Breakdown
+                      </div>
+                      <div className="border border-slate-300 rounded-xl overflow-hidden">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
+                            <tr>
+                              <th className="px-3 py-2 border-r border-slate-300">Component</th>
+                              <th className="px-3 py-2 text-right border-r border-slate-300 w-36">Monthly (₹)</th>
+                              <th className="px-3 py-2 text-right w-36">Annual (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {apptSal.earningsItems.map((item, idx) => (
+                              <tr key={`appt-earn-${idx}`}>
+                                <td className="px-3 py-1.5 border-r border-slate-300 font-medium">{item.name}</td>
+                                <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono">
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-3 py-1.5 text-right font-mono">
+                                  ₹{(item.amount * 12).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="bg-emerald-50/70 font-bold border-t-2 border-slate-300 text-emerald-950">
+                              <td className="px-3 py-2 border-r border-slate-300 font-bold">Gross Salary</td>
+                              <td className="px-3 py-2 text-right border-r border-slate-300 font-mono font-bold">
+                                ₹{apptSal.gross.toLocaleString('en-IN')}
+                              </td>
+                              <td className="px-3 py-2 text-right font-mono font-bold">
+                                ₹{(apptSal.gross * 12).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                            {apptSal.deductionItems.map((item, idx) => (
+                              <tr key={`appt-ded-${idx}`}>
+                                <td className="px-3 py-1.5 border-r border-slate-300 text-rose-900">{item.name}</td>
+                                <td className="px-3 py-1.5 text-right border-r border-slate-300 font-mono text-rose-800">
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-3 py-1.5 text-right font-mono text-rose-800">
+                                  ₹{(item.amount * 12).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            ))}
+                            {apptSal.deductionItems.length > 0 && (
+                              <tr className="bg-rose-50/70 font-bold border-t border-slate-300 text-rose-950">
+                                <td className="px-3 py-2 border-r border-slate-300 font-bold">Total Deductions</td>
+                                <td className="px-3 py-2 text-right border-r border-slate-300 font-mono font-bold">
+                                  ₹{apptSal.totalDeductions.toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-3 py-2 text-right font-mono font-bold">
+                                  ₹{(apptSal.totalDeductions * 12).toLocaleString('en-IN')}
+                                </td>
+                              </tr>
+                            )}
+                            <tr className="bg-emerald-100/60 font-black border-t-2 border-slate-400 text-emerald-950">
+                              <td className="px-3 py-2 border-r border-slate-300 font-bold">Estimated Net Salary</td>
+                              <td className="px-3 py-2 text-right border-r border-slate-300 font-mono font-bold">
+                                ₹{apptSal.netSalary.toLocaleString('en-IN')}
+                              </td>
+                              <td className="px-3 py-2 text-right font-mono font-bold">
+                                ₹{(apptSal.netSalary * 12).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2">
+                      <div className="font-bold text-slate-900 text-xs">Key Responsibilities:</div>
+                      <ul className="list-disc pl-5 space-y-1 text-xs text-slate-700">
+                        {liveAppt.responsibilities.map((resp, idx) => (
+                          <li key={idx}>{resp}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {liveAppt.termsAndConditions && (
+                      <p className="text-xs text-slate-700 pt-1">
+                        <strong>Terms &amp; Conditions:</strong> {liveAppt.termsAndConditions}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-8 mt-8 border-t border-slate-200 flex items-end justify-between">
+                    <div>
+                      <div className="font-bold text-slate-900">Dr. Ramesh Nambiar</div>
+                      <div className="text-xs text-slate-500">Director of Academics &amp; Administration</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Casbiro Solutions Private Limited</div>
+                    </div>
+                    <div className="text-right text-xs text-slate-600">
+                      <div>Employee Acceptance Signature: ______________________</div>
+                      <div className="mt-2">Date: ______________________</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="no-print bg-slate-50 border-t border-slate-200 px-6 py-3 flex items-center justify-between">
+                <div className="text-xs text-slate-500 font-medium">
+                  Status: <span className="font-bold text-teal-700">{liveAppt.status}</span> • Ref: {liveAppt.appointmentNumber}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      const targetAppt = liveAppt;
+                      setPreviewAppt(null);
+                      onConvertApplicantToStaff(targetAppt.applicantId, targetAppt.id);
+                    }}
+                    className="flex items-center space-x-1.5 px-4 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Convert to Staff</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadApptPdf}
+                    className="flex items-center space-x-1.5 px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    onClick={handlePrintApptLetter}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 border border-slate-300 hover:bg-white text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print</span>
+                  </button>
+                  <button
+                    onClick={() => setPreviewAppt(null)}
+                    className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold cursor-pointer text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

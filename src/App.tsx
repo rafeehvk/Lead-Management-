@@ -37,11 +37,14 @@ import {
 import { HrDashboardView } from './components/hr/HrDashboardView';
 import { RecruitmentView } from './components/hr/RecruitmentView';
 import { StaffManagementView } from './components/hr/StaffManagementView';
+import { BranchDashboardView } from './components/hr/BranchDashboardView';
+import { StaffAccessManagementView } from './components/hr/StaffAccessManagementView';
 import { AttendanceAndLeaveView } from './components/hr/AttendanceAndLeaveView';
 import { PayrollManagementView } from './components/hr/PayrollManagementView';
 import { KpiManagementView } from './components/hr/KpiManagementView';
 import { HrSettingsView } from './components/hr/HrSettingsView';
 import { hrStorage } from './services/hrStorageService';
+import { resolveAssignedModulesToNavTabs } from './utils/menuPermissions';
 
 // Document & Expiry Management Module
 import { DocumentExpiryView } from './components/documentExpiry/DocumentExpiryView';
@@ -86,10 +89,12 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [isSubpageFullScreen, setIsSubpageFullScreen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilterForLeads, setStatusFilterForLeads] = useState<string>('All');
   const [followUpsActiveTab, setFollowUpsActiveTab] = useState<'today' | 'upcoming' | 'overdue' | 'all'>('today');
-  const [settingsSubTab, setSettingsSubTab] = useState<'pricing' | 'company' | 'proposal' | 'users' | 'import' | 'integrations' | 'themes'>('pricing');
+  const [settingsSubTab, setSettingsSubTab] = useState<'pricing' | 'proposal' | 'templates' | 'company' | 'users' | 'import' | 'integrations' | 'themes'>('pricing');
+  const [proposalTargetTemplateId, setProposalTargetTemplateId] = useState<string | undefined>(undefined);
 
   // Core Data States
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -108,6 +113,7 @@ export default function App() {
   const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() =>
     hrStorage.getDepartmentsMaster()
   );
+  const [staffAuthVersion, setStaffAuthVersion] = useState(0);
 
   useEffect(() => {
     try {
@@ -116,12 +122,45 @@ export default function App() {
 
     const handleDeptChange = () => {
       setDepartmentsList(hrStorage.getDepartmentsMaster());
+      setStaffAuthVersion((v) => v + 1);
     };
     window.addEventListener('mysar_department_permissions_changed', handleDeptChange);
     return () => {
       window.removeEventListener('mysar_department_permissions_changed', handleDeptChange);
     };
   }, []);
+
+  const staffAssignedNavTabs = useMemo(() => {
+    if (!currentUser) return null;
+    const allStaff = hrStorage.getStaff();
+    const matchedStaff = allStaff.find(
+      (s) =>
+        (currentUser.staffId && s.staffId === currentUser.staffId) ||
+        (currentUser.userId &&
+          s.systemAccess?.username?.toLowerCase() === currentUser.userId.toLowerCase()) ||
+        (currentUser.email && s.email?.toLowerCase() === currentUser.email.toLowerCase())
+    );
+
+    const assignedModules =
+      matchedStaff?.systemAccess?.assignedModules ?? currentUser.assignedModules;
+    const accessLevel =
+      matchedStaff?.systemAccess?.accessLevel ?? currentUser.accessLevel;
+
+    // Master default admin without a restricted staff profile sees everything unless modules are explicitly assigned
+    if (!matchedStaff && currentUser.role === 'Admin' && (!assignedModules || assignedModules.length === 0)) {
+      return null;
+    }
+
+    if (assignedModules && assignedModules.length > 0) {
+      return resolveAssignedModulesToNavTabs(assignedModules, accessLevel);
+    }
+
+    if (accessLevel === 'Admin' || currentUser.role === 'Admin') {
+      return null;
+    }
+
+    return null;
+  }, [currentUser, staffAuthVersion]);
 
   const activeUserDept = useMemo(() => {
     if (currentUser?.role === 'Admin') {
@@ -147,25 +186,44 @@ export default function App() {
   }, [departmentsList, currentUser]);
 
   const isCurrentTabAuthorized = useMemo(() => {
+    if (staffAssignedNavTabs && staffAssignedNavTabs.size > 0) {
+      return staffAssignedNavTabs.has(activeTab);
+    }
     if (!activeUserDept) return true;
     const allowed = activeUserDept.allowedMenuIds || [];
     return allowed.includes(activeTab);
-  }, [activeUserDept, activeTab]);
+  }, [staffAssignedNavTabs, activeUserDept, activeTab]);
 
   useEffect(() => {
-    if (activeUserDept && !isCurrentTabAuthorized) {
-      const allowed = activeUserDept.allowedMenuIds || [];
-      if (allowed.includes('dashboard')) {
-        setActiveTab('dashboard');
-      } else if (allowed.length > 0) {
-        setActiveTab(allowed[0] as NavTab);
+    if (!isCurrentTabAuthorized) {
+      if (staffAssignedNavTabs && staffAssignedNavTabs.size > 0) {
+        const allowedList = Array.from(staffAssignedNavTabs);
+        if (staffAssignedNavTabs.has('dashboard')) {
+          setActiveTab('dashboard');
+        } else if (allowedList.length > 0) {
+          setActiveTab(allowedList[0] as NavTab);
+        }
+        return;
+      }
+      if (activeUserDept) {
+        const allowed = activeUserDept.allowedMenuIds || [];
+        if (allowed.includes('dashboard')) {
+          setActiveTab('dashboard');
+        } else if (allowed.length > 0) {
+          setActiveTab(allowed[0] as NavTab);
+        }
       }
     }
-  }, [activeUserDept, isCurrentTabAuthorized]);
+  }, [staffAssignedNavTabs, activeUserDept, isCurrentTabAuthorized]);
 
   // Modal States
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [pendingStaffOnboarding, setPendingStaffOnboarding] = useState<{
+    prefillData: Partial<StaffMember>;
+    applicantId?: string;
+    appointmentId?: string;
+  } | null>(null);
 
   const [isCreateProposalOpen, setIsCreateProposalOpen] = useState(false);
   const [proposalTargetLead, setProposalTargetLead] = useState<Lead | null>(null);
@@ -210,6 +268,7 @@ export default function App() {
     setHrPerformance(hrStorage.getStaffPerformance());
     setHrActivityLogs(hrStorage.getActivityLogs());
     setHrSettings(hrStorage.getHrSettings());
+    setStaffAuthVersion((v) => v + 1);
   };
 
   // Load data on mount
@@ -599,12 +658,26 @@ export default function App() {
   };
 
   const handleConvertApplicantToStaff = (applicantId: string, appointmentId?: string) => {
-    hrStorage.convertApplicantToStaff(applicantId, appointmentId, currentUser?.name || 'HR Admin');
-    refreshHrData();
+    const prefillData = hrStorage.buildPrefilledStaffFromCandidate(applicantId, appointmentId);
+    setPendingStaffOnboarding({
+      prefillData,
+      applicantId,
+      appointmentId,
+    });
+    setActiveTab('hr-staff');
   };
 
   const handleSaveStaff = (staffMember: Partial<StaffMember>) => {
-    hrStorage.saveStaff(staffMember, currentUser?.name || 'HR Admin');
+    const saved = hrStorage.saveStaff(staffMember, currentUser?.name || 'HR Admin');
+    if (pendingStaffOnboarding) {
+      hrStorage.completeCandidateConversionToStaff(
+        pendingStaffOnboarding.applicantId,
+        pendingStaffOnboarding.appointmentId,
+        saved.id,
+        currentUser?.name || 'HR Admin'
+      );
+      setPendingStaffOnboarding(null);
+    }
     refreshHrData();
     setUsers(storage.getUsers());
   };
@@ -712,37 +785,56 @@ export default function App() {
         notificationsCount={totalActiveNotificationsCount}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         settings={settings}
+        isFullScreen={isSubpageFullScreen}
+        onToggleFullScreen={() => {
+          setIsSubpageFullScreen((prev) => {
+            const next = !prev;
+            try {
+              if (next && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+              } else if (!next && document.fullscreenElement && document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+              }
+            } catch {
+              // Ignore browser fullscreen API restrictions in iframe
+            }
+            return next;
+          });
+        }}
       />
 
       {/* Main Layout: Sidebar + Dynamic Main Area */}
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          activeTab={activeTab}
-          settingsSubTab={settingsSubTab}
-          onSettingsSubTabChange={(subTab) => {
-            setSettingsSubTab(subTab);
-            setActiveTab('settings');
-          }}
-          onTabChange={(tab) => {
-            if (tab === 'gashub') {
-              setIsGasHubOpen(true);
-            } else {
-              setActiveTab(tab);
-            }
-          }}
-          leadsCount={leads.length}
-          followUpsTodayCount={metrics.followUpsToday}
-          proposalsPendingCount={metrics.proposalsPending}
-          pendingLeavesCount={(hrLeaveRequests || []).filter((l) => l.status === 'Pending').length}
-          currentUser={currentUser}
-          onOpenNotifications={() => setIsNotificationModalOpen(true)}
-          onLogout={handleLogout}
-        />
+      <div className="flex flex-1 w-full overflow-hidden">
+        {!isSubpageFullScreen && (
+          <Sidebar
+            activeTab={activeTab}
+            settingsSubTab={settingsSubTab}
+            onSettingsSubTabChange={(subTab) => {
+              setSettingsSubTab(subTab);
+              setActiveTab('settings');
+            }}
+            onTabChange={(tab) => {
+              if (tab === 'gashub') {
+                setIsGasHubOpen(true);
+              } else {
+                setActiveTab(tab);
+              }
+            }}
+            leadsCount={leads.length}
+            followUpsTodayCount={metrics.followUpsToday}
+            proposalsPendingCount={metrics.proposalsPending}
+            pendingLeavesCount={(hrLeaveRequests || []).filter((l) => l.status === 'Pending').length}
+            currentUser={currentUser}
+            onOpenNotifications={() => setIsNotificationModalOpen(true)}
+            onLogout={handleLogout}
+          />
+        )}
 
         {/* Dynamic Workspace Content */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-65px)]">
+        <main className="flex-1 w-full min-w-0 p-3 md:p-5 overflow-y-auto h-[calc(100vh-64px)] max-h-[calc(100vh-64px)]">
+          <div className="w-full min-h-full">
           {!isCurrentTabAuthorized && (
-            <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl border border-rose-200 shadow-xl space-y-6 text-center animate-in zoom-in-95">
+            <div className="w-full my-6 p-8 bg-white rounded-3xl border border-rose-200 shadow-xl space-y-6 text-center animate-in zoom-in-95">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
                 <ShieldAlert className="w-8 h-8" />
               </div>
@@ -908,11 +1000,16 @@ export default function App() {
               onDeleteProposal={handleDeleteProposal}
               onUpdateStatus={handleUpdateProposalStatus}
               onExportCsv={() => handleExportCsv('Proposals')}
+              onNavigateToTemplates={() => {
+                setSettingsSubTab('templates');
+                setActiveTab('settings');
+              }}
               onEmailProposal={(prop) => {
                 setGmailLeadFilter(prop.leadId);
                 setActiveTab('gmail');
               }}
               onOpenNewProposalPrompt={() => {
+                setProposalTargetTemplateId(undefined);
                 setProposalTargetLead(leads.length > 0 ? leads[0] : null);
                 setIsCreateProposalOpen(true);
               }}
@@ -968,6 +1065,12 @@ export default function App() {
               onResetDemo={handleResetDemo}
               onBulkImportLeads={handleBulkImportLeads}
               onNavigateToLeads={() => setActiveTab('leads')}
+              onNavigateToProposals={(templateId) => {
+                setProposalTargetTemplateId(templateId);
+                setProposalTargetLead(leads.length > 0 ? leads[0] : null);
+                setActiveTab('proposals');
+                setIsCreateProposalOpen(true);
+              }}
               initialTab={settingsSubTab}
               onTabChange={(subTab) => setSettingsSubTab(subTab)}
             />
@@ -1070,6 +1173,26 @@ export default function App() {
               onDeleteStaff={handleDeleteStaff}
               onClearAllDummyData={handleClearAllDummyData}
               onNavigateToHrConfiguration={() => setActiveTab('hr-settings')}
+              prefillStaffData={pendingStaffOnboarding?.prefillData || null}
+              onClearPrefillStaffData={() => setPendingStaffOnboarding(null)}
+            />
+          )}
+
+          {activeTab === 'hr-branch-dashboard' && (
+            <BranchDashboardView
+              onNavigateTab={(tab) => {
+                if (tab === 'hr_staff_directory') setActiveTab('hr-staff');
+                else if (tab === 'hr_staff_access') setActiveTab('hr-staff-access');
+                else setActiveTab(tab as NavTab);
+              }}
+            />
+          )}
+
+          {activeTab === 'hr-staff-access' && (
+            <StaffAccessManagementView
+              onSwitchUser={(staffUser) => {
+                handleSwitchUser(staffUser);
+              }}
             />
           )}
 
@@ -1397,6 +1520,7 @@ export default function App() {
           )}
             </>
           )}
+          </div>
         </main>
       </div>
 
@@ -1423,12 +1547,19 @@ export default function App() {
           setIsCreateProposalOpen(false);
           setProposalTargetLead(null);
           setEditingProposal(null);
+          setProposalTargetTemplateId(undefined);
         }}
         lead={proposalTargetLead}
         editingProposal={editingProposal}
         leads={leads}
         settings={settings}
         currentUser={currentUser}
+        initialTemplateId={proposalTargetTemplateId}
+        onOpenTemplatesManager={() => {
+          setIsCreateProposalOpen(false);
+          setSettingsSubTab('templates');
+          setActiveTab('settings');
+        }}
         onGenerateProposal={handleGenerateProposalSubmit}
       />
 

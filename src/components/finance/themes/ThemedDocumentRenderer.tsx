@@ -17,6 +17,8 @@ import {
   DocumentThemeConfig,
   ThemedDocumentCategory,
   THEME_COLOR_PALETTES,
+  DEFAULT_ITEM_TABLE_CONTENT,
+  ItemTableContentConfig,
 } from '../../../types/invoiceTheme';
 import { storage } from '../../../services/storageService';
 
@@ -60,6 +62,9 @@ export interface ThemedDocumentData {
   tdsSection?: string;
   accountName?: string;
   previousBalance?: number;
+  receivedAmount?: number;
+  currentBalance?: number;
+  originalCopyBadge?: string;
   signatoryName?: string;
   signatoryRole?: string;
 }
@@ -138,66 +143,42 @@ function numberToWordsINR(amount: number): string {
 // Sample fallback dataset for interactive previewing in Settings
 const SAMPLE_DATA: Partial<Record<ThemedDocumentCategory, ThemedDocumentData>> = {
   sales: {
-    documentNumber: 'INV-2026-0842',
-    documentType: 'Tax Invoice',
-    date: '2026-09-27',
-    dueDate: '2026-10-12',
-    referenceNumber: 'PO-MYSAR-9921',
-    paymentMethod: 'Bank Transfer (NEFT/RTGS)',
-    partyName: 'Apex Educational Consortium Pvt Ltd',
-    partyGstin: '32AABCA4321A1Z2',
-    partyAddress: 'Techno Campus, Suite 402, Civil Station Road, Ernakulam, Kerala - 682030',
+    documentNumber: 'CB/INV/60',
+    documentType: 'BILL OF SUPPLY',
+    date: '03/10/2026',
+    dueDate: '10/10/2026',
+    referenceNumber: '2025/000007',
+    originalCopyBadge: 'ORIGINAL FOR RECIPIENT',
+    paymentMethod: 'UPI / Bank Transfer',
+    partyName: 'GRACE VALLEY PUBLIC SCHOOL',
+    partyAddress: 'Maravattam, Kadampuzha, Malappuram, Kadampuzha, Kerala, 676553',
     partyState: 'Kerala (32)',
-    partyPhone: '+91 98470 12345',
+    partyPhone: '8589054503',
     items: [
       {
         id: '1',
-        name: 'Enterprise School ERP Campus Suite',
-        description: 'Annual cloud subscription license including student management & LMS',
-        hsn: '998313',
-        quantity: 1,
-        unit: 'Year',
-        rate: 85000,
-        taxable: 85000,
-        taxPercent: 18,
-        taxTotal: 15300,
-        total: 100300,
-      },
-      {
-        id: '2',
-        name: 'RFID Biometric Smart Attendance Terminal',
-        description: 'Dual-frequency Wi-Fi card reader with cloud sync',
-        hsn: '847160',
-        quantity: 3,
-        unit: 'Units',
-        rate: 12500,
-        taxable: 37500,
-        taxPercent: 18,
-        taxTotal: 6750,
-        total: 44250,
-      },
-      {
-        id: '3',
-        name: 'PVC Student ID Smart Cards (Bulk)',
-        description: 'Full color 300dpi thermal encoded badge cards',
-        hsn: '392690',
-        quantity: 500,
-        unit: 'Pcs',
-        rate: 45,
-        taxable: 22500,
-        taxPercent: 12,
-        taxTotal: 2700,
-        total: 25200,
+        name: 'Colour Print A4',
+        description: '',
+        hsn: '',
+        quantity: 1114,
+        unit: 'PCS',
+        rate: 3,
+        taxable: 3342,
+        taxPercent: 0,
+        taxTotal: 0,
+        total: 3342,
       },
     ],
-    subtotal: 145000,
-    cgst: 12375,
-    sgst: 12375,
+    subtotal: 3342,
+    cgst: 0,
+    sgst: 0,
     igst: 0,
-    otherCharges: 1500,
-    discount: 5000,
-    grandTotal: 166250,
-    previousBalance: 18400,
+    otherCharges: 0,
+    discount: 0,
+    grandTotal: 3342,
+    receivedAmount: 0,
+    previousBalance: 0,
+    currentBalance: 3342,
   },
   purchase: {
     documentNumber: 'PO-2026-0319',
@@ -308,6 +289,12 @@ export interface CompanyBrandingInfo {
   phone: string;
   email: string;
   website: string;
+  demoUrl?: string;
+  bankName?: string;
+  accountName?: string;
+  accountNo?: string;
+  ifscCode?: string;
+  upiId?: string;
 }
 
 export const ThemedDocumentRenderer: React.FC<ThemedDocumentRendererProps> = ({
@@ -322,16 +309,22 @@ export const ThemedDocumentRenderer: React.FC<ThemedDocumentRendererProps> = ({
   const palette = THEME_COLOR_PALETTES[themeConfig.primaryColor] || THEME_COLOR_PALETTES.emerald;
   const logo = storage.getInvoiceLogo() || storage.getDocumentLogo() || storage.getCompanyLogo();
 
-  // Dynamic Company & Branding profile retrieved from persistent settings
+  // Dynamic Company & Branding profile retrieved from persistent settings & invoice config
   const settings = storage.getSettings();
   const companyInfo: CompanyBrandingInfo = {
-    name: settings.companyName || 'Casbiro Solutions Private Limited',
-    brandName: settings.brandName || 'MYSAR',
-    address: settings.address || 'No. 4/461, 2nd Floor, Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
+    name: settings.companyName || 'CASBIRO SOLUTIONS PVT LTD',
+    brandName: settings.brandName || 'CASBIRO',
+    address: settings.address || 'Judegeukku, Kakkanad, Ernakulam, Kerala, 682021',
     gstin: settings.gstNumber || '32AABCC8921F1ZX',
-    phone: settings.phone || '+91 7994 807 907 / +91 7994 806 906',
+    phone: settings.phone || '7994806906',
     email: settings.email || 'billing@casbiro.com',
     website: settings.website || 'https://mysar.in',
+    demoUrl: 'https://mysar.in/demo',
+    bankName: themeConfig.bankName || settings.bankName || 'Axis Bank, VENNALA',
+    accountName: themeConfig.accountName || settings.bankAccountName || 'Casbiro Solutions Private Limited',
+    accountNo: themeConfig.accountNo || settings.bankAccountNumber || '925020008037268',
+    ifscCode: themeConfig.ifscCode || settings.bankIfsc || 'utib0002748',
+    upiId: themeConfig.upiId || settings.upiId || '7994806906@okbizaxis',
   };
 
   const sessionUser = storage.getSessionUser();
@@ -350,7 +343,7 @@ export const ThemedDocumentRenderer: React.FC<ThemedDocumentRendererProps> = ({
     doc.documentType ||
     themeConfig.headerTitle ||
     (category === 'sales'
-      ? 'TAX INVOICE'
+      ? 'BILL OF SUPPLY'
       : category === 'purchase'
       ? 'PURCHASE BILL'
       : category === 'receipt'
@@ -512,6 +505,103 @@ function renderSignatureBlock(
   );
 }
 
+function getTableConfig(config: DocumentThemeConfig): ItemTableContentConfig {
+  const base = config.itemTableContent || DEFAULT_ITEM_TABLE_CONTENT;
+  return {
+    ...DEFAULT_ITEM_TABLE_CONTENT,
+    ...base,
+    showItemTable: config.showItemTable !== undefined ? config.showItemTable : base.showItemTable ?? true,
+  };
+}
+
+function renderHsnSummaryBlock(
+  doc: ThemedDocumentData,
+  config: DocumentThemeConfig,
+  palette: typeof THEME_COLOR_PALETTES.emerald
+) {
+  if (!config.showHsnSummary) return null;
+  const items =
+    doc.items && doc.items.length > 0
+      ? doc.items
+      : [
+          {
+            id: 'hsn-sample-1',
+            name: 'Enterprise ERP Services / Allocation',
+            hsn: '998314',
+            quantity: 1,
+            unit: 'NOS',
+            rate: doc.subtotal || doc.grandTotal || 50000,
+            taxable: doc.subtotal || doc.grandTotal || 50000,
+            taxPercent: 18,
+            taxTotal: (doc.cgst || 0) + (doc.sgst || 0) + (doc.igst || 0),
+            total: doc.grandTotal || 50000,
+          },
+        ];
+
+  const totalTaxable = items.reduce((s, it) => s + (it.taxable || 0), 0);
+  const totalTax = items.reduce((s, it) => s + (it.taxTotal || 0), 0);
+
+  return (
+    <div className="my-3 border border-gray-300 rounded-lg overflow-hidden text-[10px]">
+      <div
+        className="px-3 py-1.5 font-bold uppercase tracking-wider text-white flex items-center justify-between"
+        style={{ backgroundColor: palette.hex }}
+      >
+        <span>HSN / SAC Tax Liability Summary</span>
+        <span className="font-mono text-[9px] opacity-90">Statutory GST Breakdown</span>
+      </div>
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-slate-50 border-b border-gray-200 text-slate-600 font-bold">
+            <th className="p-1.5 border-r border-gray-200">HSN / SAC</th>
+            <th className="p-1.5 border-r border-gray-200 text-right">Taxable Value</th>
+            <th className="p-1.5 border-r border-gray-200 text-center">GST %</th>
+            <th className="p-1.5 border-r border-gray-200 text-right">CGST Amt</th>
+            <th className="p-1.5 border-r border-gray-200 text-right">SGST Amt</th>
+            <th className="p-1.5 text-right">Total Tax</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {items.map((it) => (
+            <tr key={it.id} className="bg-white">
+              <td className="p-1.5 border-r border-gray-200 font-mono font-semibold text-slate-800">
+                {it.hsn || '998314'}
+              </td>
+              <td className="p-1.5 border-r border-gray-200 text-right font-mono text-slate-800">
+                {formatINR(it.taxable)}
+              </td>
+              <td className="p-1.5 border-r border-gray-200 text-center font-mono text-slate-600">
+                {it.taxPercent}%
+              </td>
+              <td className="p-1.5 border-r border-gray-200 text-right font-mono text-slate-700">
+                {formatINR(it.taxTotal / 2)}
+              </td>
+              <td className="p-1.5 border-r border-gray-200 text-right font-mono text-slate-700">
+                {formatINR(it.taxTotal / 2)}
+              </td>
+              <td className="p-1.5 text-right font-mono font-bold text-slate-900">
+                {formatINR(it.taxTotal)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-slate-50 border-t border-gray-300 font-bold text-slate-900">
+            <td className="p-1.5 border-r border-gray-200">Total</td>
+            <td className="p-1.5 border-r border-gray-200 text-right font-mono">{formatINR(totalTaxable)}</td>
+            <td className="p-1.5 border-r border-gray-200 text-center">—</td>
+            <td className="p-1.5 border-r border-gray-200 text-right font-mono">{formatINR(totalTax / 2)}</td>
+            <td className="p-1.5 border-r border-gray-200 text-right font-mono">{formatINR(totalTax / 2)}</td>
+            <td className="p-1.5 text-right font-mono" style={{ color: palette.hex }}>
+              {formatINR(totalTax)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 /* =========================================================================
    1. CLASSIC THEME (My Billbook Original)
    ========================================================================= */
@@ -536,7 +626,7 @@ function renderClassicTheme(
 ) {
   return (
     <div
-      className="bg-white text-slate-800 text-xs p-6 md:p-8 rounded-xl shadow-xs border-2 transition-all font-sans relative"
+      className="erp-a4-document-sheet bg-white text-slate-800 text-xs p-6 md:p-8 rounded-none shadow-xs border-2 transition-all font-sans relative w-full max-w-[210mm] min-h-[297mm] mx-auto box-border flex flex-col justify-between"
       style={{ borderColor: palette.hex }}
     >
       {/* Top Header */}
@@ -579,7 +669,10 @@ function renderClassicTheme(
             {title}
           </div>
           <div className="mt-2 text-xs space-y-0.5">
-            <p className="font-mono font-black text-slate-900 text-sm">{doc.documentNumber}</p>
+            <p className="text-slate-900 text-sm">
+              <span className="font-black uppercase tracking-tight text-slate-900 mr-1.5">{title}:</span>
+              <span className="font-mono font-black">{doc.documentNumber}</span>
+            </p>
             <p className="text-slate-600">
               Date: <span className="font-semibold text-slate-800">{doc.date}</span>
             </p>
@@ -661,80 +754,111 @@ function renderClassicTheme(
       </div>
 
       {/* Main Items Table (for Sales, Purchase, Inventory & Assets) */}
-      {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
-        <div className="my-4 overflow-hidden border border-gray-300 rounded-lg">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="text-white font-bold text-[11px]" style={{ backgroundColor: palette.hex }}>
-                <th className="p-2.5 w-8 text-center border-r border-white/20">#</th>
-                <th className="p-2.5 border-r border-white/20">Item Description</th>
-                <th className="p-2.5 w-16 text-center border-r border-white/20">HSN</th>
-                <th className="p-2.5 w-14 text-right border-r border-white/20">Qty</th>
-                <th className="p-2.5 w-14 text-center border-r border-white/20">Unit</th>
-                <th className="p-2.5 w-20 text-right border-r border-white/20">Rate</th>
-                <th className="p-2.5 w-24 text-right border-r border-white/20">Taxable</th>
-                <th className="p-2.5 w-14 text-center border-r border-white/20">GST</th>
-                <th className="p-2.5 w-20 text-right border-r border-white/20">Tax</th>
-                <th className="p-2.5 text-right w-24">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {doc.items.map((item, idx) => (
-                <tr key={item.id} className={idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
-                  <td className="p-2 border-r border-gray-200 text-center font-mono text-slate-500">{idx + 1}</td>
-                  <td className="p-2 border-r border-gray-200 font-semibold text-slate-900">
-                    {item.name}
-                    {item.description && (
-                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">{item.description}</div>
-                    )}
-                  </td>
-                  <td className="p-2 border-r border-gray-200 text-center font-mono text-slate-600">{item.hsn}</td>
-                  <td className="p-2 border-r border-gray-200 text-right font-bold text-slate-800">{item.quantity}</td>
-                  <td className="p-2 border-r border-gray-200 text-center text-slate-600">{item.unit}</td>
-                  <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
-                    {formatINR(item.rate)}
-                  </td>
-                  <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
-                    {formatINR(item.taxable)}
-                  </td>
-                  <td className="p-2 border-r border-gray-200 text-center text-slate-600">{item.taxPercent}%</td>
-                  <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
-                    {formatINR(item.taxTotal)}
-                  </td>
-                  <td className="p-2 text-right font-mono font-bold text-slate-900">{formatINR(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {(() => {
+        const tbl = getTableConfig(config);
+        if (!tbl.showItemTable) return null;
+        return (
+          <>
+            {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
+              <div className="my-4 overflow-hidden border border-gray-300 rounded-lg">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="text-white font-bold text-[11px]" style={{ backgroundColor: palette.hex }}>
+                      {tbl.showSerialNumber && <th className="p-2.5 w-8 text-center border-r border-white/20">#</th>}
+                      <th className="p-2.5 border-r border-white/20">Item Description</th>
+                      {tbl.showHsnColumn && <th className="p-2.5 w-16 text-center border-r border-white/20">HSN</th>}
+                      {tbl.showQuantity && <th className="p-2.5 w-14 text-right border-r border-white/20">Qty</th>}
+                      {tbl.showUnit && <th className="p-2.5 w-14 text-center border-r border-white/20">Unit</th>}
+                      {tbl.showRate && <th className="p-2.5 w-20 text-right border-r border-white/20">Rate</th>}
+                      {tbl.showDiscountColumn && <th className="p-2.5 w-16 text-right border-r border-white/20">Disc.</th>}
+                      {tbl.showTaxableValue && <th className="p-2.5 w-24 text-right border-r border-white/20">Taxable</th>}
+                      {tbl.showGstPercent && <th className="p-2.5 w-14 text-center border-r border-white/20">GST</th>}
+                      {tbl.showTaxAmount && <th className="p-2.5 w-20 text-right border-r border-white/20">Tax</th>}
+                      <th className="p-2.5 text-right w-24">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {doc.items.map((item, idx) => (
+                      <tr key={item.id} className={idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
+                        {tbl.showSerialNumber && (
+                          <td className="p-2 border-r border-gray-200 text-center font-mono text-slate-500">{idx + 1}</td>
+                        )}
+                        <td className="p-2 border-r border-gray-200 font-semibold text-slate-900">
+                          {item.name}
+                          {tbl.showItemDescription && item.description && (
+                            <div className="text-[10px] text-slate-500 font-normal mt-0.5">{item.description}</div>
+                          )}
+                        </td>
+                        {tbl.showHsnColumn && (
+                          <td className="p-2 border-r border-gray-200 text-center font-mono text-slate-600">{item.hsn}</td>
+                        )}
+                        {tbl.showQuantity && (
+                          <td className="p-2 border-r border-gray-200 text-right font-bold text-slate-800">{item.quantity}</td>
+                        )}
+                        {tbl.showUnit && (
+                          <td className="p-2 border-r border-gray-200 text-center text-slate-600">{item.unit}</td>
+                        )}
+                        {tbl.showRate && (
+                          <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
+                            {formatINR(item.rate)}
+                          </td>
+                        )}
+                        {tbl.showDiscountColumn && (
+                          <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-500">₹0</td>
+                        )}
+                        {tbl.showTaxableValue && (
+                          <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
+                            {formatINR(item.taxable)}
+                          </td>
+                        )}
+                        {tbl.showGstPercent && (
+                          <td className="p-2 border-r border-gray-200 text-center text-slate-600">{item.taxPercent}%</td>
+                        )}
+                        {tbl.showTaxAmount && (
+                          <td className="p-2 border-r border-gray-200 text-right font-mono text-slate-800">
+                            {formatINR(item.taxTotal)}
+                          </td>
+                        )}
+                        <td className="p-2 text-right font-mono font-bold text-slate-900">{formatINR(item.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-      {/* Allocations Table (for Receipt & Payment) */}
-      {(category === 'receipt' || category === 'payment') && doc.allocations && doc.allocations.length > 0 && (
-        <div className="my-4 overflow-hidden border border-gray-300 rounded-lg">
-          <div className="bg-slate-100 px-3 py-2 border-b border-gray-300 font-bold text-slate-700 text-xs">
-            Settled Invoices / Allocations Breakdown
-          </div>
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-600 font-semibold text-[11px] border-b border-gray-200">
-                <th className="p-2.5 w-10 text-center">#</th>
-                <th className="p-2.5">Invoice Reference</th>
-                <th className="p-2.5 text-right">Settled Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {doc.allocations.map((a, idx) => (
-                <tr key={idx}>
-                  <td className="p-2 text-center font-mono text-slate-400">{idx + 1}</td>
-                  <td className="p-2 font-mono font-bold text-slate-800">{a.invoiceNumber}</td>
-                  <td className="p-2 text-right font-mono font-bold text-emerald-700">{formatINR(a.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {/* Allocations Table (for Receipt & Payment) */}
+            {(category === 'receipt' || category === 'payment') && doc.allocations && doc.allocations.length > 0 && (
+              <div className="my-4 overflow-hidden border border-gray-300 rounded-lg">
+                <div className="bg-slate-100 px-3 py-2 border-b border-gray-300 font-bold text-slate-700 text-xs">
+                  Settled Invoices / Allocations Breakdown
+                </div>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 font-semibold text-[11px] border-b border-gray-200">
+                      {tbl.showSerialNumber && <th className="p-2.5 w-10 text-center">#</th>}
+                      <th className="p-2.5">Invoice Reference</th>
+                      <th className="p-2.5 text-right">Settled Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {doc.allocations.map((a, idx) => (
+                      <tr key={idx}>
+                        {tbl.showSerialNumber && <td className="p-2 text-center font-mono text-slate-400">{idx + 1}</td>}
+                        <td className="p-2 font-mono font-bold text-slate-800">{a.invoiceNumber}</td>
+                        <td className="p-2 text-right font-mono font-bold text-emerald-700">{formatINR(a.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* HSN / SAC Summary Table */}
+      {renderHsnSummaryBlock(doc, config, palette)}
 
       {/* Summary Section */}
       <div className="grid grid-cols-2 gap-6 pt-3 border-t border-gray-300">
@@ -851,7 +975,7 @@ function renderStylishTheme(
   }
 ) {
   return (
-    <div className="bg-white text-slate-800 text-xs rounded-2xl shadow-sm border border-gray-200 overflow-hidden font-sans">
+    <div className="erp-a4-document-sheet bg-white text-slate-800 text-xs rounded-none shadow-sm border border-gray-200 overflow-hidden font-sans w-full max-w-[210mm] min-h-[297mm] mx-auto box-border flex flex-col justify-between">
       {/* Bold Colored Top Banner */}
       <div className="p-6 md:p-8 text-white relative" style={{ backgroundColor: palette.hex }}>
         <div className="flex justify-between items-start">
@@ -881,7 +1005,10 @@ function renderStylishTheme(
             <span className="px-3 py-1 rounded-full bg-white text-slate-900 text-[11px] font-black uppercase tracking-wider shadow-sm">
               {title}
             </span>
-            <p className="font-mono font-black text-xl mt-2 tracking-tight">{doc.documentNumber}</p>
+            <p className="text-xl mt-2 tracking-tight">
+              <span className="font-black uppercase text-white mr-1.5">{title}:</span>
+              <span className="font-mono font-black text-white">{doc.documentNumber}</span>
+            </p>
             <p className="text-white/80 text-[11px]">Date: {doc.date}</p>
           </div>
         </div>
@@ -948,65 +1075,86 @@ function renderStylishTheme(
         </div>
 
         {/* Table */}
-        {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="text-slate-700 font-bold border-b border-gray-200" style={{ backgroundColor: '#F8FAFC' }}>
-                  <th className="p-3 w-8 text-center">#</th>
-                  <th className="p-3">Item / Service</th>
-                  <th className="p-3 text-center">HSN</th>
-                  <th className="p-3 text-right">Qty</th>
-                  <th className="p-3 text-right">Rate</th>
-                  <th className="p-3 text-right">Taxable</th>
-                  <th className="p-3 text-center">GST</th>
-                  <th className="p-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {doc.items.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                    <td className="p-3 font-semibold text-slate-900">
-                      {item.name}
-                      {item.description && <div className="text-[10px] text-slate-500 font-normal">{item.description}</div>}
-                    </td>
-                    <td className="p-3 text-center font-mono text-slate-600">{item.hsn}</td>
-                    <td className="p-3 text-right font-bold text-slate-800">
-                      {item.quantity} {item.unit}
-                    </td>
-                    <td className="p-3 text-right font-mono text-slate-800">{formatINR(item.rate)}</td>
-                    <td className="p-3 text-right font-mono text-slate-800">{formatINR(item.taxable)}</td>
-                    <td className="p-3 text-center text-slate-600">{item.taxPercent}%</td>
-                    <td className="p-3 text-right font-mono font-bold text-slate-900">{formatINR(item.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {(() => {
+          const tbl = getTableConfig(config);
+          if (!tbl.showItemTable) return null;
+          return (
+            <>
+              {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-gray-200">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="text-slate-700 font-bold border-b border-gray-200" style={{ backgroundColor: '#F8FAFC' }}>
+                        {tbl.showSerialNumber && <th className="p-3 w-8 text-center">#</th>}
+                        <th className="p-3">Item / Service</th>
+                        {tbl.showHsnColumn && <th className="p-3 text-center">HSN</th>}
+                        {(tbl.showQuantity || tbl.showUnit) && <th className="p-3 text-right">Qty</th>}
+                        {tbl.showRate && <th className="p-3 text-right">Rate</th>}
+                        {tbl.showDiscountColumn && <th className="p-3 text-right">Disc.</th>}
+                        {tbl.showTaxableValue && <th className="p-3 text-right">Taxable</th>}
+                        {tbl.showGstPercent && <th className="p-3 text-center">GST</th>}
+                        {tbl.showTaxAmount && <th className="p-3 text-right">Tax</th>}
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {doc.items.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                          {tbl.showSerialNumber && <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>}
+                          <td className="p-3 font-semibold text-slate-900">
+                            {item.name}
+                            {tbl.showItemDescription && item.description && (
+                              <div className="text-[10px] text-slate-500 font-normal">{item.description}</div>
+                            )}
+                          </td>
+                          {tbl.showHsnColumn && <td className="p-3 text-center font-mono text-slate-600">{item.hsn}</td>}
+                          {(tbl.showQuantity || tbl.showUnit) && (
+                            <td className="p-3 text-right font-bold text-slate-800">
+                              {tbl.showQuantity ? item.quantity : ''} {tbl.showUnit ? item.unit : ''}
+                            </td>
+                          )}
+                          {tbl.showRate && <td className="p-3 text-right font-mono text-slate-800">{formatINR(item.rate)}</td>}
+                          {tbl.showDiscountColumn && <td className="p-3 text-right font-mono text-slate-500">₹0</td>}
+                          {tbl.showTaxableValue && <td className="p-3 text-right font-mono text-slate-800">{formatINR(item.taxable)}</td>}
+                          {tbl.showGstPercent && <td className="p-3 text-center text-slate-600">{item.taxPercent}%</td>}
+                          {tbl.showTaxAmount && <td className="p-3 text-right font-mono text-slate-800">{formatINR(item.taxTotal)}</td>}
+                          <td className="p-3 text-right font-mono font-bold text-slate-900">{formatINR(item.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-        {/* Allocations Table */}
-        {(category === 'receipt' || category === 'payment') && doc.allocations && (
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 text-slate-700 font-bold border-b border-gray-200">
-                <tr>
-                  <th className="p-3">Invoice Number</th>
-                  <th className="p-3 text-right">Settled Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {doc.allocations.map((a, i) => (
-                  <tr key={i}>
-                    <td className="p-3 font-mono font-bold text-slate-800">{a.invoiceNumber}</td>
-                    <td className="p-3 text-right font-mono font-bold text-emerald-700">{formatINR(a.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              {/* Allocations Table */}
+              {(category === 'receipt' || category === 'payment') && doc.allocations && (
+                <div className="overflow-hidden rounded-xl border border-gray-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-700 font-bold border-b border-gray-200">
+                      <tr>
+                        {tbl.showSerialNumber && <th className="p-3 w-10 text-center">#</th>}
+                        <th className="p-3">Invoice Number</th>
+                        <th className="p-3 text-right">Settled Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {doc.allocations.map((a, i) => (
+                        <tr key={i}>
+                          {tbl.showSerialNumber && <td className="p-3 text-center font-mono text-slate-400">{i + 1}</td>}
+                          <td className="p-3 font-mono font-bold text-slate-800">{a.invoiceNumber}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-700">{formatINR(a.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
+        {/* HSN / SAC Summary Table */}
+        {renderHsnSummaryBlock(doc, config, palette)}
 
         {/* Summary Card with Gradient Total */}
         <div className="grid grid-cols-2 gap-6 items-end">
@@ -1084,19 +1232,7 @@ function renderAdvancedTheme(
   }
 ) {
   return (
-    <div className="bg-white text-slate-900 text-xs p-6 md:p-8 rounded-xl shadow-xs border border-gray-300 font-sans space-y-4">
-      {/* Statutory Header */}
-      <div className="text-center pb-2 border-b-2" style={{ borderColor: palette.hex }}>
-        <h4 className="font-black text-sm tracking-wider uppercase text-slate-800">
-          {category === 'sales'
-            ? 'TAX INVOICE (Under Rule 46 of the CGST Rules, 2017)'
-            : category === 'purchase'
-            ? 'PURCHASE VOUCHER & MATERIAL INWARD'
-            : title}
-        </h4>
-        <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">Original for Recipient</p>
-      </div>
-
+    <div className="erp-a4-document-sheet bg-white text-slate-900 text-xs p-6 md:p-8 rounded-none shadow-xs border border-gray-300 font-sans space-y-4 w-full max-w-[210mm] min-h-[297mm] mx-auto box-border flex flex-col justify-between">
       <div className="flex justify-between items-start pb-4 border-b border-gray-300">
         <div className="max-w-[60%] flex items-start gap-3">
           {config.showLogo && logo && (
@@ -1119,9 +1255,12 @@ function renderAdvancedTheme(
           </div>
         </div>
 
-        <div className="border border-gray-300 rounded p-2 text-right text-xs bg-slate-50 font-mono">
-          <p className="font-bold text-slate-900 text-sm">{doc.documentNumber}</p>
-          <p className="text-slate-600">Date: {doc.date}</p>
+        <div className="border border-gray-300 rounded p-2.5 text-right text-xs bg-slate-50 font-mono">
+          <p className="text-slate-900 text-sm">
+            <span className="font-black uppercase tracking-tight text-slate-900 mr-1.5">{title}:</span>
+            <span className="font-mono font-bold text-slate-900">{doc.documentNumber}</span>
+          </p>
+          <p className="text-slate-600 mt-1">Date: {doc.date}</p>
           <p className="text-slate-600">Reverse Charge: <b>NO</b></p>
           <p className="text-slate-600">Place of Supply: <b>{doc.partyState || 'Kerala (32)'}</b></p>
         </div>
@@ -1148,38 +1287,49 @@ function renderAdvancedTheme(
       </div>
 
       {/* GST Item Table */}
-      {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
+      {getTableConfig(config).showItemTable && (category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
         <table className="w-full border-collapse border border-gray-300 text-xs text-left">
           <thead>
             <tr className="bg-slate-100 font-bold border-b border-gray-300 text-[11px] text-slate-800">
-              <th className="p-1.5 border-r border-gray-300 text-center w-8">#</th>
+              {getTableConfig(config).showSerialNumber && <th className="p-1.5 border-r border-gray-300 text-center w-8">#</th>}
               <th className="p-1.5 border-r border-gray-300">Description of Goods / Services</th>
-              <th className="p-1.5 border-r border-gray-300 text-center w-16">HSN/SAC</th>
-              <th className="p-1.5 border-r border-gray-300 text-right w-14">Qty</th>
-              <th className="p-1.5 border-r border-gray-300 text-right w-20">Rate</th>
-              <th className="p-1.5 border-r border-gray-300 text-right w-24">Taxable Val</th>
-              <th className="p-1.5 border-r border-gray-300 text-center w-16">CGST</th>
-              <th className="p-1.5 border-r border-gray-300 text-center w-16">SGST</th>
+              {getTableConfig(config).showHsnColumn && <th className="p-1.5 border-r border-gray-300 text-center w-16">HSN/SAC</th>}
+              {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && <th className="p-1.5 border-r border-gray-300 text-right w-14">Qty</th>}
+              {getTableConfig(config).showRate && <th className="p-1.5 border-r border-gray-300 text-right w-20">Rate</th>}
+              {getTableConfig(config).showTaxableValue && <th className="p-1.5 border-r border-gray-300 text-right w-24">Taxable Val</th>}
+              {getTableConfig(config).showGstPercent && <th className="p-1.5 border-r border-gray-300 text-center w-16">CGST</th>}
+              {getTableConfig(config).showGstPercent && <th className="p-1.5 border-r border-gray-300 text-center w-16">SGST</th>}
               <th className="p-1.5 text-right w-24">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {doc.items.map((it, i) => (
               <tr key={it.id}>
-                <td className="p-1.5 border-r border-gray-300 text-center font-mono">{i + 1}</td>
-                <td className="p-1.5 border-r border-gray-300 font-semibold">{it.name}</td>
-                <td className="p-1.5 border-r border-gray-300 text-center font-mono">{it.hsn}</td>
-                <td className="p-1.5 border-r border-gray-300 text-right font-bold">
-                  {it.quantity} {it.unit}
+                {getTableConfig(config).showSerialNumber && <td className="p-1.5 border-r border-gray-300 text-center font-mono">{i + 1}</td>}
+                <td className="p-1.5 border-r border-gray-300 font-semibold">
+                  {it.name}
+                  {getTableConfig(config).showItemDescription && it.description && (
+                    <div className="text-[10px] text-slate-500 font-normal">{it.description}</div>
+                  )}
                 </td>
-                <td className="p-1.5 border-r border-gray-300 text-right font-mono">{formatINR(it.rate)}</td>
-                <td className="p-1.5 border-r border-gray-300 text-right font-mono">{formatINR(it.taxable)}</td>
-                <td className="p-1.5 border-r border-gray-300 text-center font-mono">
-                  {it.taxPercent / 2}%
-                </td>
-                <td className="p-1.5 border-r border-gray-300 text-center font-mono">
-                  {it.taxPercent / 2}%
-                </td>
+                {getTableConfig(config).showHsnColumn && <td className="p-1.5 border-r border-gray-300 text-center font-mono">{it.hsn}</td>}
+                {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && (
+                  <td className="p-1.5 border-r border-gray-300 text-right font-bold">
+                    {getTableConfig(config).showQuantity ? it.quantity : ''} {getTableConfig(config).showUnit ? it.unit : ''}
+                  </td>
+                )}
+                {getTableConfig(config).showRate && <td className="p-1.5 border-r border-gray-300 text-right font-mono">{formatINR(it.rate)}</td>}
+                {getTableConfig(config).showTaxableValue && <td className="p-1.5 border-r border-gray-300 text-right font-mono">{formatINR(it.taxable)}</td>}
+                {getTableConfig(config).showGstPercent && (
+                  <td className="p-1.5 border-r border-gray-300 text-center font-mono">
+                    {it.taxPercent / 2}%
+                  </td>
+                )}
+                {getTableConfig(config).showGstPercent && (
+                  <td className="p-1.5 border-r border-gray-300 text-center font-mono">
+                    {it.taxPercent / 2}%
+                  </td>
+                )}
                 <td className="p-1.5 text-right font-mono font-bold">{formatINR(it.total)}</td>
               </tr>
             ))}
@@ -1187,36 +1337,8 @@ function renderAdvancedTheme(
         </table>
       )}
 
-      {/* HSN Summary Table (Special to Advanced Theme) */}
-      {config.showHsnSummary && (category === 'sales' || category === 'purchase') && (
-        <div className="border border-gray-300 rounded overflow-hidden">
-          <div className="bg-slate-100 p-1.5 font-bold text-[10px] uppercase text-slate-700 border-b border-gray-300">
-            HSN / SAC Tax Liability Summary
-          </div>
-          <table className="w-full text-left text-[10px] border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-gray-200 text-slate-600 font-semibold">
-                <th className="p-1 border-r border-gray-200">HSN/SAC</th>
-                <th className="p-1 border-r border-gray-200 text-right">Taxable Amount</th>
-                <th className="p-1 border-r border-gray-200 text-right">CGST Amt</th>
-                <th className="p-1 border-r border-gray-200 text-right">SGST Amt</th>
-                <th className="p-1 text-right">Total Tax</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doc.items.map((it) => (
-                <tr key={it.id} className="border-b border-gray-100">
-                  <td className="p-1 border-r border-gray-200 font-mono">{it.hsn}</td>
-                  <td className="p-1 border-r border-gray-200 text-right font-mono">{formatINR(it.taxable)}</td>
-                  <td className="p-1 border-r border-gray-200 text-right font-mono">{formatINR(it.taxTotal / 2)}</td>
-                  <td className="p-1 border-r border-gray-200 text-right font-mono">{formatINR(it.taxTotal / 2)}</td>
-                  <td className="p-1 text-right font-mono font-bold">{formatINR(it.taxTotal)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* HSN Summary Table */}
+      {renderHsnSummaryBlock(doc, config, palette)}
 
       {/* Totals */}
       <div className="flex justify-between items-start pt-2 border-t border-gray-300">
@@ -1284,7 +1406,7 @@ function renderMinimalTheme(
   }
 ) {
   return (
-    <div className="bg-white text-slate-900 text-xs p-8 rounded-xl shadow-xs border border-gray-100 font-sans space-y-8">
+    <div className="erp-a4-document-sheet bg-white text-slate-900 text-xs p-8 rounded-none shadow-xs border border-gray-100 font-sans space-y-8 w-full max-w-[210mm] min-h-[297mm] mx-auto box-border flex flex-col justify-between">
       {/* Ultra Clean Top */}
       <div className="flex justify-between items-start">
         <div className="flex items-start gap-3">
@@ -1302,7 +1424,10 @@ function renderMinimalTheme(
           </div>
         </div>
         <div className="text-right">
-          <p className="font-mono text-base font-bold text-slate-900">{doc.documentNumber}</p>
+          <p className="text-base text-slate-900">
+            <span className="font-black uppercase tracking-tight mr-1.5">{title}:</span>
+            <span className="font-mono font-bold">{doc.documentNumber}</span>
+          </p>
           <p className="text-slate-400 text-xs mt-0.5">{doc.date}</p>
         </div>
       </div>
@@ -1323,30 +1448,48 @@ function renderMinimalTheme(
       </div>
 
       {/* Borderless Table */}
-      {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
+      {getTableConfig(config).showItemTable && (category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-gray-200 text-slate-400 font-mono text-[10px] uppercase">
+              {getTableConfig(config).showSerialNumber && <th className="pb-2 w-8">#</th>}
               <th className="pb-2">Description</th>
-              <th className="pb-2 text-right">Qty</th>
-              <th className="pb-2 text-right">Rate</th>
+              {getTableConfig(config).showHsnColumn && <th className="pb-2 text-center">HSN</th>}
+              {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && <th className="pb-2 text-right">Qty</th>}
+              {getTableConfig(config).showRate && <th className="pb-2 text-right">Rate</th>}
+              {getTableConfig(config).showTaxableValue && <th className="pb-2 text-right">Taxable</th>}
+              {getTableConfig(config).showGstPercent && <th className="pb-2 text-center">GST</th>}
               <th className="pb-2 text-right">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {doc.items.map((it) => (
+            {doc.items.map((it, idx) => (
               <tr key={it.id}>
-                <td className="py-2.5 font-medium text-slate-800">{it.name}</td>
-                <td className="py-2.5 text-right font-mono text-slate-600">
-                  {it.quantity} {it.unit}
+                {getTableConfig(config).showSerialNumber && <td className="py-2.5 font-mono text-slate-400">{idx + 1}</td>}
+                <td className="py-2.5 font-medium text-slate-800">
+                  {it.name}
+                  {getTableConfig(config).showItemDescription && it.description && (
+                    <div className="text-[10px] text-slate-400">{it.description}</div>
+                  )}
                 </td>
-                <td className="py-2.5 text-right font-mono text-slate-600">{formatINR(it.rate)}</td>
+                {getTableConfig(config).showHsnColumn && <td className="py-2.5 text-center font-mono text-slate-500">{it.hsn}</td>}
+                {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && (
+                  <td className="py-2.5 text-right font-mono text-slate-600">
+                    {getTableConfig(config).showQuantity ? it.quantity : ''} {getTableConfig(config).showUnit ? it.unit : ''}
+                  </td>
+                )}
+                {getTableConfig(config).showRate && <td className="py-2.5 text-right font-mono text-slate-600">{formatINR(it.rate)}</td>}
+                {getTableConfig(config).showTaxableValue && <td className="py-2.5 text-right font-mono text-slate-600">{formatINR(it.taxable)}</td>}
+                {getTableConfig(config).showGstPercent && <td className="py-2.5 text-center font-mono text-slate-500">{it.taxPercent}%</td>}
                 <td className="py-2.5 text-right font-mono font-bold text-slate-900">{formatINR(it.total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {/* HSN / SAC Summary Table */}
+      {renderHsnSummaryBlock(doc, config, palette)}
 
       {/* Summary */}
       <div className="flex justify-end pt-4 border-t border-gray-100">
@@ -1395,7 +1538,7 @@ function renderCorporateTheme(
   }
 ) {
   return (
-    <div className="bg-white text-slate-800 text-xs rounded-xl shadow-xs border border-slate-300 font-sans p-6 md:p-8 space-y-6">
+    <div className="erp-a4-document-sheet bg-white text-slate-800 text-xs rounded-none shadow-xs border border-slate-300 font-sans p-6 md:p-8 space-y-6 w-full max-w-[210mm] min-h-[297mm] mx-auto box-border flex flex-col justify-between">
       {/* Two Tone Header */}
       <div className="flex justify-between items-start border-b-2 border-slate-800 pb-5">
         <div className="flex items-start gap-4">
@@ -1419,7 +1562,10 @@ function renderCorporateTheme(
           <div className="inline-block px-3 py-1 bg-slate-900 text-white font-bold uppercase text-xs tracking-wider rounded">
             {title}
           </div>
-          <p className="font-mono font-black text-slate-900 text-base mt-2">{doc.documentNumber}</p>
+          <p className="text-slate-900 text-base mt-2">
+            <span className="font-black uppercase tracking-tight mr-1.5">{title}:</span>
+            <span className="font-mono font-black">{doc.documentNumber}</span>
+          </p>
           <p className="text-slate-500 text-xs">Date: {doc.date}</p>
         </div>
       </div>
@@ -1456,34 +1602,50 @@ function renderCorporateTheme(
       </div>
 
       {/* Table */}
-      {(category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
+      {getTableConfig(config).showItemTable && (category === 'sales' || category === 'purchase' || category === 'inventory' || category === 'asset') && doc.items && doc.items.length > 0 && (
         <table className="w-full text-left border-collapse border border-slate-300 text-xs">
           <thead>
             <tr className="bg-slate-800 text-white font-bold text-[11px]">
-              <th className="p-2 border-r border-slate-700 w-8 text-center">#</th>
+              {getTableConfig(config).showSerialNumber && <th className="p-2 border-r border-slate-700 w-8 text-center">#</th>}
               <th className="p-2 border-r border-slate-700">Item Description</th>
-              <th className="p-2 border-r border-slate-700 text-center w-16">HSN</th>
-              <th className="p-2 border-r border-slate-700 text-right w-16">Qty</th>
-              <th className="p-2 border-r border-slate-700 text-right w-24">Rate</th>
-              <th className="p-2 border-r border-slate-700 text-right w-24">Taxable</th>
+              {getTableConfig(config).showHsnColumn && <th className="p-2 border-r border-slate-700 text-center w-16">HSN</th>}
+              {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && <th className="p-2 border-r border-slate-700 text-right w-16">Qty</th>}
+              {getTableConfig(config).showRate && <th className="p-2 border-r border-slate-700 text-right w-24">Rate</th>}
+              {getTableConfig(config).showTaxableValue && <th className="p-2 border-r border-slate-700 text-right w-24">Taxable</th>}
+              {getTableConfig(config).showGstPercent && <th className="p-2 border-r border-slate-700 text-center w-14">GST</th>}
+              {getTableConfig(config).showTaxAmount && <th className="p-2 border-r border-slate-700 text-right w-20">Tax</th>}
               <th className="p-2 text-right w-28">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {doc.items.map((it, idx) => (
               <tr key={it.id}>
-                <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>
-                <td className="p-2 border-r border-slate-200 font-semibold text-slate-900">{it.name}</td>
-                <td className="p-2 border-r border-slate-200 text-center font-mono">{it.hsn}</td>
-                <td className="p-2 border-r border-slate-200 text-right font-bold">{it.quantity}</td>
-                <td className="p-2 border-r border-slate-200 text-right font-mono">{formatINR(it.rate)}</td>
-                <td className="p-2 border-r border-slate-200 text-right font-mono">{formatINR(it.taxable)}</td>
+                {getTableConfig(config).showSerialNumber && <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>}
+                <td className="p-2 border-r border-slate-200 font-semibold text-slate-900">
+                  {it.name}
+                  {getTableConfig(config).showItemDescription && it.description && (
+                    <div className="text-[10px] text-slate-500 font-normal">{it.description}</div>
+                  )}
+                </td>
+                {getTableConfig(config).showHsnColumn && <td className="p-2 border-r border-slate-200 text-center font-mono">{it.hsn}</td>}
+                {(getTableConfig(config).showQuantity || getTableConfig(config).showUnit) && (
+                  <td className="p-2 border-r border-slate-200 text-right font-bold">
+                    {getTableConfig(config).showQuantity ? it.quantity : ''} {getTableConfig(config).showUnit ? it.unit : ''}
+                  </td>
+                )}
+                {getTableConfig(config).showRate && <td className="p-2 border-r border-slate-200 text-right font-mono">{formatINR(it.rate)}</td>}
+                {getTableConfig(config).showTaxableValue && <td className="p-2 border-r border-slate-200 text-right font-mono">{formatINR(it.taxable)}</td>}
+                {getTableConfig(config).showGstPercent && <td className="p-2 border-r border-slate-200 text-center font-mono">{it.taxPercent}%</td>}
+                {getTableConfig(config).showTaxAmount && <td className="p-2 border-r border-slate-200 text-right font-mono">{formatINR(it.taxTotal)}</td>}
                 <td className="p-2 text-right font-mono font-bold">{formatINR(it.total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {/* HSN / SAC Summary Table */}
+      {renderHsnSummaryBlock(doc, config, palette)}
 
       {/* Corporate Seal & Totals */}
       <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-300">

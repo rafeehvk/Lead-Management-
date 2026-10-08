@@ -12,6 +12,7 @@ import {
   PricingPlan,
   LeadActivity,
   ScheduledMeeting,
+  ProposalTemplate,
 } from '../types';
 import {
   initialLeads,
@@ -23,6 +24,7 @@ import {
   initialActivities,
   initialScheduledMeetings,
 } from '../mockData';
+import { DEFAULT_PROPOSAL_TEMPLATES } from '../data/defaultProposalTemplates';
 
 const STORAGE_KEYS = {
   LEADS: 'mysar_leads_data_v1',
@@ -31,6 +33,7 @@ const STORAGE_KEYS = {
   USERS: 'mysar_users_data_v1',
   SETTINGS: 'mysar_settings_data_v1',
   PRICING_PLANS: 'mysar_pricing_plans_master_v2',
+  PROPOSAL_TEMPLATES: 'mysar_proposal_templates_data_v1',
   ACTIVITIES: 'mysar_lead_activities_data_v1',
   MEETINGS: 'mysar_scheduled_meetings_data_v1',
   COMPANY_LOGO: 'mysar_persistent_company_logo_v1',
@@ -894,6 +897,84 @@ class StorageService {
       userMap.set(u.id, existing ? { ...existing, ...u } : u);
     });
 
+    // Also synchronize with HR Staff records so onboarded staff with System Access are always available and up-to-date
+    try {
+      const rawStaff = localStorage.getItem('mysar_hr_staff_v1');
+      if (rawStaff) {
+        const staffList: any[] = JSON.parse(rawStaff);
+        staffList.forEach((s) => {
+          if (!s || !s.id) return;
+          const sUsername =
+            s.systemAccess?.username?.trim().toLowerCase() ||
+            (s.email ? s.email.split('@')[0].toLowerCase() : (s.fullName || 'staff').toLowerCase().replace(/\s+/g, '.'));
+          const sEmail = s.email || s.personalEmail || `${sUsername}@casbiro.com`;
+          const isStaffActive = s.employmentStatus === 'Active';
+          const isLoginEnabled = s.systemAccess?.enableLogin !== false;
+
+          // Find matching user in userMap
+          let matchedKey: string | undefined;
+          for (const [key, u] of userMap.entries()) {
+            if (
+              u.staffId === s.id ||
+              (s.staffCode && u.staffId === s.staffCode) ||
+              (u.userId && u.userId.toLowerCase() === sUsername) ||
+              (u.email && u.email.toLowerCase() === sEmail.toLowerCase())
+            ) {
+              matchedKey = key;
+              break;
+            }
+          }
+
+          let userRole: UserRole = 'Staff';
+          const userTypeStr = (s.systemAccess?.userType || s.systemAccess?.role || s.position || '').toLowerCase();
+          if (userTypeStr.includes('admin') || userTypeStr.includes('principal') || userTypeStr.includes('director')) {
+            userRole = 'Admin';
+          } else if (userTypeStr.includes('manager') || userTypeStr.includes('coordinator') || userTypeStr.includes('lead')) {
+            userRole = 'Manager';
+          } else if (userTypeStr.includes('sales') || userTypeStr.includes('marketing') || userTypeStr.includes('csr')) {
+            userRole = 'Salesperson';
+          }
+
+          if (matchedKey) {
+            const existing = userMap.get(matchedKey)!;
+            userMap.set(matchedKey, {
+              ...existing,
+              staffId: s.id,
+              department: s.department || existing.department,
+              departmentCode: s.departmentCode || existing.departmentCode,
+              assignedModules: s.systemAccess?.assignedModules || existing.assignedModules,
+              branchAccess: s.systemAccess?.branchAccess || s.branchLocation || existing.branchAccess,
+              accessLevel: s.systemAccess?.accessLevel || existing.accessLevel,
+              status: isStaffActive && isLoginEnabled ? 'Active' : 'Inactive',
+            });
+          } else if (isLoginEnabled) {
+            const cleanStaffIdPart = s.id.replace(/[^a-zA-Z0-9]/g, '-');
+            const newId = `USR-${cleanStaffIdPart}`;
+            userMap.set(newId, {
+              id: newId,
+              userId: sUsername,
+              password: s.systemAccess?.password || 'Password@123',
+              name: s.fullName || 'Staff Member',
+              email: sEmail,
+              mobile: s.contactNumber || '+91 98470 00000',
+              role: userRole,
+              userType: s.systemAccess?.userType || 'Staff',
+              status: isStaffActive ? 'Active' : 'Inactive',
+              avatar: s.profilePhoto,
+              staffId: s.id,
+              department: s.department,
+              departmentCode: s.departmentCode,
+              assignedModules: s.systemAccess?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
+              branchAccess: s.systemAccess?.branchAccess || s.branchLocation || 'Kochi Main Campus',
+              accessLevel: s.systemAccess?.accessLevel || 'Standard',
+            });
+          }
+        });
+      }
+    } catch {
+      // ignore
+    }
+
     const combinedUsers = Array.from(userMap.values());
 
     return combinedUsers.map((u) => {
@@ -1601,6 +1682,116 @@ class StorageService {
   public resetPricingPlans(): PricingPlan[] {
     this.savePricingPlans(initialPricingPlans);
     return initialPricingPlans;
+  }
+
+  // --- PROPOSAL TEMPLATES (PRICING & AGREEMENT PRESETS) ---
+  public getProposalTemplates(): ProposalTemplate[] {
+    const templates = this.getStorage<ProposalTemplate[]>(
+      STORAGE_KEYS.PROPOSAL_TEMPLATES,
+      DEFAULT_PROPOSAL_TEMPLATES
+    );
+    if (!templates || templates.length === 0) {
+      this.setStorage(STORAGE_KEYS.PROPOSAL_TEMPLATES, DEFAULT_PROPOSAL_TEMPLATES);
+      return [...DEFAULT_PROPOSAL_TEMPLATES];
+    }
+    return templates;
+  }
+
+  public saveProposalTemplates(templates: ProposalTemplate[]): void {
+    this.setStorage(STORAGE_KEYS.PROPOSAL_TEMPLATES, templates);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_proposal_templates_changed'));
+    }
+  }
+
+  public saveProposalTemplate(templateData: Partial<ProposalTemplate> & { name: string }): ProposalTemplate {
+    const templates = this.getProposalTemplates();
+    const today = new Date().toISOString().split('T')[0];
+    let saved: ProposalTemplate;
+
+    if (templateData.id && templates.some((t) => t.id === templateData.id)) {
+      const idx = templates.findIndex((t) => t.id === templateData.id);
+      saved = {
+        ...templates[idx],
+        ...templateData,
+        updatedDate: today,
+      } as ProposalTemplate;
+      templates[idx] = saved;
+    } else {
+      const newId = `tmpl-${Date.now()}`;
+      saved = {
+        id: newId,
+        name: templateData.name,
+        code: templateData.code || `TMPL-${templates.length + 1}`,
+        description: templateData.description || 'Custom proposal pricing items & agreement template',
+        category: templateData.category || 'Custom',
+        isDefault: templateData.isDefault || false,
+        defaultStudentCount: templateData.defaultStudentCount || 500,
+        pricingItems: templateData.pricingItems && templateData.pricingItems.length > 0 ? templateData.pricingItems : [
+          {
+            id: `pi-${Date.now()}-1`,
+            pricingType: 'Institute Payment',
+            pricePerStudent: 100,
+            studentCount: 500,
+            totalAmount: 50000,
+            description: 'Core ERP institutional subscription',
+            isPrimary: true,
+          }
+        ],
+        agreementDetails: templateData.agreementDetails || {
+          agreementPeriod: '5 Years',
+          registrationFee: 30000,
+          trialPrice: 30,
+          trialAcademicYear: '2026–2027 Academic Year',
+          planChosen: 'Institute Payment',
+          hasSpecialPrice: true,
+          specialPrice: 65,
+          specialPriceLabel: 'Institute Subscription (Special Price)',
+          paymentSchedule: [
+            'Registration fee at the time of registration',
+            'Balance 60% after students onboarding, after two months balance 40% will pay.',
+          ],
+          paymentTerms: [
+            'Registration Fee will be included in the Trial Price and will be deducted from it.',
+            'Payment shall be made according to the payment schedule specified in this proposal.',
+            'The student subscription price is based on a five (5) year agreement.',
+          ],
+          clientDesignation: 'Principal / Authorized Signatory',
+          companyAuthorizedPerson: 'Sakeer Ali V',
+          companyDesignation: 'Director & Authorized Signatory',
+        },
+        createdDate: today,
+        updatedDate: today,
+      };
+
+      // If set as default, unset other defaults
+      if (saved.isDefault) {
+        templates.forEach((t) => (t.isDefault = false));
+      }
+
+      templates.unshift(saved);
+    }
+
+    this.saveProposalTemplates(templates);
+    return saved;
+  }
+
+  public deleteProposalTemplate(id: string): void {
+    const templates = this.getProposalTemplates().filter((t) => t.id !== id);
+    this.saveProposalTemplates(templates);
+  }
+
+  public setDefaultProposalTemplate(id: string): void {
+    const templates = this.getProposalTemplates().map((t) => ({
+      ...t,
+      isDefault: t.id === id,
+    }));
+    this.saveProposalTemplates(templates);
+  }
+
+  public resetProposalTemplates(): ProposalTemplate[] {
+    this.saveProposalTemplates(DEFAULT_PROPOSAL_TEMPLATES);
+    return [...DEFAULT_PROPOSAL_TEMPLATES];
   }
 
   // --- EXPORT TO CSV / SHEETS ---
