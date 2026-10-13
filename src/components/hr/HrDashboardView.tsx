@@ -199,7 +199,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
 
   // Departmental Overall KPI Score distribution
   const departmentKpiData = React.useMemo(() => {
-    const defaultDepts = ['Academic', 'Administration', 'Finance', 'HR', 'IT', 'Support Services'];
+    const defaultDepts = ['Operations', 'Administration', 'Finance', 'HR', 'IT', 'Support Services'];
     const allDepts = Array.from(
       new Set([
         ...defaultDepts,
@@ -231,7 +231,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
         totalEvaluated = staffWithScores.length;
       } else {
         const fallbackMap: Record<string, number> = {
-          Academic: 92,
+          Operations: 92,
           Administration: 95,
           Finance: 91,
           HR: 89,
@@ -347,7 +347,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
             <Users className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{totalStaff}</div>
-          <span className="text-[11px] text-emerald-700 font-medium">Faculty & Admin</span>
+          <span className="text-[11px] text-emerald-700 font-medium">Operations & Admin</span>
         </div>
 
         {/* Active Staff */}
@@ -512,7 +512,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Overall KPI score distribution & benchmark achievement across institutional departments.
+                  Overall KPI score distribution & benchmark achievement across company departments.
                 </p>
               </div>
             </div>
@@ -566,7 +566,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
           {/* Quick Metrics Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
             <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/70">
-              <span className="text-[11px] font-medium text-slate-500">Campus KPI Average</span>
+              <span className="text-[11px] font-medium text-slate-500">Company KPI Average</span>
               <div className="flex items-baseline space-x-2 mt-1">
                 <span className="text-xl font-bold text-slate-900">{avgKpi}%</span>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
@@ -735,7 +735,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
               96.2% Overall
             </span>
           </div>
-          <p className="text-xs text-slate-500 mb-4">Daily punch rate across institutional departments.</p>
+          <p className="text-xs text-slate-500 mb-4">Daily punch rate across company departments.</p>
 
           <div className="space-y-3">
             <div>
@@ -786,7 +786,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
             </h3>
             <span className="text-xs text-slate-500">{Object.keys(deptCounts).length} Departments</span>
           </div>
-          <p className="text-xs text-slate-500 mb-4">Faculty and administrative distribution.</p>
+          <p className="text-xs text-slate-500 mb-4">Operations and administrative distribution.</p>
 
           <div className="space-y-2.5">
             {Object.entries(deptCounts).map(([dept, count]) => {
@@ -862,7 +862,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
               98% Retention
             </span>
           </div>
-          <p className="text-xs text-slate-500 mb-3">Annualized faculty retention metrics.</p>
+          <p className="text-xs text-slate-500 mb-3">Annualized employee retention metrics.</p>
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
@@ -877,7 +877,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
             </div>
           </div>
           <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
-            Average employee institutional tenure: <span className="font-bold text-slate-800">2.6 Years</span>
+            Average employee company tenure: <span className="font-bold text-slate-800">2.6 Years</span>
           </div>
         </div>
 
@@ -924,18 +924,18 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
               <Award className="w-4 h-4 text-[#168A45]" />
-              <span>Institutional KPI Index</span>
+              <span>Company KPI Index</span>
             </h3>
             <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
               {avgKpi}% Avg
             </span>
           </div>
-          <p className="text-xs text-slate-500 mb-3">Evaluation across faculty & administration.</p>
+          <p className="text-xs text-slate-500 mb-3">Evaluation across operations & administration.</p>
 
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">Outstanding (≥90%)</span>
-              <span className="font-bold text-emerald-700">3 Faculty</span>
+              <span className="font-bold text-emerald-700">3 Staff</span>
             </div>
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-600 rounded-full" style={{ width: '70%' }} />
@@ -943,7 +943,7 @@ export const HrDashboardView: React.FC<HrDashboardViewProps> = ({
 
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">Excellent (80-89%)</span>
-              <span className="font-bold text-blue-700">2 Faculty</span>
+              <span className="font-bold text-blue-700">2 Staff</span>
             </div>
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-blue-600 rounded-full" style={{ width: '30%' }} />

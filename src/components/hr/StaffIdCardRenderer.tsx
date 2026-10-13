@@ -69,12 +69,12 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
       pinCode: '682017',
     },
     joiningDate: '2025-06-01',
-    division: 'Academic Wing',
-    department: 'Academic',
-    position: 'Vice Principal & Head of Academics',
+    division: 'Operations Division',
+    department: 'Operations',
+    position: 'VP of Operations',
     employmentType: 'Full Time',
-    reportingManager: 'Dr. Ramesh Nambiar',
-    workLocation: 'Kochi Main Campus',
+    reportingManager: 'Ramesh Nambiar',
+    workLocation: 'Kochi Corporate HQ',
     probationPeriod: 'Confirmed',
     employmentStatus: 'Active',
     documents: [],
@@ -209,7 +209,7 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
       case 'departmentCode':
         return activeStaff.departmentCode || '101';
       case 'division':
-        return activeStaff.division || 'Academic Wing';
+        return activeStaff.division || 'Operations Division';
       case 'bloodGroup':
         return 'O+ Positive';
       case 'emergencyPhone':
@@ -221,7 +221,7 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
       case 'validUntil':
         return '31-DEC-2028';
       case 'workLocation':
-        return activeStaff.workLocation || 'Kochi Main Campus';
+        return activeStaff.workLocation || 'Kochi Corporate HQ';
       case 'email':
         return activeStaff.email;
       case 'signature':
@@ -634,7 +634,7 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
           <div className="border-b border-slate-200 pb-2 flex items-center justify-between">
             <div>
               <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                Emergency & Institutional Notice
+                Emergency & Company Notice
               </div>
               <div className="text-xs font-bold text-slate-900">
                 {template.institutionName || 'Casbiro Solutions Pvt Ltd'}
@@ -652,7 +652,7 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
             </div>
             <div className="text-[10px] text-slate-600 whitespace-pre-line leading-relaxed bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
               {template.backTermsAndConditions ||
-                '1. This card is non-transferable and remains the property of the institution.\n2. In case of loss, report immediately to the HR office.\n3. Must be presented upon request by campus security.'}
+                '1. This card is non-transferable and remains the property of the company.\n2. In case of loss, report immediately to the HR office.\n3. Must be presented upon request by corporate security.'}
             </div>
           </div>
 
@@ -666,10 +666,10 @@ export const StaffIdCardRenderer: React.FC<StaffIdCardRendererProps> = ({
             </div>
 
             <div>
-              <span className="font-bold text-slate-700 block">Campus Return Address:</span>
+              <span className="font-bold text-slate-700 block">Office Return Address:</span>
               <span className="text-slate-500 leading-tight block">
                 {template.backReturnAddress ||
-                  'Casbiro Campus, Infopark Phase II, Kochi, Kerala 682042'}
+                  'Casbiro Corporate Tower, Infopark Phase II, Kochi, Kerala 682042'}
               </span>
             </div>
 

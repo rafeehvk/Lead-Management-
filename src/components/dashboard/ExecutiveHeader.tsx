@@ -41,7 +41,7 @@ export const ExecutiveHeader: React.FC<ExecutiveHeaderProps> = ({
 
   const branches = [
     'All Branches',
-    'Kochi Campus',
+    'Kochi HQ',
     'Trivandrum Office',
     'Calicut Center',
     'Dubai Corporate',
@@ -49,13 +49,12 @@ export const ExecutiveHeader: React.FC<ExecutiveHeaderProps> = ({
 
   const departments = [
     'All Departments',
-    'Academic',
+    'Operations',
     'Administration',
     'IT & Systems',
     'Human Resources',
     'Finance',
     'Sales & Marketing',
-    'Operations',
   ];
 
   const hasActiveFilters =

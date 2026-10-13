@@ -592,7 +592,7 @@ export const TransactionDocumentEntryPage: React.FC<TransactionDocumentEntryPage
             customerId: selectedParty.id,
             customerName: selectedParty.name,
             items: itemsPayload,
-            deliveryAddress: shippingAddress || 'Client Campus',
+            deliveryAddress: shippingAddress || 'Client Office',
           });
           createdDocNumber = so.orderNumber;
         } else if (docType === 'sales-quotation') {

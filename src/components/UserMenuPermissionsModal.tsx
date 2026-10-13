@@ -59,22 +59,11 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // Toggle single permission flag
+  // Toggle single permission flag independently (so View Only, Entry Only, Edit Only, Delete Only, or All 4 can be ticked)
   const handleToggle = (menuId: string, field: keyof UserSideMenuPermission) => {
     setPermissions((prev) => {
       const current = prev[menuId] || { viewOnly: false, entry: false, edit: false, delete: false };
       const updated = { ...current, [field]: !current[field] };
-
-      // Logic: If user enables Entry, Edit, or Delete, View Only should automatically be true
-      if ((field === 'entry' || field === 'edit' || field === 'delete') && updated[field]) {
-        updated.viewOnly = true;
-      }
-      // If user turns off viewOnly, turn off entry, edit, delete as well
-      if (field === 'viewOnly' && !updated.viewOnly) {
-        updated.entry = false;
-        updated.edit = false;
-        updated.delete = false;
-      }
 
       return {
         ...prev,
@@ -101,6 +90,30 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
     setSavedSuccess(false);
   };
 
+  const handleSetRowEntryOnly = (menuId: string) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [menuId]: { viewOnly: false, entry: true, edit: false, delete: false },
+    }));
+    setSavedSuccess(false);
+  };
+
+  const handleSetRowEditOnly = (menuId: string) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [menuId]: { viewOnly: false, entry: false, edit: true, delete: false },
+    }));
+    setSavedSuccess(false);
+  };
+
+  const handleSetRowDeleteOnly = (menuId: string) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [menuId]: { viewOnly: false, entry: false, edit: false, delete: true },
+    }));
+    setSavedSuccess(false);
+  };
+
   const handleSetRowNone = (menuId: string) => {
     setPermissions((prev) => ({
       ...prev,
@@ -110,7 +123,10 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
   };
 
   // Category-level actions
-  const handleSetCategoryPermissions = (category: string, mode: 'full' | 'viewOnly' | 'none') => {
+  const handleSetCategoryPermissions = (
+    category: string,
+    mode: 'full' | 'viewOnly' | 'entryOnly' | 'editOnly' | 'deleteOnly' | 'none'
+  ) => {
     setPermissions((prev) => {
       const next = { ...prev };
       SIDE_MENU_DEFINITIONS.filter((m) => m.category === category).forEach((m) => {
@@ -118,6 +134,12 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
           next[m.id] = { viewOnly: true, entry: true, edit: true, delete: true };
         } else if (mode === 'viewOnly') {
           next[m.id] = { viewOnly: true, entry: false, edit: false, delete: false };
+        } else if (mode === 'entryOnly') {
+          next[m.id] = { viewOnly: false, entry: true, edit: false, delete: false };
+        } else if (mode === 'editOnly') {
+          next[m.id] = { viewOnly: false, entry: false, edit: true, delete: false };
+        } else if (mode === 'deleteOnly') {
+          next[m.id] = { viewOnly: false, entry: false, edit: false, delete: true };
         } else {
           next[m.id] = { viewOnly: false, entry: false, edit: false, delete: false };
         }
@@ -204,6 +226,8 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
         return <LayoutDashboard className="w-4 h-4 text-[#168A45]" />;
       case 'Lead Management (CRM)':
         return <Users className="w-4 h-4 text-emerald-600" />;
+      case 'HR & People Management':
+      case 'HR & Company Management':
       case 'HR & Institution Management':
         return <Building2 className="w-4 h-4 text-teal-600" />;
       case 'Sales Management':
@@ -402,21 +426,45 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
                     </div>
 
                     {/* Category-level quick toggles */}
-                    <div className="flex items-center space-x-1.5 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                       <span className="text-slate-400 text-[10px] mr-1 hidden sm:inline">Module action:</span>
                       <button
+                        type="button"
                         onClick={() => handleSetCategoryPermissions(category, 'full')}
                         className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded font-bold border border-emerald-200 transition-colors cursor-pointer text-[10px]"
                       >
-                        All 4 Access
+                        All 4 (Do All)
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleSetCategoryPermissions(category, 'viewOnly')}
                         className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded font-bold border border-blue-200 transition-colors cursor-pointer text-[10px]"
                       >
                         View Only
                       </button>
                       <button
+                        type="button"
+                        onClick={() => handleSetCategoryPermissions(category, 'entryOnly')}
+                        className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded font-bold border border-emerald-200 transition-colors cursor-pointer text-[10px]"
+                      >
+                        Entry Only (Add New)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetCategoryPermissions(category, 'editOnly')}
+                        className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded font-bold border border-teal-200 transition-colors cursor-pointer text-[10px]"
+                      >
+                        Edit Only
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetCategoryPermissions(category, 'deleteOnly')}
+                        className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded font-bold border border-rose-200 transition-colors cursor-pointer text-[10px]"
+                      >
+                        Delete Only
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleSetCategoryPermissions(category, 'none')}
                         className="px-2 py-0.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer text-[10px]"
                       >
@@ -455,7 +503,7 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
                               <span>Delete</span>
                             </div>
                           </th>
-                          <th className="py-2.5 px-3 text-right w-24">Quick</th>
+                          <th className="py-2.5 px-3 text-right w-44">Quick</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -477,71 +525,128 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
                                 isNone ? 'opacity-70 bg-slate-50/30' : ''
                               }`}
                             >
-                              {/* Menu Name & Description */}
+                              {/* Menu Name, Description & Enabled Action Options */}
                               <td className="py-3 px-4">
-                                <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                                <div className="font-bold text-slate-900 flex flex-wrap items-center gap-1.5">
                                   <span>{item.name}</span>
                                   {isFullyAllowed && (
-                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-extrabold border border-emerald-200">
-                                      Full
+                                    <span className="text-[9px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md font-extrabold border border-emerald-300">
+                                      ALL CHECKED: CAN DO ALL (View + Add New + Edit + Delete)
                                     </span>
                                   )}
-                                  {p.viewOnly && !p.entry && !p.edit && !p.delete && (
-                                    <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-extrabold border border-blue-200">
-                                      Read Only
+                                  {!isFullyAllowed && p.viewOnly && !p.entry && !p.edit && !p.delete && (
+                                    <span className="text-[9px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-extrabold border border-blue-200">
+                                      VIEW ONLY: Option to View
+                                    </span>
+                                  )}
+                                  {!isFullyAllowed && !p.viewOnly && p.entry && !p.edit && !p.delete && (
+                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-extrabold border border-emerald-200">
+                                      ENTRY ONLY: Option to Add New
+                                    </span>
+                                  )}
+                                  {!isFullyAllowed && !p.viewOnly && !p.entry && p.edit && !p.delete && (
+                                    <span className="text-[9px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md font-extrabold border border-teal-200">
+                                      EDIT ONLY: Option to Edit
+                                    </span>
+                                  )}
+                                  {!isFullyAllowed && !p.viewOnly && !p.entry && !p.edit && p.delete && (
+                                    <span className="text-[9px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md font-extrabold border border-rose-200">
+                                      DELETE ONLY: Option to Delete
                                     </span>
                                   )}
                                 </div>
                                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
                                   {item.description}
                                 </p>
+                                {/* Enabled Options Summary Bar */}
+                                {!isNone && (
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className="text-[10px] font-bold text-slate-400">Allowed Options:</span>
+                                    {p.viewOnly && (
+                                      <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        <Eye className="w-2.5 h-2.5" />
+                                        <span>View</span>
+                                      </span>
+                                    )}
+                                    {p.entry && (
+                                      <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <PlusSquare className="w-2.5 h-2.5" />
+                                        <span>Add New</span>
+                                      </span>
+                                    )}
+                                    {p.edit && (
+                                      <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                                        <Edit3 className="w-2.5 h-2.5" />
+                                        <span>Edit</span>
+                                      </span>
+                                    )}
+                                    {p.delete && (
+                                      <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                        <Trash2 className="w-2.5 h-2.5" />
+                                        <span>Can Delete</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </td>
 
                               {/* View Only Checkbox */}
                               <td className="py-3 px-3 text-center bg-blue-50/10">
-                                <label className="inline-flex items-center justify-center cursor-pointer p-1">
+                                <label className="inline-flex flex-col items-center justify-center cursor-pointer p-1 gap-0.5">
                                   <input
                                     type="checkbox"
                                     checked={p.viewOnly}
                                     onChange={() => handleToggle(item.id, 'viewOnly')}
                                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                                   />
+                                  <span className={`text-[9px] font-bold ${p.viewOnly ? 'text-blue-700' : 'text-slate-400'}`}>
+                                    {p.viewOnly ? 'View' : 'Off'}
+                                  </span>
                                 </label>
                               </td>
 
                               {/* Entry Checkbox */}
                               <td className="py-3 px-3 text-center bg-emerald-50/10">
-                                <label className="inline-flex items-center justify-center cursor-pointer p-1">
+                                <label className="inline-flex flex-col items-center justify-center cursor-pointer p-1 gap-0.5">
                                   <input
                                     type="checkbox"
                                     checked={p.entry}
                                     onChange={() => handleToggle(item.id, 'entry')}
                                     className="w-4 h-4 rounded text-[#168A45] focus:ring-[#168A45] cursor-pointer"
                                   />
+                                  <span className={`text-[9px] font-bold ${p.entry ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                    {p.entry ? 'Add New' : 'Off'}
+                                  </span>
                                 </label>
                               </td>
 
                               {/* Edit Checkbox */}
                               <td className="py-3 px-3 text-center bg-teal-50/10">
-                                <label className="inline-flex items-center justify-center cursor-pointer p-1">
+                                <label className="inline-flex flex-col items-center justify-center cursor-pointer p-1 gap-0.5">
                                   <input
                                     type="checkbox"
                                     checked={p.edit}
                                     onChange={() => handleToggle(item.id, 'edit')}
                                     className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
                                   />
+                                  <span className={`text-[9px] font-bold ${p.edit ? 'text-teal-700' : 'text-slate-400'}`}>
+                                    {p.edit ? 'Edit' : 'Off'}
+                                  </span>
                                 </label>
                               </td>
 
                               {/* Delete Checkbox */}
                               <td className="py-3 px-3 text-center bg-rose-50/10">
-                                <label className="inline-flex items-center justify-center cursor-pointer p-1">
+                                <label className="inline-flex flex-col items-center justify-center cursor-pointer p-1 gap-0.5">
                                   <input
                                     type="checkbox"
                                     checked={p.delete}
                                     onChange={() => handleToggle(item.id, 'delete')}
                                     className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
                                   />
+                                  <span className={`text-[9px] font-bold ${p.delete ? 'text-rose-700' : 'text-slate-400'}`}>
+                                    {p.delete ? 'Can Delete' : 'Off'}
+                                  </span>
                                 </label>
                               </td>
 
@@ -549,22 +654,53 @@ export const UserMenuPermissionsModal: React.FC<UserMenuPermissionsModalProps> =
                               <td className="py-3 px-3 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end space-x-1">
                                   <button
+                                    type="button"
                                     onClick={() => handleSetRowFull(item.id)}
-                                    title="Grant Full 4 Access"
-                                    className="px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer border border-emerald-200"
+                                    title="Tick All 4 Checkboxes (Can Do All)"
+                                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded cursor-pointer border ${
+                                      isFullyAllowed
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'text-emerald-700 hover:bg-emerald-50 border-emerald-200'
+                                    }`}
                                   >
                                     All
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => handleSetRowViewOnly(item.id)}
-                                    title="Set View Only"
+                                    title="Tick View Only (Option to View)"
                                     className="px-1.5 py-0.5 text-[10px] font-bold text-blue-700 hover:bg-blue-50 rounded cursor-pointer border border-blue-200"
                                   >
                                     View
                                   </button>
                                   <button
+                                    type="button"
+                                    onClick={() => handleSetRowEntryOnly(item.id)}
+                                    title="Tick Entry Only (Option to Add New)"
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer border border-emerald-200"
+                                  >
+                                    Add
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetRowEditOnly(item.id)}
+                                    title="Tick Edit Only (Option to Edit)"
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-teal-700 hover:bg-teal-50 rounded cursor-pointer border border-teal-200"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetRowDeleteOnly(item.id)}
+                                    title="Tick Delete Only (Option to Delete)"
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 rounded cursor-pointer border border-rose-200"
+                                  >
+                                    Del
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => handleSetRowNone(item.id)}
-                                    title="Clear access"
+                                    title="Clear all checkboxes"
                                     className="px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer border border-slate-200"
                                   >
                                     0

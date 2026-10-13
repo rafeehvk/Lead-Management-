@@ -5,6 +5,7 @@ import {
   ProposalAgreementDetails,
   FollowUp,
   User,
+  UserRole,
   Settings,
   DashboardMetrics,
   LeadStatus,

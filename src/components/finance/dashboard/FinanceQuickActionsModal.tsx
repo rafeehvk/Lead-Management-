@@ -143,7 +143,7 @@ export const FinanceQuickActionsModal: React.FC<FinanceQuickActionsModalProps> =
       id: 'qa-stock-transfer',
       title: 'Inter-Warehouse Stock Transfer',
       category: 'Adjustments',
-      description: 'Transfer SKU items between central warehouse and regional campuses',
+      description: 'Transfer SKU items between central warehouse and regional branches',
       icon: RotateCcw,
       color: 'bg-cyan-600',
       formType: 'stock-transfer',
@@ -263,7 +263,7 @@ export const FinanceQuickActionsModal: React.FC<FinanceQuickActionsModalProps> =
         month: 'Apr',
         year: 2026,
         amount: numAmount,
-        category: 'Campus IT & Cloud Infrastructure',
+        category: 'Enterprise IT & Cloud Infrastructure',
         department: 'IT & Cloud Infrastructure',
         vendor: party,
         description: notes || 'Cloud Hosting & Storage',
@@ -406,7 +406,7 @@ export const FinanceQuickActionsModal: React.FC<FinanceQuickActionsModalProps> =
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Apex Education Trust, Cochin Tech University"
+                  placeholder="e.g. Apex Corporate Services, Kochi Metro Tech"
                   value={partyName}
                   onChange={(e) => setPartyName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-[#168A45]"

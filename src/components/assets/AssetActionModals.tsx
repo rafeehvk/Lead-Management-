@@ -550,7 +550,7 @@ export const CheckOutAssetModal: React.FC<ActionModalBaseProps> = ({
               <label className="block text-xs font-bold text-slate-700 mb-1">Destination *</label>
               <input
                 type="text"
-                placeholder="e.g. St. Xavier College, Hall 3"
+                placeholder="e.g. Apex Tech Park, Hall 3"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-700 focus:outline-none"
@@ -575,7 +575,7 @@ export const CheckOutAssetModal: React.FC<ActionModalBaseProps> = ({
               rows={2}
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              placeholder="e.g. Educational presentation and student orientation software walkthrough..."
+              placeholder="e.g. Enterprise presentation and client onboarding software walkthrough..."
               className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-700 focus:outline-none"
               required
             />

@@ -150,7 +150,7 @@ const SAMPLE_DATA: Partial<Record<ThemedDocumentCategory, ThemedDocumentData>> =
     referenceNumber: '2025/000007',
     originalCopyBadge: 'ORIGINAL FOR RECIPIENT',
     paymentMethod: 'UPI / Bank Transfer',
-    partyName: 'GRACE VALLEY PUBLIC SCHOOL',
+    partyName: 'GRACE VALLEY ENTERPRISES PVT LTD',
     partyAddress: 'Maravattam, Kadampuzha, Malappuram, Kadampuzha, Kerala, 676553',
     partyState: 'Kerala (32)',
     partyPhone: '8589054503',

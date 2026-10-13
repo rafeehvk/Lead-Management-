@@ -65,7 +65,7 @@ const PRESETS: PermissionPreset[] = [
   {
     id: 'super-admin',
     name: 'Super Admin (Full Control)',
-    description: 'Unrestricted View, Entry, Edit, and Delete access across all institutional ERP modules.',
+    description: 'Unrestricted View, Entry, Edit, and Delete access across all company ERP modules.',
     badge: 'Full Access',
     generator: () => ({ view: true, entry: true, edit: true, delete: true }),
   },
@@ -93,9 +93,9 @@ const PRESETS: PermissionPreset[] = [
     description: 'Granular access tailored specifically to this department functions and responsibilities.',
     badge: 'Dept Aligned',
     generator: (item, deptCode) => {
-      // 101 Academic
+      // 101 Operations
       if (deptCode === '101') {
-        const isAcademic =
+        const isOps =
           item.category.includes('HR') ||
           item.category.includes('Lead') ||
           item.id === 'dashboard' ||
@@ -104,9 +104,9 @@ const PRESETS: PermissionPreset[] = [
           item.id === 'hr-leaves' ||
           item.id === 'hr-kpis';
         return {
-          view: isAcademic,
-          entry: isAcademic && !item.id.includes('payroll') && !item.id.includes('settings'),
-          edit: isAcademic && !item.id.includes('payroll') && !item.id.includes('settings'),
+          view: isOps,
+          entry: isOps && !item.id.includes('payroll') && !item.id.includes('settings'),
+          edit: isOps && !item.id.includes('payroll') && !item.id.includes('settings'),
           delete: false,
         };
       }
@@ -171,7 +171,7 @@ const PRESETS: PermissionPreset[] = [
   {
     id: 'view-only',
     name: 'View Only (Auditor / Inspector)',
-    description: 'Read-only access across all institutional reports, registries, dashboards, and archives.',
+    description: 'Read-only access across all company reports, registries, dashboards, and archives.',
     badge: 'Read-Only',
     generator: () => ({ view: true, entry: false, edit: false, delete: false }),
   },
@@ -502,7 +502,7 @@ export const AccessManagementView: React.FC<AccessManagementViewProps> = ({
     if (!activeRole) return;
     if (
       window.confirm(
-        `Reset side menu permissions for "${activeRole.roleTitle}" to standard institutional defaults?`
+        `Reset side menu permissions for "${activeRole.roleTitle}" to standard company defaults?`
       )
     ) {
       const reset = resolveRolePermissions({} as HrSettingsConfig, selectedDeptCode, activeRole);
@@ -666,7 +666,7 @@ export const AccessManagementView: React.FC<AccessManagementViewProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-slate-500">
-            {departments.length} departments registered in institutional master
+            {departments.length} departments registered in company master
           </span>
         </div>
 
@@ -1028,7 +1028,7 @@ export const AccessManagementView: React.FC<AccessManagementViewProps> = ({
                 </span>
               </div>
               <span className="text-[11px] text-slate-500">
-                Instantly populate access flags aligned with institutional standards
+                Instantly populate access flags aligned with company standards
               </span>
             </div>
 

@@ -127,7 +127,7 @@ export const PayrollManagementView: React.FC<PayrollManagementViewProps> = ({
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <span className="text-[11px] text-slate-500 font-medium">Processed Staff</span>
           <div className="text-2xl font-bold text-slate-900 mt-0.5">{totalEmployees}</div>
-          <span className="text-[10px] text-slate-400">Total faculty & admin</span>
+          <span className="text-[10px] text-slate-400">Total operations & admin</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
@@ -174,7 +174,7 @@ export const PayrollManagementView: React.FC<PayrollManagementViewProps> = ({
             className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 bg-white"
           >
             <option value="All">All Departments</option>
-            <option value="Academic">Academic</option>
+            <option value="Operations">Operations</option>
             <option value="Administration">Administration</option>
             <option value="Finance">Finance</option>
             <option value="HR">HR</option>
@@ -275,7 +275,7 @@ export const PayrollManagementView: React.FC<PayrollManagementViewProps> = ({
             {/* Header */}
             <div className="border-b-2 border-[#168A45] pb-4 mb-6 flex justify-between items-start">
               <div>
-                <h1 className="text-xl font-bold text-[#0B5D2A]">MYSAR – My Student Analysis Record</h1>
+                <h1 className="text-xl font-bold text-[#0B5D2A]">CASBIRO – Corporate Enterprise Suite</h1>
                 <p className="text-xs font-semibold text-slate-700">Casbiro Solutions Private Limited</p>
                 <p className="text-[10px] text-slate-400">Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021</p>
               </div>
@@ -340,7 +340,7 @@ export const PayrollManagementView: React.FC<PayrollManagementViewProps> = ({
                   </div>
                   {selectedPayslip.overtime > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Overtime / Academic Honorarium:</span>
+                      <span className="text-slate-500">Overtime / Performance Bonus:</span>
                       <span className="font-semibold">{selectedPayslip.overtime.toLocaleString()}</span>
                     </div>
                   )}

@@ -221,7 +221,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
       'Pending Liabilities (INR)',
       'Category Budget Cap (INR)',
       'Share of Category Budget (%)',
-      'Total Institutional Budget (INR)',
+      'Total Corporate Budget (INR)',
       'Total Budget Contribution (%)',
       'Share of Procurement (%)',
       'Cumulative Procurement (%)',
@@ -312,7 +312,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
               </span>
             </div>
             <p className="mt-1.5 text-xs sm:text-sm text-slate-600 max-w-3xl">
-              Identifies which suppliers absorb the largest share of departmental caps and institutional operating
+              Identifies which suppliers absorb the largest share of departmental caps and corporate operating
               budget. Highlights single-supplier concentration risk, Pareto distribution, and actionable contract
               renegotiation levers.
             </p>
@@ -457,7 +457,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
                 <span>Supplier Spend vs. Total Budget Contribution Benchmark</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Horizontal comparison of effective spend and relative proportion of institutional budget
+                Horizontal comparison of effective spend and relative proportion of corporate budget
               </p>
             </div>
 
@@ -866,7 +866,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
             </h2>
             <p className="text-xs text-slate-300 leading-relaxed">
               Adjust the target discount rate and select which high-consumption suppliers to target.
-              The model immediately projects institutional cash savings and the reduction in budget contribution.
+              The model immediately projects corporate cash savings and the reduction in budget contribution.
             </p>
 
             {/* Slider Control */}
@@ -969,7 +969,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
               <span>Supplier Budget Absorption & Optimization Matrix</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Ranked by total effective spend and institutional budget contribution percentage
+              Ranked by total effective spend and corporate budget contribution percentage
             </p>
           </div>
 
@@ -1005,7 +1005,7 @@ export const VendorSpendBudgetContributionView: React.FC<VendorSpendBudgetContri
               <option value="All">All Departments</option>
               <option value="IT & Tech">IT & Tech</option>
               <option value="Operations">Operations</option>
-              <option value="Academic">Academic</option>
+              <option value="Sales & Marketing">Sales & Marketing</option>
               <option value="Administration">Administration</option>
               <option value="Finance & Accounts">Finance & Accounts</option>
             </select>

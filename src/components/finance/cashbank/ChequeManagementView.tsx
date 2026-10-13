@@ -816,7 +816,7 @@ export const ChequeManagementView: React.FC<ChequeManagementViewProps> = ({
                     required
                     value={newChequeForm.partyName}
                     onChange={(e) => setNewChequeForm({ ...newChequeForm, partyName: e.target.value })}
-                    placeholder={newChequeForm.type === 'Received' ? 'e.g. Cochin Tech University' : 'e.g. Dell India IT Labs'}
+                    placeholder={newChequeForm.type === 'Received' ? 'e.g. Kochi Metro Tech Enterprise' : 'e.g. Dell India IT Systems'}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>

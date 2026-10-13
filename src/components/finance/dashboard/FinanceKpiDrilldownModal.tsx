@@ -239,7 +239,7 @@ export const FinanceKpiDrilldownModal: React.FC<FinanceKpiDrilldownModalProps> =
       }
       case 'cash-balance': {
         title = 'Cash in Hand & Petty Cash Accounts Drill-Down';
-        subtitle = 'Physical cash accounts across campuses and administrative offices';
+        subtitle = 'Physical cash accounts across branch offices and administrative centers';
         headers = ['Account Name', 'Code', 'Type / Custodian', 'GL Code', 'Current Balance', 'Status'];
         const cashAccs = erpFinanceStorage.getCashAccounts();
         rows = cashAccs.map((c) => ({

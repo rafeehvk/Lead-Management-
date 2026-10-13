@@ -58,9 +58,9 @@ const MENU_PRESETS: Array<{
     menuIds: SIDE_MENU_DEFINITIONS.map((m) => m.id),
   },
   {
-    id: 'academic',
-    name: 'Academic Preset',
-    description: 'Academic governance, faculty directory, attendance & student records',
+    id: 'operations_core',
+    name: 'Operations Core Preset',
+    description: 'Operations governance, staff directory, attendance & project records',
     menuIds: [
       'dashboard',
       'hr-staff',
@@ -74,7 +74,7 @@ const MENU_PRESETS: Array<{
   {
     id: 'admin',
     name: 'Administration Preset',
-    description: 'General campus administration, staff management, documents and operations',
+    description: 'General company administration, staff management, documents and operations',
     menuIds: [
       'dashboard',
       'operations-dashboard',
@@ -96,7 +96,7 @@ const MENU_PRESETS: Array<{
   {
     id: 'finance',
     name: 'Finance & Accounts Preset',
-    description: 'General ledger, cash/bank, student fee collections, payroll and vendor billing',
+    description: 'General ledger, cash/bank, client collections, payroll and vendor billing',
     menuIds: [
       'dashboard',
       'finance-dashboard',
@@ -170,7 +170,7 @@ const MENU_PRESETS: Array<{
   },
   {
     id: 'operations',
-    name: 'Campus Operations & Procurement',
+    name: 'Supply Chain & Procurement',
     description: 'Warehouse inventory valuation, stock movements, vendor POs and material receiving',
     menuIds: [
       'dashboard',
@@ -433,7 +433,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
               </span>
             </div>
             <p className="text-emerald-100 text-xs mt-1 leading-relaxed max-w-3xl">
-              Configure institutional departments, code prefixes, reporting managers, and{' '}
+              Configure company departments, code prefixes, reporting managers, and{' '}
               <b className="text-white underline decoration-emerald-300">
                 select accessible ERP navigation menus
               </b>
@@ -543,13 +543,13 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
             <input
               type="text"
               required
-              placeholder="e.g. Academic, Administration"
+              placeholder="e.g. Operations, Administration"
               value={newDeptName}
               onChange={(e) => setNewDeptName(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden transition-all"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Official institutional department title
+              Official company department title
             </span>
           </div>
 
@@ -560,7 +560,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
             <input
               type="text"
               required
-              placeholder="e.g. Principal / Managing Director"
+              placeholder="e.g. Managing Director / Operations Head"
               value={newDeptReporting}
               onChange={(e) => setNewDeptReporting(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden transition-all"
@@ -579,7 +579,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
             </label>
             <input
               type="text"
-              placeholder="e.g. Dr. Ramesh Nambiar"
+              placeholder="e.g. Ramesh Nambiar"
               value={newDeptHod}
               onChange={(e) => setNewDeptHod(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden"
@@ -592,7 +592,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
             </label>
             <input
               type="text"
-              placeholder="e.g. Instructional curriculum delivery, pedagogy, student welfare and laboratory sessions..."
+              placeholder="e.g. Project delivery, client operations, service quality and SLA management..."
               value={newDeptDescription}
               onChange={(e) => setNewDeptDescription(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden"

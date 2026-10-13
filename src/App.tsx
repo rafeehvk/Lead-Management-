@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShieldAlert, RotateCcw, ArrowRight } from 'lucide-react';
+import { ShieldAlert, RotateCcw, ArrowRight, Eye, PlusCircle, Edit3, Trash2, CheckCircle2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -44,7 +44,13 @@ import { PayrollManagementView } from './components/hr/PayrollManagementView';
 import { KpiManagementView } from './components/hr/KpiManagementView';
 import { HrSettingsView } from './components/hr/HrSettingsView';
 import { hrStorage } from './services/hrStorageService';
-import { resolveAssignedModulesToNavTabs } from './utils/menuPermissions';
+import {
+  getAllowedNavTabsForUser,
+  getMenuPermissionForUser,
+  SIDE_MENU_DEFINITIONS,
+} from './utils/menuPermissions';
+import { UserAuthorizedPagesPortal } from './components/UserAuthorizedPagesPortal';
+import { UserMenuPermissionsModal } from './components/UserMenuPermissionsModal';
 
 // Document & Expiry Management Module
 import { DocumentExpiryView } from './components/documentExpiry/DocumentExpiryView';
@@ -95,6 +101,7 @@ export default function App() {
   const [followUpsActiveTab, setFollowUpsActiveTab] = useState<'today' | 'upcoming' | 'overdue' | 'all'>('today');
   const [settingsSubTab, setSettingsSubTab] = useState<'pricing' | 'proposal' | 'templates' | 'company' | 'users' | 'import' | 'integrations' | 'themes'>('pricing');
   const [proposalTargetTemplateId, setProposalTargetTemplateId] = useState<string | undefined>(undefined);
+  const [menuPermissionsTargetUser, setMenuPermissionsTargetUser] = useState<User | null>(null);
 
   // Core Data States
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -122,49 +129,20 @@ export default function App() {
 
     const handleDeptChange = () => {
       setDepartmentsList(hrStorage.getDepartmentsMaster());
+      setUsers(storage.getUsers());
       setStaffAuthVersion((v) => v + 1);
     };
     window.addEventListener('mysar_department_permissions_changed', handleDeptChange);
+    window.addEventListener('mysar_user_menu_permissions_changed', handleDeptChange);
     return () => {
       window.removeEventListener('mysar_department_permissions_changed', handleDeptChange);
+      window.removeEventListener('mysar_user_menu_permissions_changed', handleDeptChange);
     };
   }, []);
 
-  const staffAssignedNavTabs = useMemo(() => {
-    if (!currentUser) return null;
-    const allStaff = hrStorage.getStaff();
-    const matchedStaff = allStaff.find(
-      (s) =>
-        (currentUser.staffId && s.staffId === currentUser.staffId) ||
-        (currentUser.userId &&
-          s.systemAccess?.username?.toLowerCase() === currentUser.userId.toLowerCase()) ||
-        (currentUser.email && s.email?.toLowerCase() === currentUser.email.toLowerCase())
-    );
-
-    const assignedModules =
-      matchedStaff?.systemAccess?.assignedModules ?? currentUser.assignedModules;
-    const accessLevel =
-      matchedStaff?.systemAccess?.accessLevel ?? currentUser.accessLevel;
-
-    // Master default admin without a restricted staff profile sees everything unless modules are explicitly assigned
-    if (!matchedStaff && currentUser.role === 'Admin' && (!assignedModules || assignedModules.length === 0)) {
-      return null;
-    }
-
-    if (assignedModules && assignedModules.length > 0) {
-      return resolveAssignedModulesToNavTabs(assignedModules, accessLevel);
-    }
-
-    if (accessLevel === 'Admin' || currentUser.role === 'Admin') {
-      return null;
-    }
-
-    return null;
-  }, [currentUser, staffAuthVersion]);
-
   const activeUserDept = useMemo(() => {
     if (currentUser?.role === 'Admin') {
-      return null; // Admins have unrestricted access to all modules
+      return null; // Admins have unrestricted access unless custom user/staff permissions are set
     }
     if (currentUser?.departmentCode) {
       return (
@@ -185,36 +163,53 @@ export default function App() {
     return null;
   }, [departmentsList, currentUser]);
 
-  const isCurrentTabAuthorized = useMemo(() => {
-    if (staffAssignedNavTabs && staffAssignedNavTabs.size > 0) {
-      return staffAssignedNavTabs.has(activeTab);
+  const allowedUserNavTabs = useMemo(() => {
+    if (!currentUser) return null;
+    const allStaff = hrStorage.getStaff();
+    const matchedStaff = allStaff.find(
+      (s) =>
+        (currentUser.staffId && s.staffId === currentUser.staffId) ||
+        (currentUser.userId &&
+          s.systemAccess?.username?.toLowerCase() === currentUser.userId.toLowerCase()) ||
+        (currentUser.email && s.email?.toLowerCase() === currentUser.email.toLowerCase())
+    );
+
+    return getAllowedNavTabsForUser(
+      currentUser,
+      matchedStaff,
+      activeUserDept?.allowedMenuIds || null
+    );
+  }, [currentUser, activeUserDept, staffAuthVersion]);
+
+  const currentMenuPermission = useMemo(() => {
+    if (!currentUser) {
+      return { viewOnly: true, entry: true, edit: true, delete: true };
     }
-    if (!activeUserDept) return true;
-    const allowed = activeUserDept.allowedMenuIds || [];
-    return allowed.includes(activeTab);
-  }, [staffAssignedNavTabs, activeUserDept, activeTab]);
+    return getMenuPermissionForUser(currentUser, activeTab);
+  }, [currentUser, activeTab, staffAuthVersion]);
+
+  const activeMenuDefinition = useMemo(() => {
+    return SIDE_MENU_DEFINITIONS.find((m) => m.id === activeTab);
+  }, [activeTab]);
+
+  const isCurrentTabAuthorized = useMemo(() => {
+    if (activeTab === 'my-allowed-pages') return true;
+    if (allowedUserNavTabs === null) return true;
+    return allowedUserNavTabs.has(activeTab);
+  }, [allowedUserNavTabs, activeTab]);
 
   useEffect(() => {
-    if (!isCurrentTabAuthorized) {
-      if (staffAssignedNavTabs && staffAssignedNavTabs.size > 0) {
-        const allowedList = Array.from(staffAssignedNavTabs);
-        if (staffAssignedNavTabs.has('dashboard')) {
-          setActiveTab('dashboard');
-        } else if (allowedList.length > 0) {
-          setActiveTab(allowedList[0] as NavTab);
-        }
-        return;
-      }
-      if (activeUserDept) {
-        const allowed = activeUserDept.allowedMenuIds || [];
-        if (allowed.includes('dashboard')) {
-          setActiveTab('dashboard');
-        } else if (allowed.length > 0) {
-          setActiveTab(allowed[0] as NavTab);
-        }
+    if (!isCurrentTabAuthorized && allowedUserNavTabs !== null) {
+      const allowedList = Array.from(allowedUserNavTabs);
+      if (allowedUserNavTabs.has('dashboard')) {
+        setActiveTab('dashboard');
+      } else if (allowedList.length > 0) {
+        setActiveTab(allowedList[0] as NavTab);
+      } else {
+        setActiveTab('my-allowed-pages');
       }
     }
-  }, [staffAssignedNavTabs, activeUserDept, isCurrentTabAuthorized]);
+  }, [allowedUserNavTabs, isCurrentTabAuthorized]);
 
   // Modal States
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
@@ -840,50 +835,24 @@ export default function App() {
               </div>
               <div>
                 <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
-                  Access Restricted by Department Policy
+                  Access Restricted by User Permission Policy
                 </span>
                 <h3 className="text-xl font-black text-slate-900 mt-3">
-                  Module Not Authorized
+                  Menu Not Authorized
                 </h3>
                 <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto">
-                  Your current department <strong className="text-slate-900">[{activeUserDept?.departmentCode}] {activeUserDept?.departmentName}</strong> does not have permission to access the <code className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded text-rose-700 font-bold">{activeTab}</code> module.
+                  Your account <strong className="text-slate-900">{currentUser.name}</strong> does not have permission to view the <code className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded text-rose-700 font-bold">{activeTab}</code> page. Only allowed menus are shown.
                 </p>
               </div>
-
-              {activeUserDept?.allowedMenuIds && activeUserDept.allowedMenuIds.length > 0 && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    Authorized Modules for {activeUserDept.departmentName} ({activeUserDept.allowedMenuIds.length}):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeUserDept.allowedMenuIds.map((mId) => (
-                      <button
-                        key={mId}
-                        onClick={() => setActiveTab(mId as NavTab)}
-                        className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-lg border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
-                      >
-                        {mId}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="flex items-center justify-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('dashboard')}
+                  onClick={() => setActiveTab('my-allowed-pages')}
                   className="px-5 py-2.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
                 >
-                  <span>Go to Executive Dashboard</span>
+                  <span>View My Allowed Pages</span>
                   <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('hr-settings')}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                >
-                  HR Configuration
                 </button>
               </div>
             </div>
@@ -891,9 +860,32 @@ export default function App() {
 
           {isCurrentTabAuthorized && (
             <>
+          {activeTab === 'my-allowed-pages' && (
+            <UserAuthorizedPagesPortal
+              currentUser={currentUser}
+              allUsers={users}
+              allStaff={hrStaff}
+              departments={departmentsList}
+              onSwitchUser={(nextUser) => {
+                storage.setSessionUser(nextUser);
+                setCurrentUser(nextUser);
+              }}
+              onNavigateTab={(tab, subTab) => {
+                if (subTab) {
+                  setSettingsSubTab(subTab);
+                }
+                setActiveTab(tab);
+              }}
+              onOpenMenuPermissionsModal={(target) => {
+                setMenuPermissionsTargetUser(target);
+              }}
+            />
+          )}
+
           {activeTab === 'dashboard' && (
             <ErpManagementDashboard
               currentUser={currentUser}
+              allowedNavTabs={allowedUserNavTabs}
               onNavigateToTab={(tab) => {
                 if (tab === 'gashub') {
                   setIsGasHubOpen(true);
@@ -951,6 +943,7 @@ export default function App() {
             <LeadsView
               leads={leads}
               currentUser={currentUser}
+              menuPermission={currentMenuPermission}
               onOpenNewLead={() => {
                 setEditingLead(null);
                 setIsNewLeadOpen(true);
@@ -995,6 +988,7 @@ export default function App() {
             <ProposalsView
               proposals={proposals}
               settings={settings}
+              menuPermission={currentMenuPermission}
               onOpenPreview={handleOpenProposalPreview}
               onEditProposal={handleStartEditProposal}
               onDeleteProposal={handleDeleteProposal}
@@ -1169,6 +1163,7 @@ export default function App() {
               attendanceRecords={hrAttendance}
               leaveRequests={hrLeaveRequests}
               performanceRecords={hrPerformance}
+              menuPermission={currentMenuPermission}
               onSaveStaff={handleSaveStaff}
               onDeleteStaff={handleDeleteStaff}
               onClearAllDummyData={handleClearAllDummyData}
@@ -1628,6 +1623,17 @@ export default function App() {
           }}
         />
       )}
+
+      {/* 6. Per-User Menu Permissions Modal */}
+      <UserMenuPermissionsModal
+        isOpen={Boolean(menuPermissionsTargetUser)}
+        user={menuPermissionsTargetUser}
+        onClose={() => setMenuPermissionsTargetUser(null)}
+        onSaved={() => {
+          setStaffAuthVersion((v) => v + 1);
+          setUsers(storage.getUsers());
+        }}
+      />
     </div>
   );
 }

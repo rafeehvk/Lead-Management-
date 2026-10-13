@@ -151,7 +151,7 @@ export const BranchMasterTable: React.FC<BranchMasterTableProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              Add, edit, or manage institutional campuses, regional centres, and work locations for staff onboarding &amp; attendance.
+              Add, edit, or manage company branches, regional offices, and work locations for staff onboarding &amp; attendance.
             </p>
           </div>
         </div>
@@ -194,7 +194,7 @@ export const BranchMasterTable: React.FC<BranchMasterTableProps> = ({
             <span>
               {editingBranch
                 ? `Edit Branch / Location: ${editingBranch.branchName}`
-                : 'Add New Branch / Campus Location'}
+                : 'Add New Branch / Office Location'}
             </span>
           </div>
           {editingBranch && (
@@ -232,7 +232,7 @@ export const BranchMasterTable: React.FC<BranchMasterTableProps> = ({
               type="text"
               value={branchName}
               onChange={(e) => setBranchName(e.target.value)}
-              placeholder="e.g. Kochi Main Campus, Thrissur Academic Centre..."
+              placeholder="e.g. Kochi Corporate HQ, Thrissur Regional Office..."
               required
               className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold focus:outline-hidden focus:border-[#168A45]"
             />

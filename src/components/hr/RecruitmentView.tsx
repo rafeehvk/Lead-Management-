@@ -159,8 +159,8 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
   const [posForm, setPosForm] = useState<Partial<Position>>({
     name: '',
     code: '',
-    division: 'Academic Wing',
-    department: 'Academic',
+    division: 'Operations Division',
+    department: 'Operations',
     vacancies: 1,
     employmentType: 'Full Time',
     description: '',
@@ -169,7 +169,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     experienceRequired: '2-4 years',
     skills: [],
     salaryRange: { min: 30000, max: 45000, currency: 'INR' },
-    jobLocation: 'Kochi Campus',
+    jobLocation: 'Kochi Corporate HQ',
     closingDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     status: 'Open',
   });
@@ -183,7 +183,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     startTime: '10:00 AM',
     endTime: '11:00 AM',
     locationOrLink: 'https://meet.google.com/mysar-interview',
-    panelMembers: ['Principal', 'HOD'],
+    panelMembers: ['Managing Director', 'Department Head'],
     notes: '',
   });
 
@@ -202,7 +202,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     notes: '',
     recommendation: 'Recommend',
     finalDecision: 'Selected',
-    evaluatedBy: 'Dr. Ramesh Nambiar',
+    evaluatedBy: 'Ramesh Nambiar',
     evaluatedDate: new Date().toISOString().split('T')[0],
   });
 
@@ -242,7 +242,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     employeeId: '',
     position: '',
     department: '',
-    division: 'Academic Wing',
+    division: 'Operations Division',
     joiningDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
     employmentType: 'Full Time',
     basicSalary: 0,
@@ -251,14 +251,14 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     deductions: 0,
     deductionItems: [],
     probationPeriod: '6 Months',
-    workingHours: '8:15 AM – 4:00 PM (Monday to Friday)',
+    workingHours: '9:30 AM – 6:00 PM (Monday to Saturday)',
     workplace: 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
     responsibilities: [
-      'Fulfill institutional duties and classroom mentorship.',
-      'Participate actively in departmental curriculum review and institutional initiatives.',
-      'Maintain exemplary professional conduct and adhere strictly to institutional compliance standards.',
+      'Fulfill corporate operational duties and team deliverables.',
+      'Participate actively in departmental performance reviews and company initiatives.',
+      'Maintain exemplary professional conduct and adhere strictly to corporate compliance standards.',
     ],
-    termsAndConditions: 'Formal institutional appointment subject to institutional service rules and background verification.',
+    termsAndConditions: 'Formal corporate appointment subject to company service rules and background verification.',
     status: 'Generated',
   };
 
@@ -449,7 +449,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       employeeId: `EMP-2026-${String(appointmentLetters.length + 101).padStart(3, '0')}`,
       position: matchingOffer?.position || applicant.positionName,
       department: matchingOffer?.department || applicant.department,
-      division: 'Academic Wing',
+      division: 'Operations Division',
       joiningDate: matchingOffer?.joiningDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       employmentType: (matchingOffer?.employmentType === 'Full-Time' ? 'Full Time' : matchingOffer?.employmentType) || 'Full Time',
       ...syncedSalary,
@@ -457,11 +457,11 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       workingHours: matchingOffer?.workingHours || '09:30 AM to 06:00 PM',
       workplace: matchingOffer?.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
       responsibilities: [
-        'Fulfill institutional duties and classroom mentorship.',
-        'Participate actively in departmental curriculum review and institutional initiatives.',
-        'Maintain exemplary professional conduct and adhere strictly to institutional compliance standards.',
+        'Fulfill corporate operational duties and team deliverables.',
+        'Participate actively in departmental performance reviews and company initiatives.',
+        'Maintain exemplary professional conduct and adhere strictly to corporate compliance standards.',
       ],
-      termsAndConditions: 'Formal institutional appointment subject to institutional service rules and background verification.',
+      termsAndConditions: 'Formal corporate appointment subject to company service rules and background verification.',
       status: 'Generated',
     });
     setIsGenerateApptOpen(true);
@@ -1061,27 +1061,27 @@ ${
     setPosForm({
       name: '',
       code: `POS-2026-${String(positions.length + 1).padStart(3, '0')}`,
-      division: 'Academic Wing',
-      department: 'Academic',
+      division: 'Operations Division',
+      department: 'Operations',
       vacancies: 1,
       filled: 0,
       remainingVacancies: 1,
       employmentType: 'Full Time',
       description: '',
       requirements: [
-        "Master's Degree / B.Ed in relevant subject or institutional discipline",
-        'Minimum 2+ years proven classroom instruction or institutional experience',
-        'Strong pedagogical communication and collaborative skills',
+        "Bachelor's or Master's Degree in relevant corporate or technical discipline",
+        'Minimum 2+ years proven corporate operations or industry experience',
+        'Strong business communication and collaborative skills',
       ],
       responsibilities: [
-        'Deliver curriculum instruction according to institutional bylaws',
-        'Maintain student performance and academic evaluation records in ERP',
+        'Deliver operational targets according to company policies',
+        'Maintain project and client performance records in ERP',
       ],
-      qualifications: ['B.Ed / M.Ed or Post Graduate Qualification'],
+      qualifications: ["Bachelor's / Post Graduate Qualification"],
       experienceRequired: '2-4 years',
-      skills: ['Classroom Management', 'Curriculum Planning'],
+      skills: ['Operations Management', 'Team Coordination'],
       salaryRange: { min: 30000, max: 45000, currency: 'INR' },
-      jobLocation: 'Kochi Campus',
+      jobLocation: 'Kochi Corporate HQ',
       closingDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       status: 'Open',
     });
@@ -1097,8 +1097,8 @@ ${
         pos.requirements && pos.requirements.length > 0
           ? [...pos.requirements]
           : [
-              "Master's Degree / B.Ed in relevant subject or institutional discipline",
-              'Minimum 2+ years proven institutional experience',
+              "Bachelor's or Master's Degree in relevant corporate discipline",
+              'Minimum 2+ years proven corporate experience',
             ],
     });
     setIsCreatePosOpen(true);
@@ -1149,7 +1149,7 @@ ${
     name: '',
     positionId: '',
     positionName: '',
-    department: 'Academic',
+    department: 'Operations',
     phone: '',
     email: '',
     experience: 2,
@@ -1175,7 +1175,7 @@ ${
       ...initialApplicantForm,
       positionId: targetPos ? targetPos.id : '',
       positionName: targetPos ? targetPos.name : '',
-      department: targetPos ? targetPos.department : 'Academic',
+      department: targetPos ? targetPos.department : 'Operations',
       skills: targetPos?.skills && targetPos.skills.length > 0 ? [...targetPos.skills] : ['Communication', 'Teamwork'],
     });
     setSkillInput('');
@@ -1207,7 +1207,7 @@ ${
       id: editingApplicantId || undefined,
       name: applicantForm.name.trim(),
       positionName: selectedPos?.name || applicantForm.positionName || 'Staff Role',
-      department: selectedPos?.department || applicantForm.department || 'Academic',
+      department: selectedPos?.department || applicantForm.department || 'Operations',
       overallRating: applicantForm.overallRating || 4.0,
       stage: applicantForm.stage || 'Applied',
       status: applicantForm.status || 'Active',
@@ -1398,7 +1398,7 @@ ${
                   startTime: '10:30 AM',
                   endTime: '11:30 AM',
                   locationOrLink: 'https://meet.google.com/mysar-interview',
-                  panelMembers: ['Principal Dr. Ramesh Nambiar', 'HOD'],
+                  panelMembers: ['Ramesh Nambiar', 'Department Head'],
                   notes: '',
                 });
                 setIsScheduleIntOpen(true);
@@ -1452,11 +1452,12 @@ ${
                 className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 bg-white"
               >
                 <option value="All">All Departments</option>
-                <option value="Academic">Academic</option>
+                <option value="Operations">Operations</option>
                 <option value="Administration">Administration</option>
                 <option value="Finance">Finance</option>
                 <option value="HR">HR</option>
                 <option value="IT">IT</option>
+                <option value="Sales & Marketing">Sales & Marketing</option>
               </select>
             </div>
           </div>
@@ -1631,7 +1632,7 @@ ${
                   className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 bg-white"
                 >
                   <option value="All">All Departments</option>
-                  <option value="Academic">Academic</option>
+                  <option value="Operations">Operations</option>
                   <option value="Administration">Administration</option>
                   <option value="Finance">Finance</option>
                   <option value="HR">HR</option>
@@ -2133,7 +2134,7 @@ ${
                                   startTime: '10:00 AM',
                                   endTime: '11:00 AM',
                                   locationOrLink: 'https://meet.google.com/mysar-interview',
-                                  panelMembers: ['Principal', 'HOD'],
+                                  panelMembers: ['Managing Director', 'Department Head'],
                                   notes: '',
                                 });
                                 setIsScheduleIntOpen(true);
@@ -2270,7 +2271,7 @@ ${
             <div>
               <h3 className="text-base font-bold text-slate-900">Offer Letters Issued</h3>
               <p className="text-xs text-slate-500">
-                Track, edit, and dispatch formal institutional offer letters. If applicant stage was wrongly set, you can edit or regenerate offers anytime.
+                Track, edit, and dispatch formal corporate offer letters. If applicant stage was wrongly set, you can edit or regenerate offers anytime.
               </p>
             </div>
             {applicants.length > 0 && (
@@ -2437,7 +2438,7 @@ ${
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Institutional Appointment Letters</h3>
+              <h3 className="text-base font-bold text-slate-900">Corporate Appointment Letters</h3>
               <p className="text-xs text-slate-500">
                 Official service appointment letters. You can edit appointment terms or convert appointed candidates directly into staff members.
               </p>
@@ -2653,7 +2654,7 @@ ${
               </div>
               <div>
                 <span className="text-slate-400 font-medium">Job Location:</span>
-                <div className="font-semibold text-slate-800">{selectedPositionForView.jobLocation || 'Kochi Campus'}</div>
+                <div className="font-semibold text-slate-800">{selectedPositionForView.jobLocation || 'Kochi Corporate HQ'}</div>
               </div>
               <div>
                 <span className="text-slate-400 font-medium">Salary Bandwidth:</span>
@@ -2748,7 +2749,7 @@ ${
                   {editingPosId ? 'Edit Position' : 'Create New Position'}
                 </h2>
                 <p className="text-slate-500 mt-0.5">
-                  Define institutional vacancy, requirements (bullet points), and compensation bandwidth.
+                  Define corporate vacancy, requirements (bullet points), and compensation bandwidth.
                 </p>
               </div>
               <button
@@ -2766,7 +2767,7 @@ ${
                   type="text"
                   value={posForm.name}
                   onChange={(e) => setPosForm({ ...posForm, name: e.target.value })}
-                  placeholder="e.g. Senior Mathematics Teacher"
+                  placeholder="e.g. Senior Operations Manager"
                   className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-emerald-600"
                 />
               </div>
@@ -2788,7 +2789,7 @@ ${
                   onChange={(e) => setPosForm({ ...posForm, department: e.target.value })}
                   className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                 >
-                  <option value="Academic">Academic</option>
+                  <option value="Operations">Operations</option>
                   <option value="Administration">Administration</option>
                   <option value="Finance">Finance</option>
                   <option value="HR">HR</option>
@@ -2878,7 +2879,7 @@ ${
                 <label className="font-semibold text-slate-700">Job Location</label>
                 <input
                   type="text"
-                  value={posForm.jobLocation || 'Kochi Campus'}
+                  value={posForm.jobLocation || 'Kochi Corporate HQ'}
                   onChange={(e) => setPosForm({ ...posForm, jobLocation: e.target.value })}
                   className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900"
                 />
@@ -2890,7 +2891,7 @@ ${
                   rows={2}
                   value={posForm.description}
                   onChange={(e) => setPosForm({ ...posForm, description: e.target.value })}
-                  placeholder="Outline key expectations, syllabus coverage, and institutional duties..."
+                  placeholder="Outline key expectations, operational targets, and corporate duties..."
                   className="w-full mt-1 border border-slate-200 rounded-xl p-3 text-slate-900"
                 />
               </div>
@@ -3042,7 +3043,7 @@ ${
                   {editingApplicantId ? 'Edit Candidate Application' : 'Add Candidate Application'}
                 </h2>
                 <p className="text-slate-500 mt-0.5">
-                  Link candidate profile, qualifications, and credentials to an institutional vacancy.
+                  Link candidate profile, qualifications, and credentials to a corporate vacancy.
                 </p>
               </div>
               <button
@@ -3155,10 +3156,10 @@ ${
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700">Current Organization / School / Institute</label>
+                  <label className="font-semibold text-slate-700">Current Organization / Company</label>
                   <input
                     type="text"
-                    placeholder="e.g. St. Thomas Academy / TCS / Freelance"
+                    placeholder="e.g. Apex Enterprise / TCS / Freelance"
                     value={applicantForm.currentCompanyOrSchool || ''}
                     onChange={(e) => setApplicantForm({ ...applicantForm, currentCompanyOrSchool: e.target.value })}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-emerald-600"
@@ -3427,7 +3428,7 @@ ${
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   >
                     <option value="Online">Online (Google Meet)</option>
-                    <option value="Offline">Offline (Campus)</option>
+                    <option value="Offline">Offline (In-Office)</option>
                   </select>
                 </div>
               </div>
@@ -4275,7 +4276,7 @@ ${
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-[11px] font-bold px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg border border-teal-200">
-                  Official Institutional Letter
+                  Official Corporate Letter
                 </span>
                 <button
                   type="button"
@@ -4364,7 +4365,7 @@ ${
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Assigned Institutional Employee ID</label>
+                  <label className="font-semibold text-slate-700">Assigned Corporate Employee ID</label>
                   <input
                     type="text"
                     value={apptForm.employeeId || ''}
@@ -4398,7 +4399,7 @@ ${
                   <label className="font-semibold text-slate-700">Division / Wing</label>
                   <input
                     type="text"
-                    value={apptForm.division || 'Academic Wing'}
+                    value={apptForm.division || 'Operations Division'}
                     onChange={(e) => setApptForm({ ...apptForm, division: e.target.value })}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
@@ -4693,7 +4694,7 @@ ${
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Workplace / Campus</label>
+                  <label className="font-semibold text-slate-700">Workplace / Branch</label>
                   <input
                     type="text"
                     value={apptForm.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021'}
@@ -4705,7 +4706,7 @@ ${
 
               {/* Responsibilities */}
               <div>
-                <label className="font-semibold text-slate-700">Institutional Key Responsibilities (One per line)</label>
+                <label className="font-semibold text-slate-700">Corporate Key Responsibilities (One per line)</label>
                 <textarea
                   rows={3}
                   value={(apptForm.responsibilities || []).join('\n')}
@@ -4721,7 +4722,7 @@ ${
 
               {/* Terms & Conditions */}
               <div>
-                <label className="font-semibold text-slate-700">Institutional Terms & Conditions</label>
+                <label className="font-semibold text-slate-700">Corporate Terms &amp; Conditions</label>
                 <textarea
                   rows={2}
                   value={apptForm.termsAndConditions || ''}
@@ -5615,7 +5616,7 @@ ${
               <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-800">
                 <div className="flex items-center space-x-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-teal-400"></div>
-                  <span className="font-bold text-sm tracking-wide">Casbiro Solutions – Institutional Appointment Letter</span>
+                  <span className="font-bold text-sm tracking-wide">Casbiro Solutions – Corporate Appointment Letter</span>
                   <span className="text-xs text-slate-400 font-mono hidden sm:inline">({liveAppt.appointmentNumber})</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -5646,7 +5647,7 @@ ${
                 <div id="casbiro-appt-doc" className="offer-letter-a4-sheet w-[210mm] max-w-full min-h-[297mm] bg-white shadow-xl border border-slate-200 p-8 sm:p-12 mx-auto space-y-6">
                   <div className="border-b-2 border-teal-700 pb-4 flex justify-between items-start">
                     <div>
-                      <h1 className="text-xl sm:text-2xl font-bold text-teal-800 uppercase">MYSAR – Institutional Services</h1>
+                      <h1 className="text-xl sm:text-2xl font-bold text-teal-800 uppercase">MYSAR – Corporate Services</h1>
                       <p className="text-xs font-semibold text-slate-600">Casbiro Solutions Private Limited</p>
                       <p className="text-[11px] text-slate-500">Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021</p>
                     </div>
@@ -5671,7 +5672,7 @@ ${
                     </p>
 
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 my-3">
-                      <div className="font-bold text-slate-900 mb-2">Terms of Institutional Appointment:</div>
+                      <div className="font-bold text-slate-900 mb-2">Terms of Corporate Appointment:</div>
                       <ul className="list-disc pl-4 space-y-1 text-xs text-slate-700">
                         <li>Workplace Location: {liveAppt.workplace}</li>
                         <li>Probation Period: {liveAppt.probationPeriod}</li>
@@ -5770,8 +5771,8 @@ ${
 
                   <div className="pt-8 mt-8 border-t border-slate-200 flex items-end justify-between">
                     <div>
-                      <div className="font-bold text-slate-900">Dr. Ramesh Nambiar</div>
-                      <div className="text-xs text-slate-500">Director of Academics &amp; Administration</div>
+                      <div className="font-bold text-slate-900">Ramesh Nambiar</div>
+                      <div className="text-xs text-slate-500">Director of Operations &amp; Administration</div>
                       <div className="text-[11px] text-slate-400 mt-0.5">Casbiro Solutions Private Limited</div>
                     </div>
                     <div className="text-right text-xs text-slate-600">

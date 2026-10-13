@@ -71,7 +71,7 @@ export const InitiateTransferModal: React.FC<InitiateTransferModalProps> = ({
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]);
   const [destinationBranch, setDestinationBranch] = useState(
-    activeAsset?.location.branch || 'Kochi Campus'
+    activeAsset?.location.branch || 'Kochi HQ'
   );
   const [destinationRoom, setDestinationRoom] = useState(
     activeAsset?.location.room || 'General Bay'
@@ -102,7 +102,7 @@ export const InitiateTransferModal: React.FC<InitiateTransferModalProps> = ({
     if (activeAsset) {
       setCondition(activeAsset.condition || 'Good');
       setAccessories(activeAsset.accessories || []);
-      setDestinationBranch(activeAsset.location.branch || 'Kochi Campus');
+      setDestinationBranch(activeAsset.location.branch || 'Kochi HQ');
       setDestinationRoom(activeAsset.location.room || 'General Bay');
     }
   }, [activeAsset]);
@@ -540,13 +540,13 @@ export const InitiateTransferModal: React.FC<InitiateTransferModalProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center space-x-1">
                     <Building className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Destination Campus / Branch</span>
+                    <span>Destination Office / Branch</span>
                   </label>
                   <input
                     type="text"
                     value={destinationBranch}
                     onChange={(e) => setDestinationBranch(e.target.value)}
-                    placeholder="e.g. Kochi Campus"
+                    placeholder="e.g. Kochi HQ"
                     className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-700 focus:outline-none"
                   />
                 </div>

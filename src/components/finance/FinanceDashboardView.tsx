@@ -161,7 +161,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
     date: new Date().toISOString().split('T')[0],
     month: 'Sep' as MonthShort,
     year: 2026,
-    category: 'Campus IT & Cloud Infrastructure',
+    category: 'Enterprise IT & Cloud Infrastructure',
     description: '',
     vendor: '',
     amount: '',
@@ -267,7 +267,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
       date: new Date().toISOString().split('T')[0],
       month: 'Sep',
       year: 2026,
-      category: 'Campus IT & Cloud Infrastructure',
+      category: 'Enterprise IT & Cloud Infrastructure',
       description: '',
       vendor: '',
       amount: '',
@@ -814,7 +814,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
                 )}
               </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Visual analysis of approved institutional budget limits vs actual monthly expenditures,
+                Visual analysis of approved corporate budget limits vs actual monthly expenditures,
                 burn velocity, and department allocation variances.
               </p>
             </div>
@@ -856,7 +856,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
                 className="bg-white border border-gray-200 text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 pr-8 shadow-2xs focus:ring-2 focus:ring-[#168A45] focus:outline-hidden cursor-pointer"
               >
                 <option value="All">All Departments</option>
-                <option value="Academic">Academic</option>
+                <option value="Sales & Marketing">Sales & Marketing</option>
                 <option value="Administration">Administration</option>
                 <option value="Finance & Accounts">Finance & Accounts</option>
                 <option value="IT & Tech">IT & Tech</option>
@@ -957,7 +957,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
             >
               {metrics.overallUtilizationRate}% utilized
             </span>
-            <span className="text-slate-500">of institutional cap</span>
+            <span className="text-slate-500">of corporate cap</span>
           </div>
         </div>
 
@@ -1865,7 +1865,7 @@ export const FinanceDashboardView: React.FC<FinanceDashboardViewProps> = ({
                     onChange={(e) => setNewExpense({ ...newExpense, department: e.target.value })}
                     className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-slate-900 font-medium focus:ring-2 focus:ring-[#168A45] focus:outline-hidden"
                   >
-                    <option value="Academic">Academic</option>
+                    <option value="Sales & Marketing">Sales & Marketing</option>
                     <option value="Administration">Administration</option>
                     <option value="Finance & Accounts">Finance & Accounts</option>
                     <option value="IT & Tech">IT & Tech</option>

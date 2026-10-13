@@ -283,7 +283,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                 className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 bg-white"
               >
                 <option value="All">All Departments</option>
-                <option value="Academic">Academic</option>
+                <option value="Operations">Operations</option>
                 <option value="Administration">Administration</option>
                 <option value="Finance">Finance</option>
                 <option value="HR">HR</option>
@@ -468,7 +468,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                               Approve
                             </button>
                             <button
-                              onClick={() => onUpdateLeaveStatus(req.id, 'Rejected', 'Institutional schedule priority')}
+                              onClick={() => onUpdateLeaveStatus(req.id, 'Rejected', 'Company schedule priority')}
                               className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
                             >
                               Reject
@@ -495,8 +495,8 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
           <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
             <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
               <div>
-                <h3 className="font-bold text-slate-800 text-sm">Institutional Staff Leave Balances</h3>
-                <p className="text-[11px] text-slate-500">Live quotas, consumed leaves, and available quotas across academic departments.</p>
+                <h3 className="font-bold text-slate-800 text-sm">Company Staff Leave Balances</h3>
+                <p className="text-[11px] text-slate-500">Live quotas, consumed leaves, and available quotas across company departments.</p>
               </div>
               <button
                 onClick={() => handleOpenApplyLeave()}
@@ -760,8 +760,8 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                         {cat.label} ({cat.availableDays} days available)
                       </option>
                     ))}
-                    <option value="Maternity Leave">Maternity Leave (Subject to institutional approval)</option>
-                    <option value="Paternity Leave">Paternity Leave (Subject to institutional approval)</option>
+                    <option value="Maternity Leave">Maternity Leave (Subject to management approval)</option>
+                    <option value="Paternity Leave">Paternity Leave (Subject to management approval)</option>
                     <option value="Unpaid Leave">Unpaid Leave (Loss of Pay - Exempt from quota)</option>
                   </select>
                 </div>
@@ -881,7 +881,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                         <div className="text-[11px] text-rose-700 mt-0.5">
                           {validation.availableBalance === 0 ? (
                             <span>
-                              <strong>{selectedStaff?.fullName}</strong> has <strong>0 days</strong> of {validation.category.label} remaining for this academic cycle.
+                              <strong>{selectedStaff?.fullName}</strong> has <strong>0 days</strong> of {validation.category.label} remaining for this annual cycle.
                             </span>
                           ) : (
                             <span>
@@ -945,7 +945,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                     <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div className="text-[11px]">
                       <span className="font-bold block text-amber-800">Loss of Pay (Unpaid Leave) Policy:</span>
-                      This application is exempt from quota balance limits. It will be submitted for institutional review and recorded as a prorated deduction in monthly payroll calculation.
+                      This application is exempt from quota balance limits. It will be submitted for management review and recorded as a prorated deduction in monthly payroll calculation.
                     </div>
                   </div>
                 ) : (
@@ -961,12 +961,12 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
                 )}
               </div>
 
-              {/* Substitute Faculty */}
+              {/* Handover / Substitute Colleague */}
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Substitute Faculty / Duty Colleague</label>
+                <label className="font-semibold text-slate-700 block mb-1">Handover / Duty Colleague</label>
                 <input
                   type="text"
-                  placeholder="e.g. Prof. Arvind Menon (will cover scheduled lectures)"
+                  placeholder="e.g. Arvind Menon (will cover assigned tasks)"
                   value={leaveForm.substituteStaff}
                   onChange={(e) => setLeaveForm({ ...leaveForm, substituteStaff: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#168A45]"
@@ -977,7 +977,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-semibold text-slate-700">Reason for Absence</label>
-                  <span className="text-[10px] text-slate-400">Required for institutional review</span>
+                  <span className="text-[10px] text-slate-400">Required for management review</span>
                 </div>
                 <textarea
                   rows={2}

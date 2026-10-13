@@ -68,7 +68,7 @@ const REPORT_CATALOG: ReportOption[] = [
 
   // Cash & Bank
   { id: 'bank-register', category: 'cash-bank', name: 'Bank Statement & Ledger Register', description: 'Bank debits, credits, and closing reconciliation balances' },
-  { id: 'cash-book', category: 'cash-bank', name: 'Petty Cash Book & Fund Float', description: 'Cash in hand disbursements and campus cash floats' },
+  { id: 'cash-book', category: 'cash-bank', name: 'Petty Cash Book & Fund Float', description: 'Cash in hand disbursements and branch cash floats' },
 
   // Loans
   { id: 'loan-schedule', category: 'loans', name: 'Loan Facilities & Amortization Schedule', description: 'Sanctioned term loans, outstanding principal, and EMI commitments' },
@@ -192,7 +192,7 @@ export const FinanceReportCenterView: React.FC = () => {
           col1: i.code,
           col2: i.name,
           col3: i.category,
-          col4: i.warehouse || 'Central Campus',
+          col4: i.warehouse || 'Central Warehouse',
           col5: `${i.currentStock} ${i.baseUnit}`,
           amount: i.currentStock * i.purchasePrice,
           tag: i.currentStock <= i.reorderLevel ? 'Reorder' : 'In Stock',
@@ -335,7 +335,7 @@ export const FinanceReportCenterView: React.FC = () => {
         rows = [
           { col1: 'Sec 194C', col2: 'Payment to Contractors & Logistics', col3: '8 Vendors', col4: '₹14,50,000', col5: '2.0%', amount: 29000, tag: 'Challan ITNS-281' },
           { col1: 'Sec 194J', col2: 'Fees for Professional & Technical Services', col3: '5 Experts', col4: '₹9,80,000', col5: '10.0%', amount: 98000, tag: 'Challan ITNS-281' },
-          { col1: 'Sec 194I', col2: 'Rent for Campus & Infrastructure', col3: '2 Landlords', col4: '₹6,00,000', col5: '10.0%', amount: 60000, tag: 'Challan ITNS-281' },
+          { col1: 'Sec 194I', col2: 'Rent for Office & Infrastructure', col3: '2 Landlords', col4: '₹6,00,000', col5: '10.0%', amount: 60000, tag: 'Challan ITNS-281' },
         ];
         break;
       }

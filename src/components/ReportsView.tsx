@@ -106,7 +106,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   
   // Total Enrolled Students across all leads
   const totalStudentStrength = useMemo(() => {
-    return leads.reduce((acc, lead) => acc + (Number(lead.studentStrength) || 0), 0);
+    return leads.reduce((acc, lead) => acc + (Number(lead.studentCount ?? lead.studentStrength) || 0), 0);
   }, [leads]);
 
   // Active in-flight leads (excluding Won, Lost, On Hold)
@@ -145,7 +145,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     leads.forEach((l) => {
       if (map[l.status]) {
         map[l.status].count++;
-        map[l.status].totalStudents += Number(l.studentStrength) || 0;
+        map[l.status].totalStudents += Number(l.studentCount ?? l.studentStrength) || 0;
         if (l.priority === 'High') map[l.status].highPriority++;
         else if (l.priority === 'Medium') map[l.status].medPriority++;
         else map[l.status].lowPriority++;
@@ -213,10 +213,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
-        lead.instituteName.toLowerCase().includes(q) ||
-        lead.contactPerson.toLowerCase().includes(q) ||
-        lead.city.toLowerCase().includes(q) ||
-        lead.id.toLowerCase().includes(q);
+        (lead.instituteName || '').toLowerCase().includes(q) ||
+        (lead.contactPerson || '').toLowerCase().includes(q) ||
+        (lead.city || lead.address || '').toLowerCase().includes(q) ||
+        (lead.id || '').toLowerCase().includes(q);
 
       return matchesStatus && matchesPriority && matchesRep && matchesSearch;
     });
@@ -277,10 +277,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         l.priority,
         l.assignedTo,
         `"${(l.contactPerson || '').replace(/"/g, '""')}"`,
-        l.phone,
-        l.city,
-        l.state,
-        (l.studentStrength || 0).toString(),
+        l.phone || l.mobile || '',
+        l.city || l.address || '',
+        l.state || '',
+        (l.studentCount ?? l.studentStrength ?? 0).toString(),
         l.followUpDate || '',
       ]),
     ];
@@ -306,7 +306,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   leads.forEach((l) => {
     if (!repMap[l.assignedTo]) repMap[l.assignedTo] = { count: 0, won: 0, studentSum: 0, pipeline: 0 };
     repMap[l.assignedTo].count++;
-    repMap[l.assignedTo].studentSum += Number(l.studentStrength) || 0;
+    repMap[l.assignedTo].studentSum += Number(l.studentCount ?? l.studentStrength) || 0;
     if (l.status === 'Won') repMap[l.assignedTo].won++;
     if (!['Won', 'Lost', 'On Hold'].includes(l.status)) repMap[l.assignedTo].pipeline++;
   });
@@ -853,7 +853,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                           <td className="py-2.5 px-2">
                             <div className="font-bold text-slate-800">{lead.instituteName}</div>
                             <div className="text-[10px] text-slate-500 font-medium">
-                              {lead.city}, {lead.state}
+                              {[lead.city || lead.address, lead.state].filter(Boolean).join(', ') || 'Location not specified'}
                             </div>
                           </td>
 
@@ -877,11 +877,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
                           <td className="py-2.5 px-2">
                             <div className="font-semibold text-slate-800">{lead.contactPerson}</div>
-                            <div className="text-[10px] text-slate-500 font-mono">{lead.phone}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">{lead.phone || lead.mobile}</div>
                           </td>
 
                           <td className="py-2.5 px-2 text-center font-bold text-[#0B5D2A]">
-                            {(lead.studentStrength || 0).toLocaleString()}
+                            {(lead.studentCount ?? lead.studentStrength ?? 0).toLocaleString()}
                           </td>
 
                           <td className="py-2.5 px-2 font-medium text-slate-700">

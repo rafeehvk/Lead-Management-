@@ -316,7 +316,7 @@ export const AssetOverviewView: React.FC<AssetOverviewViewProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-600">
-                Temporary field deployments, student expos, or client presentations
+                Temporary field deployments, trade expos, or client presentations
               </p>
             </div>
           </div>

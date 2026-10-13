@@ -31,6 +31,7 @@ import { generatePdfFromElement, formatINR } from '../utils/pdfGenerator';
 import { PrintableProposalDocument } from './PrintableProposalDocument';
 import { ProposalPaymentDashboard } from './ProposalPaymentDashboard';
 import { getProposalPaymentTracking, getPaymentBadgeClass } from '../utils/paymentScheduleUtils';
+import { UserSideMenuPermission } from '../utils/menuPermissions';
 
 interface ProposalsViewProps {
   proposals: Proposal[];
@@ -44,6 +45,7 @@ interface ProposalsViewProps {
   onNavigateToTemplates?: () => void;
   onEmailProposal?: (proposal: Proposal) => void;
   onUpdateProposal?: (updated: Proposal) => void;
+  menuPermission?: UserSideMenuPermission;
 }
 
 export const ProposalsView: React.FC<ProposalsViewProps> = ({
@@ -58,7 +60,14 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
   onNavigateToTemplates,
   onEmailProposal,
   onUpdateProposal,
+  menuPermission,
 }) => {
+  const canViewOption = menuPermission ? menuPermission.viewOnly || menuPermission.entry || menuPermission.edit || menuPermission.delete : true;
+  const canEntryOption = menuPermission ? menuPermission.entry : true;
+  const canEditOption = menuPermission ? menuPermission.edit : true;
+  const canDeleteOption = menuPermission ? menuPermission.delete : true;
+  const isAllTicked = canViewOption && canEntryOption && canEditOption && canDeleteOption;
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
@@ -183,7 +192,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
         </div>
 
         <div className="flex items-center space-x-2.5">
-          {onNavigateToTemplates && (
+          {onNavigateToTemplates && canEditOption && (
             <button
               onClick={onNavigateToTemplates}
               className="bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0B5D2A] border border-gray-200 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"
@@ -202,13 +211,22 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          <button
-            onClick={onOpenNewProposalPrompt}
-            className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-1.5 transition-all shadow-xs active:scale-98 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Proposal</span>
-          </button>
+          {canEntryOption ? (
+            <button
+              onClick={onOpenNewProposalPrompt}
+              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-1.5 transition-all shadow-xs active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Proposal</span>
+            </button>
+          ) : (
+            <span
+              className="px-3 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200"
+              title="Entry Only checkbox is not ticked for this menu"
+            >
+              Add New Disabled
+            </span>
+          )}
         </div>
       </div>
 
@@ -555,7 +573,7 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
                               </button>
                             )}
 
-                            {onEditProposal && (
+                            {onEditProposal && canEditOption && (
                               <button
                                 onClick={() => onEditProposal(p)}
                                 title={`Edit proposal and issue v${(p.version || 1) + 1}`}
@@ -575,14 +593,16 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
                               <span className="hidden md:inline">History</span>
                             </button>
 
-                            <button
-                              onClick={() => onOpenPreview(p)}
-                              title="View Proposal Document"
-                              className="bg-white hover:bg-slate-50 text-slate-700 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4 text-slate-500" />
-                              <span>View</span>
-                            </button>
+                            {canViewOption && (
+                              <button
+                                onClick={() => onOpenPreview(p)}
+                                title="View Proposal Document"
+                                className="bg-white hover:bg-slate-50 text-slate-700 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition-colors cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4 text-slate-500" />
+                                <span>View</span>
+                              </button>
+                            )}
 
                             <button
                               onClick={() => handleDirectDownloadPdf(p)}
@@ -598,17 +618,19 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({
                               )}
                             </button>
 
-                            <button
-                              onClick={() => {
-                                if (confirm(`Delete proposal ${p.proposalNumber}?`)) {
-                                  onDeleteProposal(p.id);
-                                }
-                              }}
-                              title="Delete Proposal"
-                              className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors ml-1 cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canDeleteOption && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Delete proposal ${p.proposalNumber}?`)) {
+                                    onDeleteProposal(p.id);
+                                  }
+                                }}
+                                title="Delete Proposal"
+                                className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors ml-1 cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

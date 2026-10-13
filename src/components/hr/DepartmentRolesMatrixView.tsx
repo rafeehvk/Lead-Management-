@@ -29,19 +29,19 @@ import { hrStorage } from '../../services/hrStorageService';
 import { SIDE_MENU_DEFINITIONS, SIDE_MENU_CATEGORIES } from '../../utils/menuPermissions';
 
 const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
-  // Academic (101)
+  // Operations (101)
   {
     id: 'ROLE-101-01',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Principal & Academic Director',
+    departmentName: 'Operations',
+    roleTitle: 'Director of Operations',
     accessLevel: 'Super Admin (Full Control)',
-    reportingTo: 'Managing Director / Board of Trustees',
-    description: 'Executive academic leadership, institutional accreditation, and final faculty evaluations.',
+    reportingTo: 'Managing Director / Board of Directors',
+    description: 'Executive operational leadership, service delivery excellence, and final performance evaluations.',
     keyResponsibilities: [
-      'Institutional leadership & academic governance',
-      'Final faculty evaluations & appointment sign-off',
-      'Curriculum quality assurance and board compliance',
+      'Company-wide operational leadership & delivery governance',
+      'Final staff evaluations & appointment sign-off',
+      'Project quality assurance and SLA compliance',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -56,15 +56,15 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
   {
     id: 'ROLE-101-02',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Vice Principal & Academic Dean',
+    departmentName: 'Operations',
+    roleTitle: 'VP of Operations',
     accessLevel: 'Department Manager',
-    reportingTo: 'Principal & Academic Director',
-    description: 'Supervises academic timetable, instructional delivery, and faculty mentoring.',
+    reportingTo: 'Director of Operations',
+    description: 'Supervises operational schedules, project delivery, and team leadership.',
     keyResponsibilities: [
-      'Academic schedule & lecture timetable administration',
-      'Faculty performance review & mentorship',
-      'Student examination council oversight',
+      'Operations schedule & project delivery administration',
+      'Team performance review & mentorship',
+      'Quality assurance council oversight',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -79,14 +79,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
   {
     id: 'ROLE-101-03',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Professor & Head of Department (HOD)',
+    departmentName: 'Operations',
+    roleTitle: 'Operations Manager & Head of Department (HOD)',
     accessLevel: 'Department Manager',
-    reportingTo: 'Vice Principal & Academic Dean',
-    description: 'Leads department curriculum, faculty workload allocation, and student evaluations.',
+    reportingTo: 'VP of Operations',
+    description: 'Leads departmental workflows, resource allocation, and client project evaluations.',
     keyResponsibilities: [
-      'Course syllabus delivery & pedagogical standards',
-      'Department faculty leave and attendance oversight',
+      'Project milestone delivery & quality standards',
+      'Department staff leave and attendance oversight',
       'Applicant interview evaluations for department vacancies',
     ],
     capabilities: {
@@ -102,15 +102,15 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
   {
     id: 'ROLE-101-04',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Associate Professor / Faculty Member',
+    departmentName: 'Operations',
+    roleTitle: 'Senior Operations Executive',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Professor & Head of Department (HOD)',
-    description: 'Classroom instruction, digital attendance logging, and student mentoring.',
+    reportingTo: 'Operations Manager & Head of Department (HOD)',
+    description: 'Client project execution, digital attendance logging, and workflow coordination.',
     keyResponsibilities: [
-      'Conduct scheduled classroom lectures & laboratory practicals',
-      'Maintain daily biometric attendance & lesson plans',
-      'Student assignment assessments & progress reporting',
+      'Execute scheduled project deliverables & client onboarding',
+      'Maintain daily biometric attendance & task logs',
+      'Client deliverable assessments & progress reporting',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -125,14 +125,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
   {
     id: 'ROLE-101-05',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Laboratory & Workshop Instructor',
+    departmentName: 'Operations',
+    roleTitle: 'Technical & Field Coordinator',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Professor & Head of Department (HOD)',
-    description: 'Instructional lab sessions, technical apparatus safety, and consumable stock tracking.',
+    reportingTo: 'Operations Manager & Head of Department (HOD)',
+    description: 'Field implementation sessions, technical safety protocols, and consumable stock tracking.',
     keyResponsibilities: [
-      'Operate instructional apparatus & safety protocols',
-      'Assist students with laboratory experiments',
+      'Operate technical apparatus & safety protocols',
+      'Assist clients with product implementation & onboarding',
       'Report equipment maintenance needs to IT/Facilities',
     ],
     capabilities: {
@@ -151,14 +151,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     id: 'ROLE-102-01',
     departmentCode: '102',
     departmentName: 'Administration',
-    roleTitle: 'Managing Director / Corporate Trustee',
+    roleTitle: 'Managing Director / Corporate Director',
     accessLevel: 'Super Admin (Full Control)',
-    reportingTo: 'Board of Governors',
-    description: 'Overarching institutional governance, major capital approvals, and legal signing authority.',
+    reportingTo: 'Board of Directors',
+    description: 'Overarching corporate governance, major capital approvals, and legal signing authority.',
     keyResponsibilities: [
-      'Strategic corporate direction & campus expansions',
-      'Institutional budget authorization & financial oversight',
-      'Legal decrees, executive policies, and regulatory sign-off',
+      'Strategic corporate direction & branch expansions',
+      'Company budget authorization & financial oversight',
+      'Legal contracts, executive policies, and regulatory sign-off',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -174,13 +174,13 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     id: 'ROLE-102-02',
     departmentCode: '102',
     departmentName: 'Administration',
-    roleTitle: 'Campus Administrator',
+    roleTitle: 'Corporate Operations Manager',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Oversees campus daily operations, statutory document renewals, and cross-departmental coordination.',
+    description: 'Oversees branch daily operations, statutory document renewals, and cross-departmental coordination.',
     keyResponsibilities: [
-      'Campus facilities coordination & security monitoring',
-      'Statutory compliance filing with local municipal authorities',
+      'Office facilities coordination & security monitoring',
+      'Statutory compliance filing with corporate authorities',
       'Administrative material requisitions & approvals',
     ],
     capabilities: {
@@ -199,12 +199,12 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     departmentName: 'Administration',
     roleTitle: 'Executive Office Assistant',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Campus Administrator',
-    description: 'Inward/outward dispatch, student enquiries, and institutional record filing.',
+    reportingTo: 'Corporate Operations Manager',
+    description: 'Inward/outward dispatch, client enquiries, and corporate record filing.',
     keyResponsibilities: [
-      'Front office reception & parent inquiry handling',
-      'Government circular inward logs & archival',
-      'Student certificate issuance logistics',
+      'Front office reception & client inquiry handling',
+      'Corporate correspondence inward logs & archival',
+      'Client documentation & dispatch logistics',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -225,7 +225,7 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     roleTitle: 'Chief Financial Officer (CFO)',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Institutional financial health, annual budget planning, and statutory tax audits.',
+    description: 'Corporate financial health, annual budget planning, and statutory tax audits.',
     keyResponsibilities: [
       'Fiscal budgeting, fund allocation, and cashflow management',
       'Payroll disbursement approval & statutory compliance (EPF/ESI)',
@@ -298,7 +298,7 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     reportingTo: 'Managing Director',
     description: 'Talent recruitment, employee relations, compensation slabs, and HR policy enforcement.',
     keyResponsibilities: [
-      'Oversee institution-wide hiring campaigns & talent pipelines',
+      'Oversee company-wide hiring campaigns & talent pipelines',
       'Issue and authorize Offer Letters & Appointment Letters',
       'Formulate leave rules, appraisal benchmarks, and salary structures',
     ],
@@ -367,10 +367,10 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     roleTitle: 'IT Director & Systems Architect',
     accessLevel: 'Super Admin (Full Control)',
     reportingTo: 'Managing Director',
-    description: 'ERP portal administration, database integrity, campus networking, and cloud services.',
+    description: 'ERP portal administration, database integrity, corporate networking, and cloud services.',
     keyResponsibilities: [
-      'Manage MYSAR ERP software, permissions, and database sync',
-      'Oversee campus firewall, Wi-Fi network, and server hardware',
+      'Manage Corporate ERP software, permissions, and database sync',
+      'Oversee corporate firewall, Wi-Fi network, and server hardware',
       'IT hardware procurement recommendations & vendor SLAs',
     ],
     capabilities: {
@@ -390,10 +390,10 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     roleTitle: 'Systems & Network Engineer',
     accessLevel: 'Operational (Entry & Edit)',
     reportingTo: 'IT Director & Systems Architect',
-    description: 'Campus LAN/WAN support, staff workstations, printer maintenance, and classroom smartboards.',
+    description: 'Office LAN/WAN support, staff workstations, printer maintenance, and conference room AV.',
     keyResponsibilities: [
       'Troubleshoot staff computer hardware and operating systems',
-      'Manage classroom smart displays, projectors, and audio systems',
+      'Manage conference room displays, projectors, and audio systems',
       'Perform scheduled data backups & antivirus updates',
     ],
     capabilities: {
@@ -412,14 +412,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     id: 'ROLE-106-01',
     departmentCode: '106',
     departmentName: 'Sales & Marketing',
-    roleTitle: 'Head of Admissions & Institutional Growth',
+    roleTitle: 'Head of Sales & Business Growth',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Admissions growth strategy, institutional partner tie-ups, and lead conversion targets.',
+    description: 'Business growth strategy, enterprise partner tie-ups, and lead conversion targets.',
     keyResponsibilities: [
-      'Drive student admissions campaigns and enrollment funnels',
-      'Manage lead allocation to admissions counselors',
-      'Approve fee quotations, concessions, and institutional proposals',
+      'Drive B2B sales campaigns and client acquisition funnels',
+      'Manage lead allocation to sales executives',
+      'Approve commercial quotations, discounts, and client proposals',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -435,14 +435,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     id: 'ROLE-106-02',
     departmentCode: '106',
     departmentName: 'Sales & Marketing',
-    roleTitle: 'Senior Admissions Counselor / Sales Rep',
+    roleTitle: 'Senior Business Development Executive',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Head of Admissions',
-    description: 'Lead engagement, parent counseling, campus tours, and admission enrollment.',
+    reportingTo: 'Head of Sales & Business Growth',
+    description: 'Lead engagement, client consultations, product demos, and deal closures.',
     keyResponsibilities: [
-      'Follow up on prospective leads via phone, email, and campus visits',
-      'Conduct institutional presentation tours and counseling sessions',
-      'Convert qualified leads and issue fee quotation proposals',
+      'Follow up on prospective leads via phone, email, and client meetings',
+      'Conduct product presentation demos and discovery sessions',
+      'Convert qualified leads and issue commercial quotation proposals',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -455,19 +455,19 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
     headcount: 6,
   },
 
-  // Campus Operations (107)
+  // Supply Chain & Facilities (107)
   {
     id: 'ROLE-107-01',
     departmentCode: '107',
-    departmentName: 'Campus Operations',
-    roleTitle: 'Facilities & Estate Manager',
+    departmentName: 'Supply Chain & Facilities',
+    roleTitle: 'Facilities & Logistics Manager',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Campus estate maintenance, electrical utilities, transport fleet, and physical security.',
+    description: 'Office estate maintenance, electrical utilities, logistics fleet, and physical security.',
     keyResponsibilities: [
-      'Campus physical infrastructure, civil repairs, and sanitation',
-      'Supervise institutional transport fleet, routes, and drivers',
-      'Manage security personnel schedules & physical campus safety',
+      'Corporate physical infrastructure, civil repairs, and sanitation',
+      'Supervise company logistics fleet, routes, and drivers',
+      'Manage security personnel schedules & workplace safety',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -482,14 +482,14 @@ const DEFAULT_DEPARTMENT_ROLES: DepartmentRole[] = [
   {
     id: 'ROLE-107-02',
     departmentCode: '107',
-    departmentName: 'Campus Operations',
+    departmentName: 'Supply Chain & Facilities',
     roleTitle: 'Procurement & Storekeeper',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Facilities & Estate Manager',
+    reportingTo: 'Facilities & Logistics Manager',
     description: 'Receives materials, issues store requisitions, and manages physical inventory.',
     keyResponsibilities: [
       'Inspect incoming materials against purchase orders (GRN)',
-      'Store inventory binning & issuance to teaching departments',
+      'Store inventory binning & issuance to operational departments',
       'Initiate replenishment purchase requisitions for low stock items',
     ],
     capabilities: {
@@ -594,7 +594,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
         };
       } else {
         const isAllowedDept =
-          role.departmentName.toLowerCase().includes('academic')
+          role.departmentName.toLowerCase().includes('operations')
             ? item.category.includes('HR') || item.id === 'dashboard'
             : role.departmentName.toLowerCase().includes('finance')
             ? item.category.includes('Finance') || item.category.includes('Sales') || item.id === 'dashboard'
@@ -664,7 +664,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
     roleTitle: '',
     departmentCode: '101',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Principal & Academic Director',
+    reportingTo: 'Director of Operations',
     description: '',
     keyResponsibilities: [],
     capabilities: {
@@ -691,7 +691,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
   // Open Create Role Modal
   const handleOpenCreateRole = () => {
     setEditingRole(null);
-    const defaultDept = departments[0] || { departmentCode: '101', departmentName: 'Academic' };
+    const defaultDept = departments[0] || { departmentCode: '101', departmentName: 'Operations' };
     setRoleForm({
       roleTitle: '',
       departmentCode: defaultDept.departmentCode,
@@ -756,7 +756,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
         roleTitle: roleForm.roleTitle.trim(),
         accessLevel: roleForm.accessLevel || 'Operational (Entry & Edit)',
         reportingTo: roleForm.reportingTo?.trim() || 'Managing Director',
-        description: roleForm.description?.trim() || 'Institutional departmental role.',
+        description: roleForm.description?.trim() || 'Company departmental role.',
         keyResponsibilities:
           respLines.length > 0
             ? respLines
@@ -860,11 +860,11 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
   const handleResetToDefaults = () => {
     if (
       window.confirm(
-        'Reset all defined Department Roles back to standard institutional defaults?'
+        'Reset all defined Department Roles back to standard company defaults?'
       )
     ) {
       saveRolesList(DEFAULT_DEPARTMENT_ROLES);
-      showFeedback('Reset department roles matrix to institutional defaults.');
+      showFeedback('Reset department roles matrix to company defaults.');
     }
   };
 
@@ -895,7 +895,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
         <div>
           <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-[#168A45]" />
-            <span>Institutional Department & Roles Definition Matrix</span>
+            <span>Company Department & Roles Definition Matrix</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Define organizational departments, establish role titles, authority limits, reporting structures, and access boundaries.
@@ -941,7 +941,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
         <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 shadow-2xs">
           <div className="text-[10px] font-bold uppercase text-slate-400">Total Departments</div>
           <div className="text-xl font-extrabold text-slate-900 mt-0.5">{departments.length}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Active institutional units</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">Active company units</div>
         </div>
 
         <div className="bg-emerald-50/50 border border-emerald-200/70 rounded-xl p-3 shadow-2xs">
@@ -963,7 +963,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
           <div className="text-xl font-extrabold text-blue-900 mt-0.5">
             {operationalRolesCount}
           </div>
-          <div className="text-[10px] text-blue-700 mt-0.5">Faculty, support & staff</div>
+          <div className="text-[10px] text-blue-700 mt-0.5">Operations, support & staff</div>
         </div>
       </div>
 
@@ -1202,7 +1202,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 {role.keyResponsibilities.length > 0 && (
                   <div className="space-y-1">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      Key Institutional Responsibilities
+                      Key Corporate Responsibilities
                     </div>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-700">
                       {role.keyResponsibilities.map((resp, idx) => (
@@ -1215,9 +1215,9 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                   </div>
                 )}
 
-                {/* Permitted Institutional Capabilities Badges */}
+                {/* Permitted Corporate Capabilities Badges */}
                 <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-[10px]">
-                  <span className="font-bold text-slate-400 mr-1">Institutional Boundaries:</span>
+                  <span className="font-bold text-slate-400 mr-1">Corporate Boundaries:</span>
 
                   <span
                     className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded font-semibold border ${
@@ -1299,7 +1299,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
             className="flex items-center space-x-1.5 px-3 py-1.5 border border-slate-300 hover:bg-slate-100 rounded-xl font-bold text-slate-700 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-            <span>Restore Standard Institutional Roles</span>
+            <span>Restore Standard Corporate Roles</span>
           </button>
         </div>
 
@@ -1329,7 +1329,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
               <div className="flex items-center space-x-2">
                 <Briefcase className="w-4 h-4 text-[#168A45]" />
                 <h3 className="font-extrabold text-sm">
-                  {editingRole ? 'Edit Institutional Role' : 'Define New Department Role'}
+                  {editingRole ? 'Edit Corporate Role' : 'Define New Department Role'}
                 </h3>
               </div>
               <button
@@ -1348,7 +1348,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Vice Principal & Academic Dean"
+                  placeholder="e.g. Vice President & Operations Director"
                   value={roleForm.roleTitle || ''}
                   onChange={(e) => setRoleForm({ ...roleForm, roleTitle: e.target.value })}
                   className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"
@@ -1391,7 +1391,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                   <label className="block font-bold text-slate-700 mb-1">Reporting Hierarchy</label>
                   <input
                     type="text"
-                    placeholder="e.g. Principal & Academic Director"
+                    placeholder="e.g. Chief Executive Officer & Operations Director"
                     value={roleForm.reportingTo || ''}
                     onChange={(e) => setRoleForm({ ...roleForm, reportingTo: e.target.value })}
                     className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"
@@ -1427,7 +1427,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Classroom syllabus delivery&#10;Mentoring assigned student batches&#10;Evaluating semester coursework"
+                  placeholder="Client delivery & project execution&#10;Mentoring assigned project teams&#10;Evaluating quarterly performance deliverables"
                   value={responsibilitiesInput}
                   onChange={(e) => setResponsibilitiesInput(e.target.value)}
                   className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"
@@ -1620,7 +1620,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
               <div className="flex items-center space-x-2">
                 <Building2 className="w-4 h-4 text-[#168A45]" />
                 <h3 className="font-extrabold text-sm">
-                  {editingDept ? 'Edit Institutional Department' : 'Create New Department'}
+                  {editingDept ? 'Edit Company Department' : 'Create New Department'}
                 </h3>
               </div>
               <button
@@ -1661,7 +1661,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 <label className="block font-bold text-slate-700 mb-1">Head of Department (HOD)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Dr. K. Radhakrishnan"
+                  placeholder="e.g. K. Radhakrishnan"
                   value={deptForm.headOfDepartment || ''}
                   onChange={(e) => setDeptForm({ ...deptForm, headOfDepartment: e.target.value })}
                   className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"
@@ -1672,7 +1672,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 <label className="block font-bold text-slate-700 mb-1">Reporting Line</label>
                 <input
                   type="text"
-                  placeholder="e.g. Managing Director / Principal"
+                  placeholder="e.g. Managing Director / Operations Head"
                   value={deptForm.reporting || ''}
                   onChange={(e) => setDeptForm({ ...deptForm, reporting: e.target.value })}
                   className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"
@@ -1683,7 +1683,7 @@ export const DepartmentRolesMatrixView: React.FC<DepartmentRolesMatrixViewProps>
                 <label className="block font-bold text-slate-700 mb-1">Department Scope</label>
                 <textarea
                   rows={2}
-                  placeholder="Operational remit and pedagogical duties..."
+                  placeholder="Operational remit and core departmental duties..."
                   value={deptForm.description || ''}
                   onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
                   className="w-full bg-[#F7FAF8] border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#168A45]"

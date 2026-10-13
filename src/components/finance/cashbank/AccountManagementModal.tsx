@@ -205,7 +205,7 @@ export const AccountManagementModal: React.FC<AccountManagementModalProps> = ({
                 accountType === 'Bank'
                   ? 'e.g. Federal Bank Primary Current A/c'
                   : accountType === 'Petty Cash'
-                  ? 'e.g. Campus Reception Petty Cash Float'
+                  ? 'e.g. Office Reception Petty Cash Float'
                   : 'e.g. Main Office Cash Chest'
               }
               className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
@@ -293,7 +293,7 @@ export const AccountManagementModal: React.FC<AccountManagementModalProps> = ({
                   required
                   value={formData.custodian}
                   onChange={(e) => setFormData({ ...formData, custodian: e.target.value })}
-                  placeholder="e.g. Head Cashier / Campus Front Desk Admin"
+                  placeholder="e.g. Head Cashier / Office Front Desk Admin"
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>

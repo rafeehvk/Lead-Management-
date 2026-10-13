@@ -51,9 +51,9 @@ const DEPARTMENT_PRESETS: Array<{
     menuIds: SIDE_MENU_DEFINITIONS.map((m) => m.id),
   },
   {
-    id: 'academic',
-    name: 'Academic Preset',
-    description: 'Academic governance, faculty directory, attendance & student records',
+    id: 'operations_core',
+    name: 'Operations Core Preset',
+    description: 'Operations governance, staff directory, attendance & project records',
     menuIds: [
       'dashboard',
       'hr-staff',
@@ -67,7 +67,7 @@ const DEPARTMENT_PRESETS: Array<{
   {
     id: 'admin',
     name: 'Administration Preset',
-    description: 'General campus administration, staff management, documents and operations',
+    description: 'General company administration, staff management, documents and operations',
     menuIds: [
       'dashboard',
       'operations-dashboard',
@@ -89,7 +89,7 @@ const DEPARTMENT_PRESETS: Array<{
   {
     id: 'finance',
     name: 'Finance & Accounts Preset',
-    description: 'General ledger, cash/bank, student fee collections, payroll and billing',
+    description: 'General ledger, cash/bank, client collections, payroll and billing',
     menuIds: [
       'dashboard',
       'finance-dashboard',
@@ -163,7 +163,7 @@ const DEPARTMENT_PRESETS: Array<{
   },
   {
     id: 'operations',
-    name: 'Campus Operations & Procurement',
+    name: 'Supply Chain & Procurement',
     description: 'Warehouse inventory valuation, stock movements, vendor POs and material receiving',
     menuIds: [
       'dashboard',
@@ -489,7 +489,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
               </span>
             </div>
             <p className="text-emerald-100 text-xs mt-1 leading-relaxed max-w-3xl">
-              Define institutional departments and link them to specific application menu tabs.
+              Define company departments and link them to specific application menu tabs.
               Ensures that staff members only see authorized modules in the ERP sidebar based on their department.
             </p>
           </div>
@@ -835,7 +835,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500">
-                Institutional Departments ({departments.length})
+                Company Departments ({departments.length})
               </h3>
               <button
                 type="button"
@@ -1176,7 +1176,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Academic, Procurement, Quality"
+                  placeholder="e.g. Operations, Procurement, Quality"
                   value={formDeptName}
                   onChange={(e) => setFormDeptName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden"
@@ -1188,7 +1188,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Managing Director / Principal"
+                  placeholder="e.g. Managing Director / Operations Head"
                   value={formReporting}
                   onChange={(e) => setFormReporting(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden"
@@ -1201,7 +1201,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                 <label className="block text-slate-700 font-bold mb-1 text-xs">Head of Department (HOD) <span className="text-slate-400 font-normal">(Optional)</span></label>
                 <input
                   type="text"
-                  placeholder="e.g. Dr. Ramesh Nambiar"
+                  placeholder="e.g. Ramesh Nambiar"
                   value={formHod}
                   onChange={(e) => setFormHod(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-hidden"
@@ -1435,7 +1435,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Academic, Administration"
+                    placeholder="e.g. Operations, Administration"
                     value={formDeptName}
                     onChange={(e) => setFormDeptName(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:border-emerald-600 focus:outline-hidden"
@@ -1447,7 +1447,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Managing Director / Principal"
+                    placeholder="e.g. Managing Director / Operations Head"
                     value={formReporting}
                     onChange={(e) => setFormReporting(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:border-emerald-600 focus:outline-hidden"
@@ -1460,7 +1460,7 @@ export const DepartmentAccessMatrixView: React.FC<DepartmentAccessMatrixViewProp
                   <label className="block text-slate-700 font-bold mb-1">Head of Department (HOD)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Dr. Ramesh Nambiar"
+                    placeholder="e.g. Ramesh Nambiar"
                     value={formHod}
                     onChange={(e) => setFormHod(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:border-emerald-600 focus:outline-hidden"

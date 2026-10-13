@@ -158,7 +158,7 @@ export const PurchaseWorkflowView: React.FC<PurchaseWorkflowViewProps> = ({
   // Form states for New PR
   const [prRequestedBy, setPrRequestedBy] = useState('John Doe');
   const [prDepartment, setPrDepartment] = useState('General Admin');
-  const [prBranch, setPrBranch] = useState('Kochi Campus');
+  const [prBranch, setPrBranch] = useState('Kochi HQ');
   const [prPriority, setPrPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
   const [prReason, setPrReason] = useState('');
   const [prItems, setPrItems] = useState<
@@ -561,8 +561,8 @@ export const PurchaseWorkflowView: React.FC<PurchaseWorkflowViewProps> = ({
             <option value="All">All Departments</option>
             <option value="General Admin">General Admin</option>
             <option value="IT & Systems">IT & Systems</option>
-            <option value="Hostel & Facilities">Hostel & Facilities</option>
-            <option value="Academic Operations">Academic Operations</option>
+            <option value="Facilities & Infrastructure">Facilities & Infrastructure</option>
+            <option value="Corporate Operations">Corporate Operations</option>
           </select>
           <button
             onClick={refreshData}
@@ -1503,8 +1503,8 @@ export const PurchaseWorkflowView: React.FC<PurchaseWorkflowViewProps> = ({
                   >
                     <option value="General Admin">General Admin</option>
                     <option value="IT & Systems">IT & Systems</option>
-                    <option value="Hostel & Facilities">Hostel & Facilities</option>
-                    <option value="Academic Operations">Academic Operations</option>
+                    <option value="Facilities & Infrastructure">Facilities & Infrastructure</option>
+                    <option value="Corporate Operations">Corporate Operations</option>
                   </select>
                 </div>
                 <div>

@@ -62,12 +62,12 @@ const MONTH_NAMES: Record<MonthShort, string> = {
 };
 
 const DEPARTMENTS = [
-  'Academic',
+  'Operations',
   'IT & Tech',
   'Administration',
-  'Operations',
+  'Sales & Marketing',
   'Finance & Accounts',
-  'Academic & Admin',
+  'Corporate & Admin',
 ];
 
 const COLOR_PRESETS = [
@@ -233,7 +233,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
     showToast(
       `Monthly category budget caps saved successfully! ${
         settings.autoSyncMonthlyBudgetLimits
-          ? 'Monthly institutional budget limits synchronized.'
+          ? 'Monthly corporate budget limits synchronized.'
           : ''
       }`,
       'success'
@@ -470,7 +470,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
     // Add totals row
     const totalsRow = [
       'TOTAL',
-      'Institutional Budget Ceiling',
+      'Corporate Budget Ceiling',
       'TOTAL-CAPS',
       'All Departments',
       grandAnnualCap,
@@ -523,11 +523,11 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
   const handleResetDefaults = () => {
     if (
       window.confirm(
-        'Reset all category budget caps and module settings to institutional standard templates?'
+        'Reset all category budget caps and module settings to corporate standard templates?'
       )
     ) {
       financeStorage.resetFinanceData();
-      showToast('Budget caps and settings reset to standard institutional defaults.', 'info');
+      showToast('Budget caps and settings reset to standard corporate defaults.', 'info');
     }
   };
 
@@ -634,7 +634,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
             <span className="font-medium text-slate-700">Administrator Governance Active:</span>
-            <span>Monthly caps directly govern institutional variance calculations and voucher approvals.</span>
+            <span>Monthly caps directly govern corporate variance calculations and voucher approvals.</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1006,7 +1006,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>
                 Annual Sum: <strong className="text-slate-800">{formatINR(grandAnnualCap)}</strong> across{' '}
-                {categoryCaps.length} active institutional budget heads.
+                {categoryCaps.length} active corporate budget heads.
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -1307,7 +1307,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
               Finance Module Settings & Governance Rules
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Configure institutional spending policies, caps enforcement rules, fiscal year cycles, and approval authorities.
+              Configure corporate spending policies, caps enforcement rules, fiscal year cycles, and approval authorities.
             </p>
           </div>
 
@@ -1315,7 +1315,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
             {/* General Settings */}
             <div>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                1. Institutional Fiscal Configuration
+                1. Corporate Fiscal Configuration
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -1392,9 +1392,9 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
                   />
                   <label htmlFor="autoSyncLimits" className="text-xs text-slate-700">
                     <strong className="block text-slate-900 font-semibold mb-0.5">
-                      Auto-Synchronize Institutional Monthly Limits with Sum of Category Caps
+                      Auto-Synchronize Corporate Monthly Limits with Sum of Category Caps
                     </strong>
-                    When enabled, editing category caps automatically recalculates each month's institutional budget ceiling and updates the Recharts Bar Chart immediately.
+                    When enabled, editing category caps automatically recalculates each month's corporate budget ceiling and updates the Recharts Bar Chart immediately.
                   </label>
                 </div>
 
@@ -1519,7 +1519,7 @@ export const FinanceBudgetPlanner: React.FC<FinanceBudgetPlannerProps> = ({
 
               <div className="mt-4">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Institutional Budget Notes & Justification
+                  Corporate Budget Notes & Justification
                 </label>
                 <textarea
                   rows={2}

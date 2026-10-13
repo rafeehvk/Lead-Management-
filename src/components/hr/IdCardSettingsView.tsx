@@ -231,14 +231,14 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
           customPrefix: 'Valid: ',
         },
         workLocation: {
-          label: 'Work Campus',
+          label: 'Work Branch',
           type: 'text',
           fontSize: 10,
           fontWeight: 'normal',
           color: '#475569',
           textAlign: 'center',
           showLabel: true,
-          customPrefix: 'Campus: ',
+          customPrefix: 'Branch: ',
         },
         contactNumber: {
           label: 'Contact Phone',
@@ -329,7 +329,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
     } else if (presetName === 'sapphire') {
       setTemplate((prev) => ({
         ...prev,
-        templateName: 'Sapphire Academic Modern',
+        templateName: 'Sapphire Corporate Modern',
         headerBgColor: '#1E3A8A',
         headerTextColor: '#FFFFFF',
         accentColor: '#3B82F6',
@@ -378,7 +378,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Upload custom template graphics, customize staff photo styling, position dynamic fields, and print institutional ID badges.
+            Upload custom template graphics, customize staff photo styling, position dynamic fields, and print company ID badges.
           </p>
         </div>
 
@@ -667,7 +667,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                     <div className="w-4 h-4 rounded-full bg-[#1E3A8A] shrink-0" />
                     <div>
                       <div className="font-bold text-slate-800 text-[11px]">Sapphire Blue</div>
-                      <div className="text-[9px] text-slate-400">Academic Wing</div>
+                      <div className="text-[9px] text-slate-400">Operations Division</div>
                     </div>
                   </button>
 
@@ -707,7 +707,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                         Upload Custom ID Card Template Graphic
                       </h4>
                       <p className="text-[11px] text-slate-500">
-                        Upload your pre-designed institution background artwork (.png, .jpg, .svg).
+                        Upload your pre-designed company background artwork (.png, .jpg, .svg).
                       </p>
                     </div>
                   </div>
@@ -846,17 +846,17 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                 )}
               </div>
 
-              {/* Institution Header & Branding Form */}
+              {/* Company Header & Branding Form */}
               <div className="space-y-3 pt-2">
                 <h4 className="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
                   <Palette className="w-4 h-4 text-emerald-700" />
-                  <span>Institution Details & Header Style</span>
+                  <span>Company Details & Header Style</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-600 mb-1">
-                      Institution Name *
+                      Company Name *
                     </label>
                     <input
                       type="text"
@@ -953,7 +953,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                       </div>
                     )}
                     <div>
-                      <div className="font-semibold text-slate-800">Institution Logo</div>
+                      <div className="font-semibold text-slate-800">Company Logo</div>
                       <div className="text-[10px] text-slate-400">
                         {template.logoUrl ? 'Custom logo uploaded' : 'Default shield icon used'}
                       </div>
@@ -1237,7 +1237,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                         <option value="emergencyPhone">Emergency Contact Phone</option>
                         <option value="joiningDate">Date of Joining</option>
                         <option value="validUntil">Validity Upto Date</option>
-                        <option value="workLocation">Work Campus / Location</option>
+                        <option value="workLocation">Work Branch / Location</option>
                         <option value="contactNumber">Staff Mobile Number</option>
                         <option value="email">Official Email ID</option>
                         <option value="qrCode">Dynamic QR Code (Digital Profile)</option>
@@ -1571,7 +1571,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                   ID Card Reverse Side Configuration
                 </h4>
                 <p className="text-[11px] text-slate-500">
-                  Configure institutional instructions, lost card notice, helpline, and return campus address.
+                  Configure company instructions, lost card notice, helpline, and return office address.
                 </p>
               </div>
 
@@ -1624,7 +1624,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Campus Return Address
+                  Office Return Address
                 </label>
                 <input
                   type="text"
@@ -1660,7 +1660,7 @@ export const IdCardSettingsView: React.FC<IdCardSettingsViewProps> = ({
                   <div>
                     <div className="font-semibold text-slate-800">Authorized Signature Graphic</div>
                     <div className="text-[10px] text-slate-400">
-                      Upload transparent PNG signature of Director / Principal
+                      Upload transparent PNG signature of Director / Managing Director
                     </div>
                   </div>
                 </div>

@@ -1183,7 +1183,7 @@ export const VendorSupplierLedgerView: React.FC<VendorSupplierLedgerViewProps> =
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Annual Campus Fiber Optical Backbone Maintenance"
+                  placeholder="e.g. Annual Corporate Fiber Optical Backbone Maintenance"
                   value={billForm.description}
                   onChange={(e) => setBillForm({ ...billForm, description: e.target.value })}
                   className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"

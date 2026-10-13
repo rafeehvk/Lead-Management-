@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Calendar,
   Briefcase,
+  Download,
 } from 'lucide-react';
 import {
   Position,
@@ -48,35 +49,35 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
     ({
       positionId: selectedPosId,
       positionName: positions.find((p) => p.id === selectedPosId)?.name || 'Position',
-      department: positions.find((p) => p.id === selectedPosId)?.department || 'Academic',
+      department: positions.find((p) => p.id === selectedPosId)?.department || 'Operations',
       metrics: [
         {
           id: 'KPI-1',
-          name: 'Core Curriculum & Syllabus Completion',
+          name: 'Core Project & Deliverable Completion',
           weightage: 30,
           targetMetric: '100% on schedule',
-          description: 'Timely coverage of syllabus and lesson plan adherence.',
+          description: 'Timely delivery of assigned projects and adherence to operational SLAs.',
         },
         {
           id: 'KPI-2',
-          name: 'Student Analysis Record (MYSAR) Logging',
+          name: 'ERP Workflow & Record Compliance',
           weightage: 25,
           targetMetric: '≥95% on-time entry',
-          description: 'Daily test, homework, and attendance synchronization in MYSAR.',
+          description: 'Daily task, client activity, and report synchronization in the ERP.',
         },
         {
           id: 'KPI-3',
-          name: 'Parent Communication & Satisfaction',
+          name: 'Client Communication & Satisfaction',
           weightage: 25,
           targetMetric: '≥4.5 / 5 Rating',
-          description: 'PTA meeting attendance and proactive parent feedback resolution.',
+          description: 'Client review participation and proactive stakeholder feedback resolution.',
         },
         {
           id: 'KPI-4',
-          name: 'Punctuality & Institutional Attendance',
+          name: 'Punctuality & Company Attendance',
           weightage: 20,
           targetMetric: '≥96% attendance',
-          description: 'Biometric on-time punches and adherence to institution timetable.',
+          description: 'Biometric on-time punches and adherence to company shift schedule.',
         },
       ],
       totalWeightage: 100,
@@ -106,11 +107,70 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
     attendanceScore: 96,
     leaveScore: 92,
     kpiScores: {},
-    managerReview: 'Exemplary teaching dedication and diligent student record maintenance.',
-    evaluatedBy: 'Dr. Ramesh Nambiar',
+    managerReview: 'Exemplary operational dedication and diligent client record maintenance.',
+    evaluatedBy: 'Ramesh Nambiar',
   });
 
   const totalWeightage = kpiMetrics.reduce((acc, m) => acc + (m.weightage || 0), 0);
+
+  const handleExportCsv = () => {
+    if (!performanceRecords.length) {
+      alert('No performance evaluation records available to export.');
+      return;
+    }
+
+    const escapeCsv = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const headers = [
+      'Staff ID',
+      'Staff Name',
+      'Department',
+      'Position / Role',
+      'Evaluation Cycle',
+      'Attendance Score (%)',
+      'Leave Score (%)',
+      'Overall Score (%)',
+      'Rating Tier',
+      'Evaluator Review Remarks',
+      'Self Review',
+      'Evaluated By',
+      'Evaluated Date',
+    ];
+
+    const rows = performanceRecords.map((perf) =>
+      [
+        escapeCsv(perf.staffId),
+        escapeCsv(perf.staffName),
+        escapeCsv(perf.department),
+        escapeCsv(perf.position),
+        escapeCsv(perf.period),
+        escapeCsv(perf.attendanceScore),
+        escapeCsv(perf.leaveScore),
+        escapeCsv(perf.overallScore),
+        escapeCsv(perf.rating),
+        escapeCsv(perf.managerReview || ''),
+        escapeCsv(perf.selfReview || ''),
+        escapeCsv(perf.evaluatedBy),
+        escapeCsv(perf.evaluatedDate),
+      ].join(',')
+    );
+
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `MYSAR_Staff_Performance_KPI_Report_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
@@ -143,13 +203,24 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
         </div>
 
         {activeTab === 'staff-evaluations' && (
-          <button
-            onClick={() => setIsNewEvalOpen(true)}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Conduct Staff Evaluation</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleExportCsv}
+              title="Download Staff Performance CSV for External Analysis"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-[#168A45]" />
+              <span>Export to CSV</span>
+            </button>
+
+            <button
+              onClick={() => setIsNewEvalOpen(true)}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Conduct Staff Evaluation</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -160,7 +231,7 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
             <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
               <span className="text-[11px] text-slate-500 font-medium">Evaluations Completed</span>
               <div className="text-2xl font-bold text-slate-900 mt-0.5">{performanceRecords.length}</div>
-              <span className="text-[10px] text-slate-400">Quarterly Institutional Cycle</span>
+              <span className="text-[10px] text-slate-400">Quarterly Company Cycle</span>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
@@ -177,7 +248,7 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] text-slate-500 font-medium">Top Tier Faculty</span>
+              <span className="text-[11px] text-slate-500 font-medium">Top Tier Performers</span>
               <div className="text-2xl font-bold text-indigo-700 mt-0.5">
                 {performanceRecords.filter((p) => p.overallScore >= 90).length} Outstanding
               </div>
@@ -375,7 +446,7 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
                   onSavePositionKpi({
                     positionId: selectedPosId,
                     positionName: targetPos?.name || 'Position',
-                    department: targetPos?.department || 'Academic',
+                    department: targetPos?.department || 'Operations',
                     metrics: kpiMetrics,
                     totalWeightage,
                     reviewFrequency: 'Quarterly',
@@ -395,7 +466,7 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-xl rounded-2xl p-6 shadow-xl border border-slate-200 text-xs">
             <h2 className="text-lg font-bold text-slate-900 mb-1">Conduct Staff Performance Evaluation</h2>
-            <p className="text-slate-500 mb-4">Record formal appraisal based on institutional KPI benchmarks.</p>
+            <p className="text-slate-500 mb-4">Record formal appraisal based on company KPI benchmarks.</p>
 
             <div className="space-y-3">
               <div>
@@ -486,7 +557,7 @@ export const KpiManagementView: React.FC<KpiManagementViewProps> = ({
                   rows={3}
                   value={evalForm.managerReview}
                   onChange={(e) => setEvalForm({ ...evalForm, managerReview: e.target.value })}
-                  placeholder="Appraisal observations on teaching methodologies, student rapport, and record adherence..."
+                  placeholder="Appraisal observations on project execution, client rapport, and SLA adherence..."
                   className="w-full mt-1 border border-slate-200 rounded-xl p-3 text-slate-900"
                 />
               </div>

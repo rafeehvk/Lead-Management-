@@ -45,7 +45,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
       {/* ======================= PAGE 1 ======================= */}
       <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-9 box-border">
         <div className="space-y-4">
-          {/* Top Institutional Header */}
+          {/* Top Corporate Header */}
           <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-3.5">
             <div className="flex items-center space-x-3">
               {navLogo ? (
@@ -113,7 +113,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
 
             <div className="text-right space-y-1 text-[10px]">
               <div className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700">
-                <b>Cadre:</b> {onboardingData.employeeCategory || 'Academic / Admin'}
+                <b>Category:</b> {onboardingData.employeeCategory || 'Staff'}
               </div>
               <div className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700">
                 <b>Type:</b> {onboardingData.employmentType || 'Full Time'}
@@ -220,13 +220,13 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 3
               </span>
-              <span>Institutional Employment &amp; Posting Details</span>
+              <span>Corporate Employment &amp; Posting Details</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2 text-[10px]">
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Department</div>
-                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.department || 'Academic'}</div>
+                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.department || 'Operations'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Designation</div>
@@ -234,12 +234,12 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Reporting Manager</div>
-                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.reportingManager || 'Dr. Ramesh Nambiar'}</div>
+                <div className="font-bold text-slate-900 mt-0.5">{onboardingData.reportingManager || 'Ramesh Nambiar'}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-slate-400">Campus &amp; Probation</div>
+                <div className="text-slate-400">Branch &amp; Probation</div>
                 <div className="font-bold text-slate-900 mt-0.5">
-                  {onboardingData.branchLocation || 'Main Campus'} ({onboardingData.probationPeriod || '6 Months'})
+                  {onboardingData.branchLocation || 'Corporate HQ'} ({onboardingData.probationPeriod || '6 Months'})
                 </div>
               </div>
             </div>
@@ -371,7 +371,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 6
               </span>
-              <span>Family Contacts &amp; Institutional Dependents</span>
+              <span>Family Contacts &amp; Dependents</span>
             </div>
 
             <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
@@ -547,14 +547,14 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
               </div>
               <div className="space-y-1 text-[9px]">
                 <div className="flex justify-between"><span className="text-slate-500">System Username:</span><b className="font-mono">{onboardingData.systemAccess?.username || 'staff.user'}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Assigned Role:</span><b>{onboardingData.systemAccess?.role || 'Staff / Faculty'}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Assigned Role:</span><b>{onboardingData.systemAccess?.role || 'Staff'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Access Level:</span><b>{onboardingData.systemAccess?.accessLevel || 'Standard'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Branch Allowed:</span><b>{onboardingData.systemAccess?.branchAccess || 'All Branches'}</b></div>
               </div>
             </div>
           </div>
 
-          {/* Section 10: Candidate Declaration & Institutional Sign-Off */}
+          {/* Section 10: Candidate Declaration & Corporate Sign-Off */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
@@ -565,7 +565,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
 
             <p className="text-[9.5px] text-slate-600 leading-relaxed mb-5">
               I hereby solemnly declare that all statements and particulars provided in this staff onboarding dossier are true,
-              complete, and authentic to the best of my knowledge and belief. I agree to abide by the service rules, institutional
+              complete, and authentic to the best of my knowledge and belief. I agree to abide by the service rules, corporate
               code of conduct, and confidentiality protocols established by {parentCompanyLegalName} ({brandName}).
             </p>
 
@@ -590,7 +590,7 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
                   <span>VERIFIED</span>
                 </div>
                 <div className="border-b border-slate-400 w-full pb-1 font-semibold text-slate-800">
-                  {onboardingData.verification?.verifiedBy || 'Dr. Ramesh Nambiar (Principal)'}
+                  {onboardingData.verification?.verifiedBy || 'Ramesh Nambiar (Managing Director)'}
                 </div>
                 <div className="text-slate-500 mt-1">Authorized Approving Authority</div>
               </div>

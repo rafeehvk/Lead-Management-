@@ -49,12 +49,12 @@ const INITIAL_CATEGORIES: AssetCategory[] = [
   { id: 'CAT-03', name: 'Monitor', code: 'MON', description: 'External display units & 4K screens', usefulLifeYears: 5, depreciationMethod: 'Straight Line', defaultDepreciationRate: 20, isActive: true },
   { id: 'CAT-04', name: 'Printer', code: 'PRN', description: 'Laser & multifunction networked printers', usefulLifeYears: 5, depreciationMethod: 'Straight Line', defaultDepreciationRate: 20, isActive: true },
   { id: 'CAT-05', name: 'Mobile', code: 'MOB', description: 'Company smartphones for field operations', usefulLifeYears: 3, depreciationMethod: 'Straight Line', defaultDepreciationRate: 33.3, isActive: true },
-  { id: 'CAT-06', name: 'Tablet', code: 'TAB', description: 'Tablets for admissions & campus verification', usefulLifeYears: 3, depreciationMethod: 'Straight Line', defaultDepreciationRate: 33.3, isActive: true },
+  { id: 'CAT-06', name: 'Tablet', code: 'TAB', description: 'Tablets for field sales & client verification', usefulLifeYears: 3, depreciationMethod: 'Straight Line', defaultDepreciationRate: 33.3, isActive: true },
   { id: 'CAT-07', name: 'Server', code: 'SRV', description: 'Rackmount servers & datacenter hardware', usefulLifeYears: 6, depreciationMethod: 'Written Down Value', defaultDepreciationRate: 25, isActive: true },
   { id: 'CAT-08', name: 'Networking Equipment', code: 'NET', description: 'Cisco routers, switches, and enterprise APs', usefulLifeYears: 5, depreciationMethod: 'Straight Line', defaultDepreciationRate: 20, isActive: true },
-  { id: 'CAT-09', name: 'Vehicle', code: 'VEH', description: 'Campus transport vans & official executive cars', usefulLifeYears: 8, depreciationMethod: 'Straight Line', defaultDepreciationRate: 15, isActive: true },
+  { id: 'CAT-09', name: 'Vehicle', code: 'VEH', description: 'Corporate transport vans & official executive cars', usefulLifeYears: 8, depreciationMethod: 'Straight Line', defaultDepreciationRate: 15, isActive: true },
   { id: 'CAT-10', name: 'Furniture', code: 'FUR', description: 'Executive desks, ergonomic chairs, board tables', usefulLifeYears: 10, depreciationMethod: 'Straight Line', defaultDepreciationRate: 10, isActive: true },
-  { id: 'CAT-11', name: 'Machinery', code: 'MAC', description: 'Campus power backup generators & AC plants', usefulLifeYears: 10, depreciationMethod: 'Straight Line', defaultDepreciationRate: 10, isActive: true },
+  { id: 'CAT-11', name: 'Machinery', code: 'MAC', description: 'Facility power backup generators & AC plants', usefulLifeYears: 10, depreciationMethod: 'Straight Line', defaultDepreciationRate: 10, isActive: true },
   { id: 'CAT-12', name: 'Office Equipment', code: 'OFE', description: 'Smart projectors, interactive boards, bio scanners', usefulLifeYears: 5, depreciationMethod: 'Straight Line', defaultDepreciationRate: 20, isActive: true },
   { id: 'CAT-13', name: 'IT Accessories', code: 'ACC', description: 'Docking stations, webcams, noise-canceling headsets', usefulLifeYears: 2, depreciationMethod: 'Straight Line', defaultDepreciationRate: 50, isActive: true },
   { id: 'CAT-14', name: 'Other', code: 'OTH', description: 'General capital & operational tools', usefulLifeYears: 5, depreciationMethod: 'Straight Line', defaultDepreciationRate: 20, isActive: true },
@@ -62,11 +62,11 @@ const INITIAL_CATEGORIES: AssetCategory[] = [
 
 // Seed Locations
 const INITIAL_LOCATIONS: AssetLocation[] = [
-  { id: 'LOC-01', branch: 'Kochi Campus', building: 'Tech Block A', floor: '3rd Floor', department: 'IT & Systems', room: 'Server Room 302', storageLocation: 'Rack A1', isOffice: true },
-  { id: 'LOC-02', branch: 'Kochi Campus', building: 'Tech Block A', floor: '2nd Floor', department: 'Sales & Marketing', room: 'Executive Bay 201', storageLocation: 'Cabinet B', isOffice: true },
-  { id: 'LOC-03', branch: 'Kochi Campus', building: 'Admin Block', floor: '1st Floor', department: 'Human Resources', room: 'HR Suite 105', storageLocation: 'Asset Locker 1', isOffice: true },
+  { id: 'LOC-01', branch: 'Kochi HQ', building: 'Tech Block A', floor: '3rd Floor', department: 'IT & Systems', room: 'Server Room 302', storageLocation: 'Rack A1', isOffice: true },
+  { id: 'LOC-02', branch: 'Kochi HQ', building: 'Tech Block A', floor: '2nd Floor', department: 'Sales & Marketing', room: 'Executive Bay 201', storageLocation: 'Cabinet B', isOffice: true },
+  { id: 'LOC-03', branch: 'Kochi HQ', building: 'Admin Block', floor: '1st Floor', department: 'Human Resources', room: 'HR Suite 105', storageLocation: 'Asset Locker 1', isOffice: true },
   { id: 'LOC-04', branch: 'Trivandrum Office', building: 'Valley Towers', floor: '5th Floor', department: 'Operations', room: 'Regional Office 510', storageLocation: 'Bay Desk 4', isOffice: true },
-  { id: 'LOC-05', branch: 'Calicut Center', building: 'Central Plaza', floor: 'Ground Floor', department: 'Academic', room: 'Training Lab 1', storageLocation: 'Storage Unit 03', isOffice: true },
+  { id: 'LOC-05', branch: 'Calicut Center', building: 'Central Plaza', floor: 'Ground Floor', department: 'Operations', room: 'Training Lab 1', storageLocation: 'Storage Unit 03', isOffice: true },
   { id: 'LOC-06', branch: 'Central Warehouse', building: 'Logistics Facility', floor: 'Ground Floor', department: 'Administration', room: 'Main Depot', storageLocation: 'Aisle 4 - Shelf C', isOffice: false },
 ];
 
@@ -111,7 +111,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '2nd Floor',
       department: 'Sales & Marketing',
@@ -127,7 +127,7 @@ const INITIAL_ASSETS: Asset[] = [
       conditionAtAllocation: 'New',
       accessories: ['65W Type-C Charger', 'Dell Pro Eco-Loop Backpack', 'Wireless Mouse WM126', 'HDMI Cable'],
       employeeAcknowledgement: true,
-      remarks: 'Issued for ERP institutional product demonstrations and travel.',
+      remarks: 'Issued for ERP enterprise product demonstrations and travel.',
     },
     status: 'Allocated',
     condition: 'Excellent',
@@ -168,7 +168,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '2nd Floor',
       department: 'Sales & Marketing',
@@ -225,7 +225,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '2nd Floor',
       department: 'Sales & Marketing',
@@ -278,7 +278,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '3rd Floor',
       department: 'Administration',
@@ -289,7 +289,7 @@ const INITIAL_ASSETS: Asset[] = [
       person: 'Mohammed Suhail',
       employeeId: 'EMP-003',
       department: 'IT & Systems',
-      destination: 'St. Mary Higher Secondary School - Client Hall',
+      destination: 'Apex Global Enterprises - Client Hall',
       checkOutDate: '2026-09-10',
       checkOutTime: '09:00',
       expectedReturnDate: '2026-09-11', // Passed expected date -> Overdue Return!
@@ -297,7 +297,7 @@ const INITIAL_ASSETS: Asset[] = [
       condition: 'Good',
       accessories: ['Power Cable', 'HDMI 5m Cable', 'Remote Controller', 'Protective Padded Bag'],
       approvedBy: 'Anand Kumar',
-      remarks: 'Client session extended by 1 day as per principal request.',
+      remarks: 'Client session extended by 1 day as per director request.',
       isOutsideOffice: true,
     },
     status: 'Checked Out',
@@ -337,7 +337,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Expiring Soon',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Admin Block',
       floor: '1st Floor',
       department: 'Human Resources',
@@ -381,7 +381,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '3rd Floor',
       department: 'IT & Systems',
@@ -425,7 +425,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '3rd Floor',
       department: 'IT & Systems',
@@ -469,7 +469,7 @@ const INITIAL_ASSETS: Asset[] = [
       status: 'Active',
     },
     location: {
-      branch: 'Kochi Campus',
+      branch: 'Kochi HQ',
       building: 'Tech Block A',
       floor: '2nd Floor',
       department: 'Sales & Marketing',
@@ -484,7 +484,7 @@ const INITIAL_ASSETS: Asset[] = [
       conditionAtAllocation: 'New',
       accessories: ['20W USB-C Power Adapter', 'USB-C Charge Cable (1m)', 'Apple Smart Folio Case', 'Apple Pencil USB-C'],
       employeeAcknowledgement: true,
-      remarks: 'Used for student batch registration walkthroughs.',
+      remarks: 'Used for client onboarding and registration walkthroughs.',
     },
     status: 'Allocated',
     condition: 'Excellent',
@@ -630,7 +630,7 @@ export class AssetStorageService {
         status: 'Active',
       },
       location: assetData.location || {
-        branch: 'Kochi Campus',
+        branch: 'Kochi HQ',
         building: 'Tech Block A',
         floor: '2nd Floor',
         department: 'IT & Systems',
@@ -1438,7 +1438,7 @@ export class AssetStorageService {
       requestedBy: poData.requestedBy || actorName,
       department: poData.department || 'IT & Systems',
       expectedDeliveryDate: poData.expectedDeliveryDate || now,
-      deliveryLocation: poData.deliveryLocation || 'Kochi Campus - Tech Block A',
+      deliveryLocation: poData.deliveryLocation || 'Kochi HQ - Tech Block A',
       paymentTerms: poData.paymentTerms || 'Net 30 Days',
       notes: poData.notes || '',
       items: poData.items || [],

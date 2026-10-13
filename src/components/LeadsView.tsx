@@ -28,6 +28,7 @@ import { Lead, LeadPriority, LeadStatus, User as UserType } from '../types';
 import { StatusBadge } from './StatusBadge';
 import { StatusDropdown } from './StatusDropdown';
 import { hasPermission } from '../utils/rbac';
+import { UserSideMenuPermission } from '../utils/menuPermissions';
 import { PrintLeadModal } from './PrintLeadModal';
 import { LeadHistoryLogModal } from './LeadHistoryLogModal';
 
@@ -42,6 +43,7 @@ interface LeadsViewProps {
   initialStatusFilter?: string;
   users: UserType[];
   currentUser: UserType;
+  menuPermission?: UserSideMenuPermission;
   onExportCsv: () => void;
   onNavigateToImportCsv?: () => void;
   onTriggerFollowUpReminder?: (lead: Lead) => void;
@@ -60,6 +62,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   initialStatusFilter = 'All',
   users,
   currentUser,
+  menuPermission,
   onExportCsv,
   onNavigateToImportCsv,
   onTriggerFollowUpReminder,
@@ -129,7 +132,10 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
   });
 
-  const canDelete = hasPermission.canDeleteLead(currentUser);
+  const canViewOption = menuPermission ? menuPermission.viewOnly : true;
+  const canEntryOption = menuPermission ? menuPermission.entry : true;
+  const canEditOption = menuPermission ? menuPermission.edit : true;
+  const canDelete = menuPermission ? menuPermission.delete : hasPermission.canDeleteLead(currentUser);
   const canExport = hasPermission.canExportData(currentUser);
 
   return (
@@ -195,7 +201,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             </button>
           )}
 
-          {onNavigateToImportCsv && (
+          {onNavigateToImportCsv && canEntryOption && (
             <button
               onClick={onNavigateToImportCsv}
               className="bg-white hover:bg-[#EAF7EF] text-slate-700 hover:text-[#0B5D2A] border border-gray-200 px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
@@ -206,13 +212,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             </button>
           )}
 
-          <button
-            onClick={onOpenNewLead}
-            className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-1.5 transition-all shadow-xs active:scale-98"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ New Lead</span>
-          </button>
+          {canEntryOption && (
+            <button
+              onClick={onOpenNewLead}
+              className="bg-[#168A45] hover:bg-[#0B5D2A] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-1.5 transition-all shadow-xs active:scale-98 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add New Lead</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -316,14 +324,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               ) : (
                 filteredLeads.map((lead) => {
                   const isProposalReady = lead.status === 'Send Proposal';
-                  const canEditThisLead = hasPermission.canEditLead(currentUser, lead);
-                  const canCreateProposalForLead = hasPermission.canCreateProposal(currentUser, lead);
+                  const canEditThisLead = canEditOption && hasPermission.canEditLead(currentUser, lead);
+                  const canCreateProposalForLead = canEntryOption && hasPermission.canCreateProposal(currentUser, lead);
 
                   return (
                     <tr
                       key={lead.id}
                       className="hover:bg-[#F7FAF8] transition-colors group cursor-pointer"
-                      onClick={() => setSelectedLead(lead)}
+                      onClick={() => canViewOption && setSelectedLead(lead)}
                     >
                       {/* ID & Date */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
@@ -429,32 +437,38 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-end space-x-1.5">
-                          {/* View Lead Details button */}
-                          <button
-                            onClick={() => setSelectedLead(lead)}
-                            title={`View Details for ${lead.instituteName}`}
-                            className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                          {/* View Lead Details button (Shown when View Only checkbox is ticked) */}
+                          {canViewOption && (
+                            <button
+                              onClick={() => setSelectedLead(lead)}
+                              title={`View Details for ${lead.instituteName}`}
+                              className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {/* Lead History & Date-wise Status Log button */}
-                          <button
-                            onClick={() => setLeadForHistoryLog(lead)}
-                            title={`View History & Date-wise Status Log for ${lead.instituteName}`}
-                            className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
-                          >
-                            <History className="w-4 h-4" />
-                          </button>
+                          {canViewOption && (
+                            <button
+                              onClick={() => setLeadForHistoryLog(lead)}
+                              title={`View History & Date-wise Status Log for ${lead.instituteName}`}
+                              className="p-1.5 text-slate-500 hover:text-[#0B5D2A] hover:bg-[#EAF7EF] rounded-md transition-colors"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {/* Print Lead Summary button */}
-                          <button
-                            onClick={() => setLeadToPrint(lead)}
-                            title={`Print Summary Sheet for ${lead.instituteName}`}
-                            className="p-1.5 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
+                          {canViewOption && (
+                            <button
+                              onClick={() => setLeadToPrint(lead)}
+                              title={`Print Summary Sheet for ${lead.instituteName}`}
+                              className="p-1.5 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {/* Gmail button */}
                           {onOpenGmailForLead && (
@@ -490,15 +504,17 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                             </button>
                           )}
 
-                          <button
-                            onClick={() => onAddFollowUp(lead)}
-                            title="Schedule Follow-up"
-                            className="p-1.5 text-slate-400 hover:text-[#168A45] hover:bg-[#EAF7EF] rounded-md transition-colors"
-                          >
-                            <CalendarPlus className="w-4 h-4" />
-                          </button>
+                          {canEntryOption && (
+                            <button
+                              onClick={() => onAddFollowUp(lead)}
+                              title="Schedule Follow-up"
+                              className="p-1.5 text-slate-400 hover:text-[#168A45] hover:bg-[#EAF7EF] rounded-md transition-colors"
+                            >
+                              <CalendarPlus className="w-4 h-4" />
+                            </button>
+                          )}
 
-                          {canEditThisLead ? (
+                          {canEditThisLead && (
                             <button
                               onClick={() => onEditLead(lead)}
                               title="Edit Lead"
@@ -506,24 +522,16 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                          ) : (
-                            <button
-                              disabled
-                              title="Locked (Assigned to another rep)"
-                              className="p-1.5 text-slate-300 cursor-not-allowed"
-                            >
-                              <Lock className="w-3.5 h-3.5" />
-                            </button>
                           )}
 
                           {canDelete && (
                             <button
                               onClick={() => {
-                                if (confirm(`Admin Action: Delete lead "${lead.instituteName}"?`)) {
+                                if (confirm(`Delete lead "${lead.instituteName}"?`)) {
                                   onDeleteLead(lead.id);
                                 }
                               }}
-                              title="Delete Lead (Admin Only)"
+                              title="Delete Lead"
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />

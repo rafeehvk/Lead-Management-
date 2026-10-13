@@ -49,6 +49,7 @@ import { StaffIdCardRenderer } from './StaffIdCardRenderer';
 import { ProfilePhotoUploader } from '../ProfilePhotoUploader';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
+import { UserSideMenuPermission } from '../../utils/menuPermissions';
 
 interface StaffManagementViewProps {
   staff: StaffMember[];
@@ -62,6 +63,7 @@ interface StaffManagementViewProps {
   onNavigateToHrConfiguration?: () => void;
   prefillStaffData?: Partial<StaffMember> | null;
   onClearPrefillStaffData?: () => void;
+  menuPermission?: UserSideMenuPermission;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -75,7 +77,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onNavigateToHrConfiguration,
   prefillStaffData,
   onClearPrefillStaffData,
+  menuPermission,
 }) => {
+  const canViewOption = menuPermission ? menuPermission.viewOnly || menuPermission.entry || menuPermission.edit || menuPermission.delete : true;
+  const canEntryOption = menuPermission ? menuPermission.entry : true;
+  const canEditOption = menuPermission ? menuPermission.edit : true;
+  const canDeleteOption = menuPermission ? menuPermission.delete : true;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -119,7 +127,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           role: 'Staff',
           accessLevel: 'Standard',
           assignedModules: ['Dashboard'],
-          branchAccess: 'Kochi Main Campus',
+          branchAccess: 'Kochi Corporate HQ',
         }),
         accountStatus: newStatus === 'Active' ? 'Active' : 'Suspended',
       },
@@ -379,23 +387,22 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             <span>Download Report</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleClearDummyData}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer border border-rose-200"
-            title="Clear all dummy and mock staff data from database"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>Clear Dummy Data</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddStaff}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Onboard Staff</span>
-          </button>
+          {canEntryOption ? (
+            <button
+              onClick={handleOpenAddStaff}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New / Onboard Staff</span>
+            </button>
+          ) : (
+            <span
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200"
+              title="Entry Only checkbox is not ticked for this menu"
+            >
+              Add New Disabled
+            </span>
+          )}
         </div>
       </div>
 
@@ -489,53 +496,61 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       >
                         {staffMember.employmentStatus}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStaffStatus(staffMember)}
-                        title={
-                          staffMember.employmentStatus === 'Active'
-                            ? 'ERP Login Granted. Click to mark Inactive and restrict access.'
-                            : 'ERP Access Restricted! Click to reactivate.'
-                        }
-                        className={`inline-flex items-center space-x-1 text-[9px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer w-fit ${
-                          staffMember.employmentStatus === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100 font-bold animate-pulse'
-                        }`}
-                      >
-                        {staffMember.employmentStatus === 'Active' ? (
-                          <>
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Login: Granted</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldAlert className="w-2.5 h-2.5" />
-                            <span>Access: Blocked</span>
-                          </>
-                        )}
-                      </button>
+                      {canEditOption && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStaffStatus(staffMember)}
+                          title={
+                            staffMember.employmentStatus === 'Active'
+                              ? 'ERP Login Granted. Click to mark Inactive and restrict access.'
+                              : 'ERP Access Restricted! Click to reactivate.'
+                          }
+                          className={`inline-flex items-center space-x-1 text-[9px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer w-fit ${
+                            staffMember.employmentStatus === 'Active'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100 font-bold animate-pulse'
+                          }`}
+                        >
+                          {staffMember.employmentStatus === 'Active' ? (
+                            <>
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Login: Granted</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert className="w-2.5 h-2.5" />
+                              <span>Access: Blocked</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end space-x-1.5">
-                      <button
-                        onClick={() => {
-                          setSelectedStaffForView(staffMember);
-                          setActiveProfileTab('profile');
-                        }}
-                        title="View Full Profile"
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditStaff(staffMember)}
-                        title="Edit Staff Member"
-                        className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors cursor-pointer border border-amber-200/60"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canViewOption && (
+                        <button
+                          onClick={() => {
+                            setSelectedStaffForView(staffMember);
+                            setActiveProfileTab('profile');
+                          }}
+                          title="View Full Profile"
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 font-bold text-[11px]"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+                      )}
+                      {canEditOption && (
+                        <button
+                          onClick={() => handleEditStaff(staffMember)}
+                          title="Edit Staff Member"
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition-colors cursor-pointer border border-amber-200/60 inline-flex items-center gap-1 font-bold text-[11px]"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedStaffForIdCard(staffMember)}
                         title="Print Staff ID Card"
@@ -543,13 +558,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       >
                         <CreditCard className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => onDeleteStaff(staffMember.id)}
-                        title="Delete Staff"
-                        className="p-1.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canDeleteOption && (
+                        <button
+                          onClick={() => onDeleteStaff(staffMember.id)}
+                          title="Delete Staff"
+                          className="px-2 py-1 hover:bg-rose-50 text-rose-600 border border-rose-200/70 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 font-bold text-[11px]"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -596,7 +614,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       {selectedStaffForView.employmentStatus}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-900/40 text-emerald-100">
-                      {selectedStaffForView.employeeCategory || 'Academic & Admin'}
+                      {selectedStaffForView.employeeCategory || 'Operations & Admin'}
                     </span>
                   </div>
                   <div className="text-emerald-100 text-xs truncate">
@@ -823,7 +841,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl">
                       <div className="text-[10px] text-slate-400">Branch & Work Location</div>
-                      <div className="font-semibold text-slate-800">{selectedStaffForView.workLocation || 'Kochi Main Campus'}</div>
+                      <div className="font-semibold text-slate-800">{selectedStaffForView.workLocation || 'Kochi Corporate HQ'}</div>
                     </div>
                   </div>
 
@@ -883,7 +901,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               {activeProfileTab === 'qualifications' && (
                 <div className="space-y-3">
-                  <span className="font-bold text-slate-800">Academic & Professional Qualifications</span>
+                  <span className="font-bold text-slate-800">Educational & Professional Qualifications</span>
                   {!selectedStaffForView.qualifications || selectedStaffForView.qualifications.length === 0 ? (
                     <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
                       No qualification credentials cataloged.
@@ -912,7 +930,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               {activeProfileTab === 'family' && (
                 <div className="space-y-3">
-                  <span className="font-bold text-slate-800">Family Contacts & Institutional Dependents</span>
+                  <span className="font-bold text-slate-800">Family Contacts & Company Dependents</span>
                   {!selectedStaffForView.familyMembers || selectedStaffForView.familyMembers.length === 0 ? (
                     <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
                       No family contacts recorded.
@@ -1161,7 +1179,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   </div>
 
                   <p className="text-slate-600">
-                    Comprehensive annual and quarterly classroom effectiveness assessment, student analysis record logs,
+                    Comprehensive annual and quarterly project execution effectiveness assessment, client delivery record logs,
                     and compliance score.
                   </p>
                 </div>
@@ -1216,7 +1234,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       </div>
                       <p className="text-xs mt-1 leading-relaxed opacity-90">
                         {selectedStaffForView.employmentStatus === 'Active'
-                          ? 'This staff member is marked as Active. Associated ERP login credentials are authenticated and valid for all assigned campus modules.'
+                          ? 'This staff member is marked as Active. Associated ERP login credentials are authenticated and valid for all assigned company modules.'
                           : 'CRITICAL SECURITY RESTRICTION: This staff member is currently marked as Inactive/Resigned/Terminated. All login sessions, module permissions, and portal credentials are automatically blocked.'}
                       </p>
                     </div>
@@ -1235,7 +1253,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                           <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
                             {selectedStaffForView.systemAccess?.userType ||
                               selectedStaffForView.employeeCategory ||
-                              'Faculty / Staff'}
+                              'Staff'}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -1358,7 +1376,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             {/* Modal Header */}
             <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Staff Institutional ID Badge</h3>
+                <h3 className="font-bold text-slate-900 text-sm">Staff Company ID Badge</h3>
                 <p className="text-[11px] text-slate-500">
                   {selectedStaffForIdCard.fullName} • {selectedStaffForIdCard.id}
                 </p>

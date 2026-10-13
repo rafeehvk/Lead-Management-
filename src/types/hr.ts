@@ -435,7 +435,7 @@ export interface StaffMember {
   division: string;
   department: string;
   position: string;
-  employeeCategory?: 'Administrator' | 'Manager' | 'Accountant' | 'CSR' | 'Marketing' | 'Sales' | 'Other';
+  employeeCategory?: 'Manager' | 'Executive' | 'Staff' | string;
   employmentType: EmploymentType;
   branchLocation?: string;
   reportingManager: string;

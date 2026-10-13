@@ -89,7 +89,7 @@ export const VendorManagementView: React.FC<VendorManagementViewProps> = ({
     legalName: '',
     code: '',
     categoryId: 'CAT-02',
-    categoryName: 'Campus IT & Cloud Infrastructure',
+    categoryName: 'Enterprise IT & Cloud Infrastructure',
     department: 'IT & Tech',
     contactPerson: '',
     email: '',
@@ -356,7 +356,7 @@ export const VendorManagementView: React.FC<VendorManagementViewProps> = ({
       legalName: '',
       code: '',
       categoryId: 'CAT-02',
-      categoryName: 'Campus IT & Cloud Infrastructure',
+      categoryName: 'Enterprise IT & Cloud Infrastructure',
       department: 'IT & Tech',
       contactPerson: '',
       email: '',
@@ -633,7 +633,7 @@ export const VendorManagementView: React.FC<VendorManagementViewProps> = ({
             </div>
             <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-2xl">
               Centralized procurement directory, pending payment pipeline, and historical transaction logs
-              categorized and linked to institutional budget caps.
+              categorized and linked to corporate budget caps.
             </p>
           </div>
 
@@ -1720,7 +1720,7 @@ export const VendorManagementView: React.FC<VendorManagementViewProps> = ({
                   >
                     <option value="IT & Tech">IT & Tech</option>
                     <option value="Operations">Operations</option>
-                    <option value="Academic">Academic</option>
+                    <option value="Sales & Marketing">Sales & Marketing</option>
                     <option value="Administration">Administration</option>
                     <option value="Finance & Accounts">Finance & Accounts</option>
                   </select>

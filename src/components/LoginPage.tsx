@@ -175,7 +175,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   Sign in to {effectiveSettings?.brandName || 'MYSAr'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
-                  Institutional ERP & Proposal Engine
+                  Corporate ERP & Business Suite
                 </p>
               </div>
 

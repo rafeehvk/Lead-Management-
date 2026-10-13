@@ -252,17 +252,17 @@ export const FinanceActionRequiredSection: React.FC<FinanceActionRequiredSection
           : [
               {
                 ref: 'SI-2026-0012',
-                entity: 'Cochin Tech University',
+                entity: 'Kochi Metro Tech Enterprise',
                 amount: 120000,
                 dueDate: today,
                 notes: 'Billed on 30-day net terms',
               },
               {
                 ref: 'SI-2026-0014',
-                entity: 'Apex Education Trust',
+                entity: 'Apex Corporate Services',
                 amount: 65000,
                 dueDate: today,
-                notes: 'Campus LMS licensing',
+                notes: 'Enterprise ERP licensing',
               },
             ],
     };
@@ -362,7 +362,7 @@ export const FinanceActionRequiredSection: React.FC<FinanceActionRequiredSection
           : [
               {
                 ref: 'CHQ-889102',
-                entity: 'Greenfield Public School',
+                entity: 'Greenfield Logistics Pvt Ltd',
                 amount: 140000,
                 dueDate: '2026-09-18',
                 notes: 'Received cheque for quarterly maintenance',

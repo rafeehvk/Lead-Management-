@@ -350,7 +350,7 @@ export const BudgetProjectionView: React.FC<BudgetProjectionViewProps> = ({
               </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
                 Calculates estimated end-of-month expenditure by tracking current daily burn rates against
-                the institutional budget limit of{' '}
+                the corporate budget limit of{' '}
                 <span className="font-semibold text-slate-700">
                   {formatINR(projection.monthlyBudgetLimit)}
                 </span>
@@ -421,8 +421,8 @@ export const BudgetProjectionView: React.FC<BudgetProjectionViewProps> = ({
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer"
               >
-                <option value="All">All Institutional Departments</option>
-                <option value="Academic">Academic</option>
+                <option value="All">All Company Departments</option>
+                <option value="Sales & Marketing">Sales & Marketing</option>
                 <option value="Administration">Administration</option>
                 <option value="Finance & Accounts">Finance & Accounts</option>
                 <option value="IT & Tech">IT & Tech</option>
@@ -945,7 +945,7 @@ export const BudgetProjectionView: React.FC<BudgetProjectionViewProps> = ({
               {projection.isBreachProjected ? (
                 <>
                   At the current daily burn rate of{' '}
-                  <strong className="font-bold">{formatINR(projection.dailyBurnRate)}/day</strong>, the institutional
+                  <strong className="font-bold">{formatINR(projection.dailyBurnRate)}/day</strong>, the corporate
                   budget of <strong className="font-bold">{formatINR(projection.monthlyBudgetLimit)}</strong> is
                   forecasted to be exhausted by{' '}
                   <strong className="font-bold text-red-700 underline">
@@ -960,7 +960,7 @@ export const BudgetProjectionView: React.FC<BudgetProjectionViewProps> = ({
               ) : (
                 <>
                   Expenditure velocity is well calibrated. Over the {projection.daysElapsed}-day observation window,
-                  the institution has averaged{' '}
+                  the company has averaged{' '}
                   <strong className="font-bold">{formatINR(projection.dailyBurnRate)}/day</strong> against a linear
                   benchmark of <strong className="font-bold">{formatINR(projection.idealLinearDailyBurn)}/day</strong>.
                   Estimated month-end expenditure is projected at{' '}

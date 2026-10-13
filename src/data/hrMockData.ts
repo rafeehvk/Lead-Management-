@@ -32,10 +32,10 @@ export const initialDepartmentsMaster: DepartmentMaster[] = [
   {
     id: 'DEPT-101',
     departmentCode: '101',
-    departmentName: 'Academic',
-    reporting: 'Dr. Ramesh Nambiar (Principal & Academic Director)',
-    headOfDepartment: 'Prof. K. G. Menon',
-    description: 'Instructional curriculum delivery, faculty mentorship, classroom pedagogy, and academic performance evaluation.',
+    departmentName: 'Operations',
+    reporting: 'Dr. Ramesh Nambiar (Director of Operations)',
+    headOfDepartment: 'K. G. Menon',
+    description: 'Core business operations, service delivery, project execution, and operational performance evaluation.',
     status: 'Active',
     createdDate: '2026-01-10',
     allowedMenuIds: [
@@ -52,8 +52,8 @@ export const initialDepartmentsMaster: DepartmentMaster[] = [
     departmentCode: '102',
     departmentName: 'Administration',
     reporting: 'Muhammed Rafeeh (Managing Director)',
-    headOfDepartment: 'Dr. Ramesh Nambiar',
-    description: 'Institutional management, corporate governance, campus facilities, and general administration.',
+    headOfDepartment: 'Ramesh Nambiar',
+    description: 'Corporate management, executive governance, office facilities, and general administration.',
     status: 'Active',
     createdDate: '2026-01-10',
     allowedMenuIds: [
@@ -137,7 +137,7 @@ export const initialDepartmentsMaster: DepartmentMaster[] = [
     departmentName: 'Finance & Accounts',
     reporting: 'Chief Financial Officer / Managing Director',
     headOfDepartment: 'Smt. Latha Madhavan',
-    description: 'Payroll disbursement, financial auditing, student fees collection, vendor accounting, and budget control.',
+    description: 'Payroll disbursement, financial auditing, client collections, vendor accounting, and budget control.',
     status: 'Active',
     createdDate: '2026-01-10',
     allowedMenuIds: [
@@ -223,7 +223,7 @@ export const initialDepartmentsMaster: DepartmentMaster[] = [
     departmentName: 'Sales & Marketing',
     reporting: 'Head of Growth / Managing Director',
     headOfDepartment: 'Sri. Rahul Mehta',
-    description: 'Admissions growth, institutional partnerships, client proposals, CRM pipeline, and brand outreach.',
+    description: 'Business growth, corporate partnerships, client proposals, CRM pipeline, and brand outreach.',
     status: 'Active',
     createdDate: '2026-01-10',
     allowedMenuIds: [
@@ -252,10 +252,10 @@ export const initialDepartmentsMaster: DepartmentMaster[] = [
   {
     id: 'DEPT-107',
     departmentCode: '107',
-    departmentName: 'Campus Operations',
+    departmentName: 'Facilities & Logistics',
     reporting: 'Chief Operating Officer',
     headOfDepartment: 'Sri. Suresh Babu',
-    description: 'Campus security, transportation fleet, procurement, physical safety, and student utility logistics.',
+    description: 'Facility security, transportation fleet, procurement, physical safety, and warehouse logistics.',
     status: 'Active',
     createdDate: '2026-01-10',
     allowedMenuIds: [
@@ -305,7 +305,7 @@ export const initialIdCardSettings: IdCardTemplateSettings = {
   headerTextColor: '#FFFFFF',
   accentColor: '#168A45',
   institutionName: 'CASBIRO SOLUTIONS PVT LTD',
-  institutionSubtitle: 'Campus Operations & Staff Management',
+  institutionSubtitle: 'Corporate Operations & Staff Management',
   cardCornerRadius: 16,
   photoShape: 'circle',
   photoBorderColor: '#168A45',
@@ -313,8 +313,8 @@ export const initialIdCardSettings: IdCardTemplateSettings = {
   photoSize: 84,
   authorizedSignatoryTitle: 'Authorized Signatory',
   backTermsAndConditions:
-    '1. This card is the official property of Casbiro Solutions Pvt Ltd.\n2. The cardholder must wear this card visibly while on campus premises.\n3. If found, please return to Casbiro HR or nearest security desk.\n4. Non-transferable and subject to institutional code of conduct.',
-  backReturnAddress: 'Casbiro Campus, Infopark Phase II, Kochi, Kerala 682042',
+    '1. This card is the official property of Casbiro Solutions Pvt Ltd.\n2. The cardholder must wear this card visibly while on office premises.\n3. If found, please return to Casbiro HR or nearest security desk.\n4. Non-transferable and subject to corporate code of conduct.',
+  backReturnAddress: 'Casbiro Corporate HQ, Infopark Phase II, Kochi, Kerala 682042',
   backEmergencyHelpline: '+91 98470 55667 / hr@casbiro.com',
   fields: [
     {
@@ -472,26 +472,26 @@ export const initialIdCardSettings: IdCardTemplateSettings = {
 export const initialHrSettings: HrSettingsConfig = {
   divisions: [
     'Administration',
-    'Academic Wing',
-    'Higher Secondary Wing',
-    'Primary Wing',
+    'Operations Division',
+    'Enterprise Solutions',
+    'Client Services',
     'Finance',
     'Human Resources',
     'Corporate & Tech',
     'Support Services',
   ],
   departments: [
-    'Academic',
+    'Operations',
     'Administration',
-    'Finance',
-    'HR',
-    'IT',
+    'Finance & Accounts',
+    'Human Resources',
+    'Engineering & IT',
     'Sales & Marketing',
-    'Support',
+    'Facilities & Logistics',
   ],
   positionCategories: [
     'Executive Leadership',
-    'Faculty / Teaching',
+    'Operations & Delivery',
     'Technical / IT',
     'Finance & Accounts',
     'Administrative Staff',
@@ -503,7 +503,7 @@ export const initialHrSettings: HrSettingsConfig = {
     gracePeriodMinutes: 15,
     minimumWorkingHours: 8,
     halfDayHours: 4,
-    attendanceLocations: ['Kochi Main Campus', 'Kochi Corporate Office', 'Trivandrum Center'],
+    attendanceLocations: ['Kochi Corporate HQ', 'Kochi Branch Office', 'Trivandrum Regional Office'],
   },
   weeklyOff: {
     primaryDay: 'Sunday',
@@ -530,19 +530,19 @@ export const initialHrSettings: HrSettingsConfig = {
 export const initialHrActivityLogs: HrActivityLog[] = [];
 
 export const initialDepartmentRoles: DepartmentRole[] = [
-  // Academic (101)
+  // Operations (101)
   {
     id: 'ROLE-101-01',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Principal & Academic Director',
+    departmentName: 'Operations',
+    roleTitle: 'Director of Operations',
     accessLevel: 'Super Admin (Full Control)',
-    reportingTo: 'Managing Director / Board of Trustees',
-    description: 'Executive academic leadership, institutional accreditation, and final faculty evaluations.',
+    reportingTo: 'Managing Director / Board of Directors',
+    description: 'Executive operational leadership, service delivery excellence, and final performance evaluations.',
     keyResponsibilities: [
-      'Institutional leadership & academic governance',
-      'Final faculty evaluations & appointment sign-off',
-      'Curriculum quality assurance and board compliance',
+      'Company-wide operational leadership & governance',
+      'Final team evaluations & appointment sign-off',
+      'Service quality assurance and SLA compliance',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -557,15 +557,15 @@ export const initialDepartmentRoles: DepartmentRole[] = [
   {
     id: 'ROLE-101-02',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Vice Principal & Academic Dean',
+    departmentName: 'Operations',
+    roleTitle: 'Vice President – Operations',
     accessLevel: 'Department Manager',
-    reportingTo: 'Principal & Academic Director',
-    description: 'Supervises academic timetable, instructional delivery, and faculty mentoring.',
+    reportingTo: 'Director of Operations',
+    description: 'Supervises operational schedules, project delivery, and team mentoring.',
     keyResponsibilities: [
-      'Academic schedule & lecture timetable administration',
-      'Faculty performance review & mentorship',
-      'Student examination council oversight',
+      'Operational schedule & project timeline administration',
+      'Team performance review & mentorship',
+      'Client SLA & quality audit oversight',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -580,14 +580,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
   {
     id: 'ROLE-101-03',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Professor & Head of Department (HOD)',
+    departmentName: 'Operations',
+    roleTitle: 'Operations Manager / Team Lead',
     accessLevel: 'Department Manager',
-    reportingTo: 'Vice Principal & Academic Dean',
-    description: 'Leads department curriculum, faculty workload allocation, and student evaluations.',
+    reportingTo: 'Vice President – Operations',
+    description: 'Leads departmental workflows, staff workload allocation, and project evaluations.',
     keyResponsibilities: [
-      'Course syllabus delivery & pedagogical standards',
-      'Department faculty leave and attendance oversight',
+      'Project delivery & operational standards',
+      'Department staff leave and attendance oversight',
       'Applicant interview evaluations for department vacancies',
     ],
     capabilities: {
@@ -603,15 +603,15 @@ export const initialDepartmentRoles: DepartmentRole[] = [
   {
     id: 'ROLE-101-04',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Associate Professor / Faculty Member',
+    departmentName: 'Operations',
+    roleTitle: 'Senior Operations Executive',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Professor & Head of Department (HOD)',
-    description: 'Classroom instruction, digital attendance logging, and student mentoring.',
+    reportingTo: 'Operations Manager / Team Lead',
+    description: 'Project execution, digital attendance logging, and client coordination.',
     keyResponsibilities: [
-      'Conduct scheduled classroom lectures & laboratory practicals',
-      'Maintain daily biometric attendance & lesson plans',
-      'Student assignment assessments & progress reporting',
+      'Execute scheduled project deliverables & client workflows',
+      'Maintain daily biometric attendance & task logs',
+      'Client implementation assessments & progress reporting',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -626,14 +626,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
   {
     id: 'ROLE-101-05',
     departmentCode: '101',
-    departmentName: 'Academic',
-    roleTitle: 'Laboratory & Workshop Instructor',
+    departmentName: 'Operations',
+    roleTitle: 'Operations Coordinator / Associate',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Professor & Head of Department (HOD)',
-    description: 'Instructional lab sessions, technical apparatus safety, and consumable stock tracking.',
+    reportingTo: 'Operations Manager / Team Lead',
+    description: 'Technical support sessions, equipment safety, and consumable stock tracking.',
     keyResponsibilities: [
-      'Operate instructional apparatus & safety protocols',
-      'Assist students with laboratory experiments',
+      'Operate technical equipment & safety protocols',
+      'Assist clients and teams with implementation tasks',
       'Report equipment maintenance needs to IT/Facilities',
     ],
     capabilities: {
@@ -652,14 +652,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     id: 'ROLE-102-01',
     departmentCode: '102',
     departmentName: 'Administration',
-    roleTitle: 'Managing Director / Corporate Trustee',
+    roleTitle: 'Managing Director / CEO',
     accessLevel: 'Super Admin (Full Control)',
-    reportingTo: 'Board of Governors',
-    description: 'Overarching institutional governance, major capital approvals, and legal signing authority.',
+    reportingTo: 'Board of Directors',
+    description: 'Overarching corporate governance, major capital approvals, and legal signing authority.',
     keyResponsibilities: [
-      'Strategic corporate direction & campus expansions',
-      'Institutional budget authorization & financial oversight',
-      'Legal decrees, executive policies, and regulatory sign-off',
+      'Strategic corporate direction & branch expansions',
+      'Company budget authorization & financial oversight',
+      'Legal resolutions, executive policies, and regulatory sign-off',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -675,13 +675,13 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     id: 'ROLE-102-02',
     departmentCode: '102',
     departmentName: 'Administration',
-    roleTitle: 'Campus Administrator',
+    roleTitle: 'General Manager – Administration',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Oversees campus daily operations, statutory document renewals, and cross-departmental coordination.',
+    description: 'Oversees office daily operations, statutory document renewals, and cross-departmental coordination.',
     keyResponsibilities: [
-      'Campus facilities coordination & security monitoring',
-      'Statutory compliance filing with local municipal authorities',
+      'Office facilities coordination & security monitoring',
+      'Statutory compliance filing with municipal & corporate authorities',
       'Administrative material requisitions & approvals',
     ],
     capabilities: {
@@ -700,12 +700,12 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     departmentName: 'Administration',
     roleTitle: 'Executive Office Assistant',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Campus Administrator',
-    description: 'Inward/outward dispatch, student enquiries, and institutional record filing.',
+    reportingTo: 'General Manager – Administration',
+    description: 'Inward/outward dispatch, client enquiries, and corporate record filing.',
     keyResponsibilities: [
-      'Front office reception & parent inquiry handling',
-      'Government circular inward logs & archival',
-      'Student certificate issuance logistics',
+      'Front office reception & client inquiry handling',
+      'Statutory circular inward logs & archival',
+      'Corporate document & certificate dispatch logistics',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -726,7 +726,7 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     roleTitle: 'Chief Financial Officer (CFO)',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Institutional financial health, annual budget planning, and statutory tax audits.',
+    description: 'Corporate financial health, annual budget planning, and statutory tax audits.',
     keyResponsibilities: [
       'Fiscal budgeting, fund allocation, and cashflow management',
       'Payroll disbursement approval & statutory compliance (EPF/ESI)',
@@ -772,10 +772,10 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     roleTitle: 'Internal Auditor & Compliance Analyst',
     accessLevel: 'View Only (Read-Only)',
     reportingTo: 'Chief Financial Officer (CFO)',
-    description: 'Audits transaction journals, fee receipts, and inventory asset registers.',
+    description: 'Audits transaction journals, client receipts, and inventory asset registers.',
     keyResponsibilities: [
       'Independent audit of financial journals and vouchers',
-      'Review fee collection reports & arrears balances',
+      'Review receivable collection reports & outstanding balances',
       'Inspect procurement purchase orders and GRN matches',
     ],
     capabilities: {
@@ -799,7 +799,7 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     reportingTo: 'Managing Director',
     description: 'Talent recruitment, employee relations, compensation slabs, and HR policy enforcement.',
     keyResponsibilities: [
-      'Oversee institution-wide hiring campaigns & talent pipelines',
+      'Oversee company-wide hiring campaigns & talent pipelines',
       'Issue and authorize Offer Letters & Appointment Letters',
       'Formulate leave rules, appraisal benchmarks, and salary structures',
     ],
@@ -868,10 +868,10 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     roleTitle: 'IT Director & Systems Architect',
     accessLevel: 'Super Admin (Full Control)',
     reportingTo: 'Managing Director',
-    description: 'ERP portal administration, database integrity, campus networking, and cloud services.',
+    description: 'ERP portal administration, database integrity, office networking, and cloud services.',
     keyResponsibilities: [
       'Manage MYSAR ERP software, permissions, and database sync',
-      'Oversee campus firewall, Wi-Fi network, and server hardware',
+      'Oversee office firewall, Wi-Fi network, and server hardware',
       'IT hardware procurement recommendations & vendor SLAs',
     ],
     capabilities: {
@@ -891,10 +891,10 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     roleTitle: 'Systems & Network Engineer',
     accessLevel: 'Operational (Entry & Edit)',
     reportingTo: 'IT Director & Systems Architect',
-    description: 'Campus LAN/WAN support, staff workstations, printer maintenance, and classroom smartboards.',
+    description: 'Office LAN/WAN support, staff workstations, printer maintenance, and conference room AV.',
     keyResponsibilities: [
       'Troubleshoot staff computer hardware and operating systems',
-      'Manage classroom smart displays, projectors, and audio systems',
+      'Manage conference room displays, projectors, and audio systems',
       'Perform scheduled data backups & antivirus updates',
     ],
     capabilities: {
@@ -913,14 +913,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     id: 'ROLE-106-01',
     departmentCode: '106',
     departmentName: 'Sales & Marketing',
-    roleTitle: 'Head of Admissions & Institutional Growth',
+    roleTitle: 'Head of Sales & Business Growth',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Admissions growth strategy, institutional partner tie-ups, and lead conversion targets.',
+    description: 'Business growth strategy, corporate partner tie-ups, and lead conversion targets.',
     keyResponsibilities: [
-      'Drive student admissions campaigns and enrollment funnels',
-      'Manage lead allocation to admissions counselors',
-      'Approve fee quotations, concessions, and institutional proposals',
+      'Drive enterprise sales campaigns and client acquisition funnels',
+      'Manage lead allocation to business development executives',
+      'Approve commercial quotations, discounts, and client proposals',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -936,14 +936,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     id: 'ROLE-106-02',
     departmentCode: '106',
     departmentName: 'Sales & Marketing',
-    roleTitle: 'Senior Admissions Counselor / Sales Rep',
+    roleTitle: 'Senior Business Development Executive',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Head of Admissions',
-    description: 'Lead engagement, parent counseling, campus tours, and admission enrollment.',
+    reportingTo: 'Head of Sales & Business Growth',
+    description: 'Lead engagement, client consultations, product demos, and deal closures.',
     keyResponsibilities: [
-      'Follow up on prospective leads via phone, email, and campus visits',
-      'Conduct institutional presentation tours and counseling sessions',
-      'Convert qualified leads and issue fee quotation proposals',
+      'Follow up on prospective leads via phone, email, and client visits',
+      'Conduct product demonstrations and client consultation sessions',
+      'Convert qualified leads and issue commercial quotation proposals',
     ],
     capabilities: {
       canApproveLeaves: false,
@@ -956,19 +956,19 @@ export const initialDepartmentRoles: DepartmentRole[] = [
     headcount: 0,
   },
 
-  // Campus Operations (107)
+  // Facilities & Logistics (107)
   {
     id: 'ROLE-107-01',
     departmentCode: '107',
-    departmentName: 'Campus Operations',
-    roleTitle: 'Facilities & Estate Manager',
+    departmentName: 'Facilities & Logistics',
+    roleTitle: 'Facilities & Logistics Manager',
     accessLevel: 'Department Manager',
     reportingTo: 'Managing Director',
-    description: 'Campus estate maintenance, electrical utilities, transport fleet, and physical security.',
+    description: 'Office facilities maintenance, electrical utilities, transport fleet, and physical security.',
     keyResponsibilities: [
-      'Campus physical infrastructure, civil repairs, and sanitation',
-      'Supervise institutional transport fleet, routes, and drivers',
-      'Manage security personnel schedules & physical campus safety',
+      'Office physical infrastructure, civil repairs, and sanitation',
+      'Supervise company transport fleet, logistics routes, and drivers',
+      'Manage security personnel schedules & physical workplace safety',
     ],
     capabilities: {
       canApproveLeaves: true,
@@ -983,14 +983,14 @@ export const initialDepartmentRoles: DepartmentRole[] = [
   {
     id: 'ROLE-107-02',
     departmentCode: '107',
-    departmentName: 'Campus Operations',
+    departmentName: 'Facilities & Logistics',
     roleTitle: 'Procurement & Storekeeper',
     accessLevel: 'Operational (Entry & Edit)',
-    reportingTo: 'Facilities & Estate Manager',
+    reportingTo: 'Facilities & Logistics Manager',
     description: 'Receives materials, issues store requisitions, and manages physical inventory.',
     keyResponsibilities: [
       'Inspect incoming materials against purchase orders (GRN)',
-      'Store inventory binning & issuance to teaching departments',
+      'Store inventory binning & issuance to operational departments',
       'Initiate replenishment purchase requisitions for low stock items',
     ],
     capabilities: {

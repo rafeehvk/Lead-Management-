@@ -530,7 +530,7 @@ export const FinanceExecutiveDashboard: React.FC<FinanceExecutiveDashboardProps>
               <option value="IT & Tech">IT & Tech</option>
               <option value="Marketing & Admissions">Marketing</option>
               <option value="HR & Admin">HR & Admin</option>
-              <option value="Academic Operations">Academic Ops</option>
+              <option value="Corporate Operations">Corporate Ops</option>
               <option value="Finance & Accounts">Finance</option>
             </select>
           </div>
@@ -546,7 +546,7 @@ export const FinanceExecutiveDashboard: React.FC<FinanceExecutiveDashboardProps>
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-medium focus:outline-none"
             >
               <option value="All">All Projects</option>
-              <option value="Campus Expansion">Campus Expansion</option>
+              <option value="Branch Expansion">Branch Expansion</option>
               <option value="Cloud Infrastructure">Cloud Infra</option>
               <option value="SkillFest 2026">SkillFest 2026</option>
             </select>
@@ -566,7 +566,7 @@ export const FinanceExecutiveDashboard: React.FC<FinanceExecutiveDashboardProps>
               <option value="Operations & Logistics">Operations</option>
               <option value="Technology & Infrastructure">Technology</option>
               <option value="Marketing & Outreach">Marketing</option>
-              <option value="Facilities & Campus">Facilities</option>
+              <option value="Facilities & Infrastructure">Facilities</option>
             </select>
           </div>
 

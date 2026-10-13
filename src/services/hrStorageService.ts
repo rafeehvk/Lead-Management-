@@ -173,8 +173,8 @@ class HrStorageService {
       id: newId,
       name: posData.name || 'New Position',
       code: posData.code || `POS-${String(count).padStart(2, '0')}`,
-      division: posData.division || 'Academic Wing',
-      department: posData.department || 'Academic',
+      division: posData.division || 'Operations Division',
+      department: posData.department || 'Operations',
       vacancies,
       filled,
       remainingVacancies: Math.max(0, vacancies - filled),
@@ -186,7 +186,7 @@ class HrStorageService {
       experienceRequired: posData.experienceRequired || '1-3 years',
       skills: posData.skills || [],
       salaryRange: posData.salaryRange || { min: 30000, max: 45000, currency: 'INR' },
-      jobLocation: posData.jobLocation || 'Kochi Campus',
+      jobLocation: posData.jobLocation || 'Kochi Corporate HQ',
       closingDate: posData.closingDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       status: posData.status || 'Open',
       createdDate: new Date().toISOString().split('T')[0],
@@ -229,7 +229,7 @@ class HrStorageService {
       name: appData.name || 'Candidate Name',
       positionId: appData.positionId || '',
       positionName: appData.positionName || 'Staff Role',
-      department: appData.department || 'Academic',
+      department: appData.department || 'Operations',
       phone: appData.phone || '',
       email: appData.email || '',
       experience: appData.experience || 0,
@@ -288,7 +288,7 @@ class HrStorageService {
       applicantEmail: data.applicantEmail || '',
       positionId: data.positionId || '',
       positionName: data.positionName || '',
-      department: data.department || 'Academic',
+      department: data.department || 'Operations',
       round: data.round || 'Round 1 - Screening',
       type: data.type || 'Online',
       date: data.date || new Date().toISOString().split('T')[0],
@@ -643,7 +643,7 @@ class HrStorageService {
       applicantEmail: data.applicantEmail || '',
       applicantPhone: data.applicantPhone || '',
       position: data.position || 'Staff Role',
-      department: data.department || 'Academic',
+      department: data.department || 'Operations',
       joiningDate: data.joiningDate || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       employmentType: data.employmentType || 'Full Time',
       basicSalary: basic,
@@ -850,9 +850,9 @@ class HrStorageService {
       applicantId: data.applicantId || '',
       employeeName: data.employeeName || 'Staff Member',
       employeeId: proposedEmpId,
-      position: data.position || 'Teacher',
-      department: data.department || 'Academic',
-      division: data.division || 'Academic Wing',
+      position: data.position || 'Executive',
+      department: data.department || 'Operations',
+      division: data.division || 'Operations Division',
       joiningDate: data.joiningDate || new Date().toISOString().split('T')[0],
       employmentType: data.employmentType || 'Full Time',
       basicSalary: basic,
@@ -863,10 +863,10 @@ class HrStorageService {
       grossSalary,
       netSalary,
       probationPeriod: data.probationPeriod || '6 Months',
-      workingHours: data.workingHours || '8:15 AM – 4:00 PM',
+      workingHours: data.workingHours || '9:00 AM – 6:00 PM',
       workplace: data.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021',
-      responsibilities: data.responsibilities || ['Fulfill institutional duties and classroom mentorship.'],
-      termsAndConditions: data.termsAndConditions || 'Formal appointment subject to institutional service rules.',
+      responsibilities: data.responsibilities || ['Fulfill assigned operational duties and corporate deliverables.'],
+      termsAndConditions: data.termsAndConditions || 'Formal appointment subject to corporate service rules.',
       issueDate: data.issueDate || new Date().toISOString().split('T')[0],
       status: data.status || 'Generated',
     };
@@ -939,7 +939,7 @@ class HrStorageService {
     const fullName = appt?.employeeName || offer?.applicantName || applicant?.name || '';
     const email = offer?.applicantEmail || applicant?.email || '';
     const phone = offer?.applicantPhone || applicant?.phone || '';
-    const deptName = appt?.department || offer?.department || applicant?.department || 'Academic';
+    const deptName = appt?.department || offer?.department || applicant?.department || 'Operations';
     const deptCode = this.getDepartmentCodeByNameOrCode(deptName);
     const deptMaster = this.getDepartmentsMaster().find(
       (d) => d.departmentCode === deptCode || d.departmentName.toLowerCase() === deptName.toLowerCase()
@@ -948,7 +948,7 @@ class HrStorageService {
     const position = appt?.position || offer?.position || applicant?.positionName || 'Staff Member';
     const joiningDate = appt?.joiningDate || offer?.joiningDate || new Date().toISOString().split('T')[0];
     const employmentType = appt?.employmentType || offer?.employmentType || 'Full Time';
-    const workplace = appt?.workplace || offer?.workplace || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021';
+    const workplace = appt?.workplace || offer?.workLocation || 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi – 682021';
     const probationPeriod = appt?.probationPeriod || offer?.probationPeriod || '6 Months';
     const assignedStaffId = appt?.employeeId || this.generateNextEmployeeId(deptCode);
 
@@ -998,31 +998,31 @@ class HrStorageService {
 
     // Build prefilled Experience & Qualifications from Applicant record
     const prefilledExperiences =
-      applicant?.experience && !/fresher|^0\b/i.test(applicant.experience)
+      applicant?.experience && !/fresher|^0\b/i.test(String(applicant.experience))
         ? [
             {
               id: `exp-prefill-${Date.now()}`,
-              organization: 'Previous Organization',
+              organization: applicant.currentCompanyOrSchool || 'Previous Organization',
               designation: position,
               department: deptName,
               employmentType: employmentType,
               dateOfJoining: '',
               dateOfLeaving: '',
-              totalExperience: applicant.experience,
+              totalExperience: `${applicant.experience} Years`,
               reasonForLeaving: 'Career Advancement',
               remarks: applicant.notes || 'Verified during recruitment interview.',
             },
           ]
         : [];
 
-    const prefilledQualifications = applicant?.qualification
+    const prefilledQualifications = applicant?.highestQualification
       ? [
           {
             id: `qual-prefill-${Date.now()}`,
-            level: /m\.|master|pg|mba|mca|msc|ma|phd|ph\.d/i.test(applicant.qualification)
+            level: /m\.|master|pg|mba|mca|msc|ma|phd|ph\.d/i.test(applicant.highestQualification)
               ? ('Postgraduate' as const)
               : ('Undergraduate' as const),
-            courseName: applicant.qualification,
+            courseName: applicant.highestQualification,
             specialization: deptName,
             institution: '',
             yearOfPassing: '',
@@ -1037,7 +1037,7 @@ class HrStorageService {
     if (appt) {
       prefilledDocRefs.push({
         id: `doc-ref-appt-${Date.now()}`,
-        name: `Institutional Appointment Letter (${appt.appointmentNumber})`,
+        name: `Official Appointment Letter (${appt.appointmentNumber})`,
         category: 'Appointment Letter',
         fileName: `${appt.appointmentNumber.replace(/\//g, '_')}.pdf`,
         fileSize: '1.2 MB',
@@ -1060,15 +1060,15 @@ class HrStorageService {
         notes: `Offer Accepted • Gross ₹${gross.toLocaleString('en-IN')}/mo`,
       });
     }
-    if (applicant?.resumeUrl) {
+    if (applicant) {
       prefilledDocRefs.push({
         id: `doc-ref-resume-${Date.now() + 2}`,
         name: 'Candidate Curriculum Vitae / Resume',
-        category: 'Other',
-        fileName: applicant.resumeUrl,
+        category: 'Resume',
+        fileName: `${applicant.name.replace(/\s+/g, '_')}_Resume.pdf`,
         fileSize: '0.9 MB',
         verificationStatus: 'Verified' as const,
-        uploadDate: applicant.appliedDate || new Date().toISOString().split('T')[0],
+        uploadDate: applicant.applicationDate || new Date().toISOString().split('T')[0],
         notes: 'Submitted during recruitment application',
       });
     }
@@ -1127,7 +1127,7 @@ class HrStorageService {
       reportingManager,
       reportingTo: reportingManager,
       workLocation: workplace,
-      branchLocation: 'Kochi Main Campus',
+      branchLocation: 'Kochi Corporate HQ',
       probationPeriod,
       employmentStatus: 'Active',
       experiences: prefilledExperiences,
@@ -1171,12 +1171,12 @@ class HrStorageService {
       },
       systemAccess: {
         enableLogin: true,
-        userType: 'Faculty / Staff',
+        userType: 'Staff',
         username: suggestedUsername,
         role: 'Staff',
         accessLevel: 'Standard',
         assignedModules: ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
-        branchAccess: 'Kochi Main Campus',
+        branchAccess: 'Kochi Corporate HQ',
         accountStatus: 'Active',
       },
       notes: appt
@@ -1260,7 +1260,7 @@ class HrStorageService {
     const offer = offers.find((o) => o.applicantId === applicantId);
 
     const staffList = this.getStaff();
-    const newStaffId = appt?.employeeId || this.generateNextEmployeeId(applicant.department || 'Academic');
+    const newStaffId = appt?.employeeId || this.generateNextEmployeeId(applicant.department || 'Operations');
 
     const basic = appt?.basicSalary ?? offer?.basicSalary ?? 30000;
     const allowanceItems = appt?.allowanceItems || offer?.allowanceItems || [];
@@ -1313,12 +1313,12 @@ class HrStorageService {
         pinCode: '682020',
       },
       joiningDate: appt?.joiningDate || offer?.joiningDate || new Date().toISOString().split('T')[0],
-      division: appt?.division || 'Academic Wing',
-      department: applicant.department || 'Academic',
-      position: applicant.positionName || 'Teacher',
+      division: appt?.division || 'Operations Division',
+      department: applicant.department || 'Operations',
+      position: applicant.positionName || 'Executive',
       employmentType: appt?.employmentType || 'Full Time',
-      reportingManager: 'Dr. Ramesh Nambiar',
-      workLocation: appt?.workplace || 'Kochi Campus',
+      reportingManager: 'Ramesh Nambiar',
+      workLocation: appt?.workplace || 'Kochi Corporate HQ',
       probationPeriod: appt?.probationPeriod || '6 Months',
       employmentStatus: 'Active',
       documents: [
@@ -1496,10 +1496,10 @@ class HrStorageService {
       {
         id: 'BR-001',
         branchCode: 'KCH-01',
-        branchName: 'Kochi Main Campus',
+        branchName: 'Kochi Corporate HQ',
         city: 'Kochi',
         address: 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
-        contactPerson: 'Dr. Ramesh Nambiar',
+        contactPerson: 'Ramesh Nambiar',
         contactPhone: '+91 7994 807 907',
         status: 'Active',
         createdDate: '2026-01-01',
@@ -1507,7 +1507,7 @@ class HrStorageService {
       {
         id: 'BR-002',
         branchCode: 'CLT-02',
-        branchName: 'Calicut Regional Centre',
+        branchName: 'Calicut Regional Office',
         city: 'Calicut',
         address: 'Mavoor Road, Kozhikode, Kerala – 673004',
         contactPerson: 'Sri. Ananthan K.',
@@ -1518,9 +1518,9 @@ class HrStorageService {
       {
         id: 'BR-003',
         branchCode: 'TVM-03',
-        branchName: 'Trivandrum South Wing',
+        branchName: 'Trivandrum Regional Office',
         city: 'Trivandrum',
-        address: 'Technopark Phase 1 Campus Rd, Kazhakkoottam, Trivandrum – 695581',
+        address: 'Technopark Phase 1 Rd, Kazhakkoottam, Trivandrum – 695581',
         contactPerson: 'Smt. Deepa Nair',
         contactPhone: '+91 98460 55667',
         status: 'Active',
@@ -1529,7 +1529,7 @@ class HrStorageService {
       {
         id: 'BR-004',
         branchCode: 'WYD-04',
-        branchName: 'Wayanad Academic Outreach',
+        branchName: 'Wayanad Branch Office',
         city: 'Kalpetta',
         address: 'Civil Station Road, Kalpetta North, Wayanad – 673122',
         contactPerson: 'Sri. Vijayan P.',
@@ -1564,7 +1564,7 @@ class HrStorageService {
     const newBranch: BranchMaster = {
       id: data.id || `BR-${String(count).padStart(3, '0')}-${Date.now().toString(36).slice(-3)}`,
       branchCode: newCode,
-      branchName: (data.branchName || 'New Campus Branch').trim(),
+      branchName: (data.branchName || 'New Branch Office').trim(),
       city: data.city || 'Kochi',
       address: data.address || '',
       contactPerson: data.contactPerson || '',
@@ -1728,7 +1728,7 @@ class HrStorageService {
 
     let runningSeq = 0;
     const validatedList = rawList.map((s) => {
-      const deptCode = this.getDepartmentCodeByNameOrCode(s.departmentCode || s.department || 'Academic');
+      const deptCode = this.getDepartmentCodeByNameOrCode(s.departmentCode || s.department || 'Operations');
       let id = (s.id || s.staffCode || '').trim();
       const match = id.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
 
@@ -1778,7 +1778,7 @@ class HrStorageService {
 
   public saveStaff(staffData: Partial<StaffMember>, actorName = 'Admin'): StaffMember {
     const staffList = this.getStaff();
-    const deptParam = staffData.departmentCode || staffData.department || 'Academic';
+    const deptParam = staffData.departmentCode || staffData.department || 'Operations';
     const deptCode = this.getDepartmentCodeByNameOrCode(deptParam);
 
     if (staffData.id) {
@@ -1854,13 +1854,13 @@ class HrStorageService {
         pinCode: '682001',
       },
       joiningDate: staffData.joiningDate || new Date().toISOString().split('T')[0],
-      division: staffData.division || 'Academic Wing',
-      department: staffData.department || 'Academic',
-      position: staffData.position || 'Teacher',
-      employeeCategory: staffData.employeeCategory || 'Administrator',
+      division: staffData.division || 'Operations Division',
+      department: staffData.department || 'Operations',
+      position: staffData.position || 'Executive',
+      employeeCategory: staffData.employeeCategory || 'Staff',
       employmentType: staffData.employmentType || 'Full Time',
-      reportingManager: staffData.reportingManager || 'Dr. Ramesh Nambiar',
-      workLocation: staffData.workLocation || 'Kochi Main Campus',
+      reportingManager: staffData.reportingManager || 'Ramesh Nambiar',
+      workLocation: staffData.workLocation || 'Kochi Corporate HQ',
       probationPeriod: staffData.probationPeriod || '6 Months',
       employmentStatus: staffData.employmentStatus || 'Active',
       documents: staffData.documents || [],
@@ -1995,7 +1995,7 @@ class HrStorageService {
           role: userRole,
           userType: staff.systemAccess?.userType || 'Staff',
           assignedModules: staff.systemAccess?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
-          branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || 'Kochi Main Campus',
+          branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || 'Kochi Corporate HQ',
           accessLevel: staff.systemAccess?.accessLevel || 'Standard',
           status: isStaffActive ? 'Active' : 'Inactive',
           avatar: staff.profilePhoto || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -2112,8 +2112,8 @@ class HrStorageService {
       id: `LR-2026-${String(count).padStart(3, '0')}`,
       staffId: data.staffId || '',
       staffName: data.staffName || '',
-      department: data.department || 'Academic',
-      position: data.position || 'Teacher',
+      department: data.department || 'Operations',
+      position: data.position || 'Executive',
       leaveType: data.leaveType || 'Casual Leave',
       fromDate: data.fromDate || new Date().toISOString().split('T')[0],
       toDate: data.toDate || new Date().toISOString().split('T')[0],
@@ -2276,8 +2276,8 @@ class HrStorageService {
       id: evalData.id || `PERF-2026-${String(count).padStart(3, '0')}`,
       staffId: evalData.staffId || '',
       staffName: evalData.staffName || '',
-      department: evalData.department || 'Academic',
-      position: evalData.position || 'Faculty',
+      department: evalData.department || 'Operations',
+      position: evalData.position || 'Executive',
       period: evalData.period || 'Q3 2026',
       overallScore: evalData.overallScore || 90,
       rating: evalData.rating || 'Good',
@@ -2396,7 +2396,7 @@ class HrStorageService {
     const newRole: DepartmentRole = {
       id: roleData.id || `ROLE-${deptCode}-${String(count).padStart(2, '0')}`,
       departmentCode: deptCode,
-      departmentName: roleData.departmentName || 'Academic',
+      departmentName: roleData.departmentName || 'Operations',
       roleTitle: roleData.roleTitle || 'New Department Role',
       accessLevel: roleData.accessLevel || 'Operational (Entry & Edit)',
       reportingTo: roleData.reportingTo || 'Department Head',

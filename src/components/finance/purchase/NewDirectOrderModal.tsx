@@ -58,7 +58,7 @@ const NewDirectOrderModalContent: React.FC<{
     new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
   );
   const [department, setDepartment] = useState<string>('General Admin');
-  const [branch, setBranch] = useState<string>('Main Campus (Kochi)');
+  const [branch, setBranch] = useState<string>('Main Office (Kochi)');
   const [costCenter, setCostCenter] = useState<string>('CC-OPERATIONS');
   const [paymentTerms, setPaymentTerms] = useState<string>('Net 30');
   const [deliveryLocation, setDeliveryLocation] = useState<string>(
@@ -333,15 +333,15 @@ const NewDirectOrderModalContent: React.FC<{
               >
                 <option value="General Admin">General Admin</option>
                 <option value="IT & Systems">IT & Systems</option>
-                <option value="Hostel & Facilities">Hostel & Facilities</option>
-                <option value="Academic Operations">Academic Operations</option>
+                <option value="Facilities & Infrastructure">Facilities & Infrastructure</option>
+                <option value="Corporate Operations">Corporate Operations</option>
                 <option value="Marketing">Marketing</option>
                 <option value="Logistics">Logistics</option>
               </select>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Branch / Campus</label>
+              <label className="block font-bold text-slate-700 mb-1">Branch / Location</label>
               <input
                 type="text"
                 value={branch}

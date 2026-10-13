@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { hrStorage } from '../../services/hrStorageService';
 import { assetStorage } from '../../services/assetStorageService';
-import { BranchMaster, Staff } from '../../types/hr';
+import { BranchMaster, StaffMember } from '../../types/hr';
 import { Asset, AssetMovement, AssetRequest } from '../../types/asset';
 import { BranchMasterTable } from './BranchMasterTable';
 
@@ -33,7 +33,7 @@ interface BranchDashboardViewProps {
 
 export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavigateTab }) => {
   const [branches, setBranches] = useState<BranchMaster[]>([]);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [movements, setMovements] = useState<AssetMovement[]>([]);
   const [assetRequests, setAssetRequests] = useState<AssetRequest[]>([]);
@@ -45,9 +45,9 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
   const loadData = () => {
     setBranches(hrStorage.getBranchesMaster());
     setStaffList(hrStorage.getStaff());
-    setAssets(assetStorage.getAllAssets());
+    setAssets(assetStorage.getAssets());
     setMovements(assetStorage.getAllMovements());
-    setAssetRequests(assetStorage.getAllRequests());
+    setAssetRequests(assetStorage.getRequests());
   };
 
   useEffect(() => {
@@ -58,8 +58,8 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
   const matchesBranch = (branch: BranchMaster, text?: string): boolean => {
     if (!text) return false;
     const normalizedText = text.toLowerCase().trim();
-    const bName = branch.name.toLowerCase().trim();
-    const bCode = branch.code.toLowerCase().trim();
+    const bName = branch.branchName.toLowerCase().trim();
+    const bCode = branch.branchCode.toLowerCase().trim();
     const bCity = (branch.city || '').toLowerCase().trim();
 
     if (normalizedText === bName || normalizedText === bCode) return true;
@@ -79,8 +79,8 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
           matchesBranch(branch, s.branchLocation) ||
           matchesBranch(branch, s.systemAccess?.branchAccess)
       );
-      const activeStaff = branchStaff.filter((s) => s.status === 'Active');
-      const onLeaveOrProbation = branchStaff.filter((s) => s.status !== 'Active');
+      const activeStaff = branchStaff.filter((s) => s.employmentStatus === 'Active');
+      const onLeaveOrProbation = branchStaff.filter((s) => s.employmentStatus !== 'Active');
 
       // Unique departments represented in this branch
       const departments = Array.from(
@@ -89,23 +89,35 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
 
       // Staff login accounts enabled in this branch
       const systemEnabledCount = branchStaff.filter(
-        (s) => s.systemAccess?.loginEnabled && s.systemAccess?.accountStatus !== 'Suspended'
+        (s) => s.systemAccess?.enableLogin && s.systemAccess?.accountStatus !== 'Suspended'
       ).length;
 
       // Assets located at or assigned to staff of this branch
-      const branchStaffIds = new Set(branchStaff.map((s) => s.staffId));
+      const branchStaffIds = new Set(branchStaff.map((s) => s.staffId || s.id));
       const branchStaffNames = new Set(branchStaff.map((s) => s.fullName.toLowerCase()));
 
-      const branchAssets = assets.filter(
-        (a) =>
-          matchesBranch(branch, a.location) ||
-          (a.assignedTo && branchStaffIds.has(a.assignedTo)) ||
-          (a.assignedTo && branchStaffNames.has(a.assignedTo.toLowerCase()))
-      );
+      const branchAssets = assets.filter((a) => {
+        const locBranch = a.location?.branch || '';
+        const assignedEmpId = a.currentAssignment?.employeeId || a.temporaryCheckOut?.employeeId || '';
+        const assignedEmpName = (
+          a.currentAssignment?.employeeName ||
+          a.temporaryCheckOut?.person ||
+          ''
+        ).toLowerCase();
 
-      const totalAssetValue = branchAssets.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+        return (
+          matchesBranch(branch, locBranch) ||
+          (assignedEmpId && branchStaffIds.has(assignedEmpId)) ||
+          (assignedEmpName && branchStaffNames.has(assignedEmpName))
+        );
+      });
+
+      const totalAssetValue = branchAssets.reduce(
+        (sum, a) => sum + (Number(a.purchaseInfo?.currentBookValue || a.purchaseInfo?.purchaseCost) || 0),
+        0
+      );
       const assetsUnderMaintenance = branchAssets.filter(
-        (a) => a.status === 'Under Maintenance'
+        (a) => a.status === 'Under Maintenance' || a.status === 'In Maintenance'
       ).length;
 
       // Asset movements involving this branch (from/to location or asset belonging to branch)
@@ -119,14 +131,14 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
 
       // Pending Asset Movements (movements awaiting approval/completion OR pending asset requests/transfers for this branch)
       const pendingMovementsList = branchMovements.filter(
-        (m) => m.approvalStatus === 'Pending' || m.type === 'Maintenance'
+        (m) => m.status === 'Pending' || m.movementType === 'Sent for Maintenance'
       );
 
       const pendingBranchRequests = assetRequests.filter(
         (r) =>
-          r.status === 'Pending' &&
-          (branchStaffIds.has(r.staffId) ||
-            branchStaffNames.has(r.staffName.toLowerCase()) ||
+          r.status === 'Pending Approval' &&
+          (branchStaffIds.has(r.employeeId) ||
+            branchStaffNames.has(r.employeeName.toLowerCase()) ||
             matchesBranch(branch, r.department))
       );
 
@@ -158,17 +170,17 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
       if (statusFilter !== 'ALL' && item.branch.status !== statusFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = item.branch.name.toLowerCase().includes(q);
-        const matchCode = item.branch.code.toLowerCase().includes(q);
+        const matchName = item.branch.branchName.toLowerCase().includes(q);
+        const matchCode = item.branch.branchCode.toLowerCase().includes(q);
         const matchCity = (item.branch.city || '').toLowerCase().includes(q);
-        const matchHead = (item.branch.headName || '').toLowerCase().includes(q);
+        const matchHead = (item.branch.contactPerson || '').toLowerCase().includes(q);
         return matchName || matchCode || matchCity || matchHead;
       }
       return true;
     });
   }, [branchSummaries, selectedBranchId, statusFilter, searchQuery]);
 
-  // Overall Institution KPI Totals
+  // Overall Company KPI Totals
   const kpiTotals = useMemo(() => {
     const activeBranches = branches.filter((b) => b.status === 'Active').length;
     const totalActiveStaff = branchSummaries.reduce((acc, s) => acc + s.activeStaffCount, 0);
@@ -208,7 +220,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Real-time summary of key metrics, active staff headcount, allocated assets, and pending asset movements across all institutional branches.
+                Real-time summary of key metrics, active staff headcount, allocated assets, and pending asset movements across all company branches.
               </p>
             </div>
           </div>
@@ -251,7 +263,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                 {kpiTotals.totalBranches}
               </div>
               <span className="text-[11px] font-semibold text-emerald-600">
-                {kpiTotals.activeBranches} Active Campuses
+                {kpiTotals.activeBranches} Active Branches
               </span>
             </div>
             <div className="w-11 h-11 rounded-xl bg-indigo-100/80 text-indigo-600 flex items-center justify-center">
@@ -338,8 +350,8 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <span className="font-mono text-[10px] opacity-80">[{b.code}]</span>
-              <span>{b.name}</span>
+              <span className="font-mono text-[10px] opacity-80">[{b.branchCode}]</span>
+              <span>{b.branchName}</span>
             </button>
           ))}
         </div>
@@ -398,11 +410,11 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                   <div className="flex items-start space-x-3">
                     <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex flex-col items-center justify-center shrink-0">
                       <MapPin className="w-4 h-4" />
-                      <span className="text-[9px] font-mono font-black mt-0.5">{branch.code}</span>
+                      <span className="text-[9px] font-mono font-black mt-0.5">{branch.branchCode}</span>
                     </div>
                     <div>
                       <div className="flex items-center flex-wrap gap-2">
-                        <h3 className="text-base font-black text-slate-900">{branch.name}</h3>
+                        <h3 className="text-base font-black text-slate-900">{branch.branchName}</h3>
                         <span
                           className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                             branch.status === 'Active'
@@ -414,7 +426,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                        <span>{branch.city || 'Main Campus'}</span>
+                        <span>{branch.city || 'Corporate HQ'}</span>
                         {branch.address && (
                           <>
                             <span>•</span>
@@ -422,11 +434,11 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                           </>
                         )}
                       </p>
-                      {(branch.headName || branch.contactPhone) && (
+                      {(branch.contactPerson || branch.contactPhone) && (
                         <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-600">
-                          {branch.headName && (
+                          {branch.contactPerson && (
                             <span className="font-semibold text-slate-700">
-                              Head: {branch.headName}
+                              Head: {branch.contactPerson}
                             </span>
                           )}
                           {branch.contactPhone && (
@@ -547,7 +559,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
 
                     {branchStaff.length === 0 ? (
                       <div className="py-6 text-center text-xs text-slate-400">
-                        No staff members currently linked to {branch.name}.
+                        No staff members currently linked to {branch.branchName}.
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
@@ -562,20 +574,20 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                               </div>
                               <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                                 <span className="font-mono text-indigo-600 font-semibold">
-                                  {st.staffId}
+                                  {st.staffId || st.id}
                                 </span>
                                 <span>•</span>
-                                <span className="truncate">{st.designation || st.department}</span>
+                                <span className="truncate">{st.position || st.department}</span>
                               </div>
                             </div>
                             <span
                               className={`px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
-                                st.status === 'Active'
+                                st.employmentStatus === 'Active'
                                   ? 'bg-emerald-50 text-emerald-700'
                                   : 'bg-amber-50 text-amber-700'
                               }`}
                             >
-                              {st.status}
+                              {st.employmentStatus}
                             </span>
                           </div>
                         ))}
@@ -612,14 +624,14 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                                 {mov.assetName}
                               </div>
                               <div className="text-[10px] text-slate-600 mt-0.5">
-                                {mov.fromLocation || 'Store'} → {mov.toLocation || branch.name}
+                                {mov.fromLocation || 'Store'} → {mov.toLocation || branch.branchName}
                               </div>
                               <div className="text-[10px] text-amber-700 font-medium mt-0.5">
-                                {mov.type} • {mov.date}
+                                {mov.movementType} • {mov.date}
                               </div>
                             </div>
                             <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-100 text-amber-800 rounded-md shrink-0">
-                              {mov.approvalStatus || 'Pending'}
+                              {mov.status || 'Pending'}
                             </span>
                           </div>
                         ))}
@@ -632,13 +644,13 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                           >
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-slate-900 truncate">
-                                {req.assetCategory} ({req.requestType})
+                                {req.category} ({req.assetTypeRequested})
                               </div>
                               <div className="text-[10px] text-slate-600 mt-0.5">
-                                Requested by: {req.staffName}
+                                Requested by: {req.employeeName}
                               </div>
                               <div className="text-[10px] text-amber-700 font-medium mt-0.5">
-                                Urgency: {req.urgency} • {req.requestDate}
+                                Priority: {req.priority} • {req.requestedDate}
                               </div>
                             </div>
                             <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-100 text-amber-800 rounded-md shrink-0">
@@ -650,7 +662,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                         {/* Also show recent approved movements if no pending ones or below pending */}
                         {branchMovements
                           .filter(
-                            (m) => m.approvalStatus !== 'Pending' && m.type !== 'Maintenance'
+                            (m) => m.status !== 'Pending' && m.movementType !== 'Sent for Maintenance'
                           )
                           .slice(0, 3)
                           .map((mov) => (
@@ -663,11 +675,11 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                                   {mov.assetName}
                                 </div>
                                 <div className="text-[10px] text-slate-500 mt-0.5">
-                                  {mov.fromLocation || 'Source'} → {mov.toLocation || branch.name}
+                                  {mov.fromLocation || 'Source'} → {mov.toLocation || branch.branchName}
                                 </div>
                               </div>
                               <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-50 text-emerald-700 rounded-md shrink-0">
-                                {mov.type}
+                                {mov.movementType}
                               </span>
                             </div>
                           ))}
@@ -680,7 +692,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
               {/* Card Footer */}
               <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
                 <div className="text-slate-500 font-medium">
-                  Branch Code: <span className="font-mono font-bold text-slate-800">{branch.code}</span>
+                  Branch Code: <span className="font-mono font-bold text-slate-800">{branch.branchCode}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   {onNavigateTab && (
@@ -716,7 +728,7 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="py-3 px-4">Branch Code & Name</th>
-                <th className="py-3 px-4">City / Campus Head</th>
+                <th className="py-3 px-4">City / Branch Head</th>
                 <th className="py-3 px-4 text-center">Active Staff</th>
                 <th className="py-3 px-4 text-center">System Logins</th>
                 <th className="py-3 px-4 text-center">Tracked Assets</th>
@@ -730,15 +742,15 @@ export const BranchDashboardView: React.FC<BranchDashboardViewProps> = ({ onNavi
                   <td className="py-3.5 px-4">
                     <div className="flex items-center space-x-2.5">
                       <span className="px-2 py-0.5 font-mono text-[10px] font-bold bg-indigo-50 text-indigo-700 rounded border border-indigo-200">
-                        {row.branch.code}
+                        {row.branch.branchCode}
                       </span>
-                      <span className="font-bold text-slate-900">{row.branch.name}</span>
+                      <span className="font-bold text-slate-900">{row.branch.branchName}</span>
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600">
                     <div className="font-semibold text-slate-800">{row.branch.city || '—'}</div>
                     <div className="text-[10px] text-slate-400">
-                      {row.branch.headName || 'No Head Assigned'}
+                      {row.branch.contactPerson || 'No Head Assigned'}
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-center">

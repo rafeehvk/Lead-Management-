@@ -209,7 +209,7 @@ const NewSalesDeliveryModalContent: React.FC<{
               >
                 <option value="Central Finished Goods Warehouse">Central Finished Goods Warehouse</option>
                 <option value="Main Tech Storage - Bay A">Main Tech Storage - Bay A</option>
-                <option value="Kochi Campus Logistics Depot">Kochi Campus Logistics Depot</option>
+                <option value="Kochi HQ Logistics Depot">Kochi HQ Logistics Depot</option>
               </select>
             </div>
 

@@ -33,7 +33,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
     <div id={id} className="bg-slate-200 text-slate-800 font-sans select-none">
       {/* ======================= PAGE 1 ======================= */}
       <div className="hr-pdf-page w-[794px] h-[1123px] max-h-[1123px] bg-white relative flex flex-col justify-between overflow-hidden shadow-xl border border-slate-200 mx-auto text-xs p-10 box-border">
-        {/* Top Institutional Header */}
+        {/* Top Corporate Header */}
         <div>
           <div className="flex items-center justify-between border-b-2 border-[#168A45] pb-4 mb-4">
             <div className="flex items-center space-x-3">
@@ -104,10 +104,10 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
 
             <div className="text-right space-y-1 text-[10px]">
               <div className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700">
-                <b>Cadre:</b> {staff.employeeCategory || 'Academic & Admin'}
+                <b>Category:</b> {staff.employeeCategory || 'Staff'}
               </div>
               <div className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700">
-                <b>Work Location:</b> {staff.workLocation || 'Main Campus'}
+                <b>Work Location:</b> {staff.workLocation || 'Corporate HQ'}
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
                 <div className="font-bold text-slate-900 mt-0.5 truncate">{staff.personalEmail || staff.email}</div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/80">
-                <div className="text-slate-400 font-medium">Official Institutional Email</div>
+                <div className="text-slate-400 font-medium">Official Corporate Email</div>
                 <div className="font-bold text-emerald-800 mt-0.5 truncate">{staff.email}</div>
               </div>
             </div>
@@ -252,13 +252,13 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Academic & Professional Qualifications (Moved to Page 1 to eliminate bottom blank space) */}
+          {/* Section 4: Educational & Professional Qualifications (Moved to Page 1 to eliminate bottom blank space) */}
           <div className="mt-4">
             <div className="flex items-center space-x-2 text-xs font-bold text-[#0B5D2A] uppercase tracking-wider mb-2 border-b border-emerald-100 pb-1">
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 4
               </span>
-              <span>Academic &amp; Professional Qualifications</span>
+              <span>Educational &amp; Professional Qualifications</span>
             </div>
 
             <table className="w-full text-left text-[10px] border border-slate-200 rounded-lg overflow-hidden">
@@ -383,7 +383,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
               <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0B5D2A] text-[10px] flex items-center justify-center font-extrabold">
                 6
               </span>
-              <span>Family Contacts & Institutional Dependents</span>
+              <span>Family Contacts &amp; Dependents</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -434,7 +434,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
 
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <div className="font-bold text-slate-800 mb-1 border-b border-slate-200 pb-1">
-                Institutional Performance & Attendance
+                Corporate Performance &amp; Attendance
               </div>
               <div className="space-y-1 text-[9px]">
                 <div className="flex justify-between">
@@ -453,11 +453,11 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
             </div>
           </div>
 
-          {/* Section 8: Institutional Verification Sign-Off & Official Seal */}
+          {/* Section 8: Corporate Verification Sign-Off & Official Seal */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2">
             <div className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-200 pb-1 flex justify-between">
-              <span>Official Verification & Sign-Off Authorization</span>
-              <span className="text-emerald-700 font-bold">STATUS: VERIFIED & APPROVED</span>
+              <span>Official Verification &amp; Sign-Off Authorization</span>
+              <span className="text-emerald-700 font-bold">STATUS: VERIFIED &amp; APPROVED</span>
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-[9px] text-center pt-2">
@@ -482,7 +482,7 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
                   <span>VERIFIED</span>
                 </div>
                 <div className="border-b border-slate-400 w-full pb-1 font-semibold text-slate-800">
-                  {staff.verification?.verifiedBy || 'Dr. Ramesh Nambiar (Principal)'}
+                  {staff.verification?.verifiedBy || 'Ramesh Nambiar (Managing Director)'}
                 </div>
                 <div className="text-slate-500 mt-1">Authorized Signatory & Seal</div>
               </div>

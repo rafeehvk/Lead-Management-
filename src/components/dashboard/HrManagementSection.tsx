@@ -46,9 +46,9 @@ export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
   const activeEmployees = staff.filter((s) => s.status !== 'Inactive' && s.status !== 'Terminated').length;
 
   const teachingCount = staff.filter((s) =>
-    (s.division || s.department || '').toLowerCase().includes('academic') ||
-    (s.position || '').toLowerCase().includes('teacher') ||
-    (s.category || '').toLowerCase().includes('teaching')
+    (s.division || s.department || '').toLowerCase().includes('operation') ||
+    (s.division || s.department || '').toLowerCase().includes('it') ||
+    (s.category || '').toLowerCase().includes('technical')
   ).length;
 
   const adminCount = staff.filter((s) =>
@@ -155,7 +155,7 @@ export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
         {/* Staff Summary Cards - 6 Cols */}
         <div className="lg:col-span-6 space-y-3">
           <h3 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />
+            <Briefcase className="w-3.5 h-3.5 text-emerald-700" />
             <span>Staff Roster & Category Breakdown</span>
           </h3>
 
@@ -172,21 +172,21 @@ export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
 
             <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-200 text-left">
               <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">
-                Teaching Staff
+                Technical & Ops
               </div>
               <div className="text-xl font-black text-blue-950 mt-0.5">{teachingCount}</div>
               <div className="text-[10px] text-blue-700 mt-0.5 font-medium">
-                Faculty & Mentors
+                Delivery & Systems
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-200 text-left">
               <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">
-                Non-Teaching
+                Corporate & Support
               </div>
               <div className="text-xl font-black text-indigo-950 mt-0.5">{nonTeachingCount}</div>
               <div className="text-[10px] text-indigo-700 mt-0.5 font-medium">
-                Admin & Ops
+                Admin & Business
               </div>
             </div>
 

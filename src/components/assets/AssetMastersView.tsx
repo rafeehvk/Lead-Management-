@@ -187,7 +187,7 @@ export const AssetLocationsView: React.FC = () => {
           <label className="block font-bold text-slate-700 mb-1">Branch *</label>
           <input
             type="text"
-            placeholder="e.g. Pune Campus"
+            placeholder="e.g. Pune Branch"
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             className="w-full p-2 border border-slate-300 rounded-lg"

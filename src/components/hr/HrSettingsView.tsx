@@ -70,7 +70,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
   const addLocation = () => {
     const loc = newLocation.trim();
     if (!loc) return;
-    const currentLocs = formState.workingHours?.attendanceLocations || ['Kochi Main Campus'];
+    const currentLocs = formState.workingHours?.attendanceLocations || ['Kochi Corporate HQ'];
     if (currentLocs.includes(loc)) return;
     setFormState({
       ...formState,
@@ -81,7 +81,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
           gracePeriodMinutes: 15,
           minimumWorkingHours: 8,
           halfDayHours: 4,
-          attendanceLocations: ['Kochi Main Campus'],
+          attendanceLocations: ['Kochi Corporate HQ'],
         }),
         attendanceLocations: [...currentLocs, loc],
       },
@@ -90,7 +90,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
   };
 
   const removeLocation = (locToRemove: string) => {
-    const currentLocs = formState.workingHours?.attendanceLocations || ['Kochi Main Campus'];
+    const currentLocs = formState.workingHours?.attendanceLocations || ['Kochi Corporate HQ'];
     setFormState({
       ...formState,
       workingHours: {
@@ -100,7 +100,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
           gracePeriodMinutes: 15,
           minimumWorkingHours: 8,
           halfDayHours: 4,
-          attendanceLocations: ['Kochi Main Campus'],
+          attendanceLocations: ['Kochi Corporate HQ'],
         }),
         attendanceLocations: currentLocs.filter((l) => l !== locToRemove),
       },
@@ -117,7 +117,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
             <span>HR System Configuration & Policies</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Configure institutional attendance rules, leave quotas, payroll cycles, and access permissions.
+            Configure company attendance rules, leave quotas, payroll cycles, and access permissions.
           </p>
         </div>
 
@@ -275,9 +275,9 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                       gracePeriodMinutes: 15,
                       minimumWorkingHours: 8,
                       halfDayHours: 4,
-                      attendanceLocations: ['Kochi Main Campus'],
+                      attendanceLocations: ['Kochi Corporate HQ'],
                     }),
-                    attendanceLocations: activeLocations.length > 0 ? activeLocations : ['Kochi Main Campus'],
+                    attendanceLocations: activeLocations.length > 0 ? activeLocations : ['Kochi Corporate HQ'],
                   },
                 };
                 setFormState(updatedSettings);
@@ -340,7 +340,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                             gracePeriodMinutes: 15,
                             minimumWorkingHours: 8,
                             halfDayHours: 4,
-                            attendanceLocations: ['Kochi Main Campus'],
+                            attendanceLocations: ['Kochi Corporate HQ'],
                           }),
                           officeStartTime: e.target.value,
                         },
@@ -365,7 +365,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                             gracePeriodMinutes: 15,
                             minimumWorkingHours: 8,
                             halfDayHours: 4,
-                            attendanceLocations: ['Kochi Main Campus'],
+                            attendanceLocations: ['Kochi Corporate HQ'],
                           }),
                           officeEndTime: e.target.value,
                         },
@@ -390,7 +390,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                             gracePeriodMinutes: 15,
                             minimumWorkingHours: 8,
                             halfDayHours: 4,
-                            attendanceLocations: ['Kochi Main Campus'],
+                            attendanceLocations: ['Kochi Corporate HQ'],
                           }),
                           gracePeriodMinutes: parseInt(e.target.value) || 0,
                         },
@@ -417,7 +417,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                             gracePeriodMinutes: 15,
                             minimumWorkingHours: 8,
                             halfDayHours: 4,
-                            attendanceLocations: ['Kochi Main Campus'],
+                            attendanceLocations: ['Kochi Corporate HQ'],
                           }),
                           minimumWorkingHours: parseInt(e.target.value) || 8,
                         },
@@ -442,7 +442,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                             gracePeriodMinutes: 15,
                             minimumWorkingHours: 8,
                             halfDayHours: 4,
-                            attendanceLocations: ['Kochi Main Campus'],
+                            attendanceLocations: ['Kochi Corporate HQ'],
                           }),
                           halfDayHours: parseInt(e.target.value) || 4,
                         },
@@ -510,7 +510,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                   <span>Approved Attendance Geofence Locations</span>
                 </label>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {(formState.workingHours?.attendanceLocations || ['Kochi Main Campus']).map((loc) => (
+                  {(formState.workingHours?.attendanceLocations || ['Kochi Corporate HQ']).map((loc) => (
                     <span
                       key={loc}
                       className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/60 rounded-xl text-xs font-semibold"
@@ -561,7 +561,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                   Annual Leave Types & Quotas
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Configure default entitlement days per year for full-time institutional staff and carry-forward caps.
+                  Configure default entitlement days per year for full-time company staff and carry-forward caps.
                 </p>
               </div>
 
@@ -729,7 +729,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
                   <div className="font-bold">Leave Approval SLA & Routing</div>
                   <div className="text-emerald-800 text-[11px] mt-0.5 leading-relaxed">
                     Leave requests under 3 days require Department Head approval. Leaves beyond 3 consecutive days or
-                    medical leaves requiring certificate submission are automatically routed to the Principal / Academic Head.
+                    medical leaves requiring certificate submission are automatically routed to the Managing Director / Operations Head.
                   </div>
                 </div>
               </div>
@@ -852,7 +852,7 @@ export const HrSettingsView: React.FC<HrSettingsViewProps> = ({
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-slate-600">
                 <div className="font-bold text-slate-900">Salary Calculation Basis</div>
                 <div className="text-[11px] leading-relaxed">
-                  Gross Pay = Basic Pay + HRA + Special / Academic Allowances. Net Disbursement = Gross Pay - (EPF + ESI + Professional Tax + Loss of Pay Days). Payslips are issued automatically upon payroll approval.
+                  Gross Pay = Basic Pay + HRA + Special / Performance Allowances. Net Disbursement = Gross Pay - (EPF + ESI + Professional Tax + Loss of Pay Days). Payslips are issued automatically upon payroll approval.
                 </div>
               </div>
             </div>

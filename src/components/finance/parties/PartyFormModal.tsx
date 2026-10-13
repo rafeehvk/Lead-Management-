@@ -32,9 +32,9 @@ interface PartyFormModalProps {
 }
 
 const CATEGORY_PRESETS: Record<PartyType, string[]> = {
-  Customer: ['Retail', 'Corporate', 'Institution', 'Distributor', 'Dealer', 'Government', 'NGO', 'Other'],
+  Customer: ['Retail', 'Corporate', 'Enterprise', 'Distributor', 'Dealer', 'Government', 'NGO', 'Other'],
   Vendor: ['Supplier', 'Service Provider', 'Contractor', 'Manufacturer', 'Dealer', 'Other'],
-  'Customer & Vendor': ['Corporate', 'Institution', 'Government', 'Manufacturer', 'Contractor', 'Other'],
+  'Customer & Vendor': ['Corporate', 'Enterprise', 'Government', 'Manufacturer', 'Contractor', 'Other'],
 };
 
 export const PartyFormModal: React.FC<PartyFormModalProps> = ({
@@ -885,7 +885,7 @@ export const PartyFormModal: React.FC<PartyFormModalProps> = ({
                     <option value="Net 15">Net 15 Days</option>
                     <option value="Net 30">Net 30 Days (Standard)</option>
                     <option value="Net 45">Net 45 Days</option>
-                    <option value="Net 60">Net 60 Days (Institutional)</option>
+                    <option value="Net 60">Net 60 Days (Enterprise)</option>
                   </select>
                 </div>
 

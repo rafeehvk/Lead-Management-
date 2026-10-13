@@ -119,7 +119,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [newBranchNameInput, setNewBranchNameInput] = useState('');
   const [newBranchCodeInput, setNewBranchCodeInput] = useState('');
   const [newBranchCityInput, setNewBranchCityInput] = useState('');
-  const initialDept = departmentsList[0] || { departmentCode: '101', departmentName: 'Academic', reporting: 'Dr. Ramesh Nambiar' };
+  const initialDept = departmentsList[0] || { departmentCode: '101', departmentName: 'Operations', reporting: 'Ramesh Nambiar' };
   const [departmentCode, setDepartmentCode] = useState(initialDept.departmentCode);
 
   // Auto-generate next employee ID in required format: CB/Department ID/Continues Number
@@ -166,13 +166,13 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
   // 3. Employment Information State
   const [dateOfJoining, setDateOfJoining] = useState(new Date().toISOString().split('T')[0]);
-  const [department, setDepartment] = useState('Academic');
+  const [department, setDepartment] = useState('Operations');
   const [position, setPosition] = useState('');
-  const [employeeCategory, setEmployeeCategory] = useState<'Administrator' | 'Manager' | 'Accountant' | 'CSR' | 'Marketing' | 'Sales' | 'Other'>('Administrator');
+  const [employeeCategory, setEmployeeCategory] = useState<'Manager' | 'Executive' | 'Staff' | string>('Staff');
   const [employmentType, setEmploymentType] = useState<EmploymentType>('Full Time');
-  const [branchLocation, setBranchLocation] = useState('Kochi Main Campus');
-  const [reportingManager, setReportingManager] = useState('Dr. Ramesh Nambiar');
-  const [workLocation, setWorkLocation] = useState('On-site (Campus Wing A)');
+  const [branchLocation, setBranchLocation] = useState('Kochi Corporate HQ');
+  const [reportingManager, setReportingManager] = useState('Ramesh Nambiar');
+  const [workLocation, setWorkLocation] = useState('On-site (Corporate HQ)');
   const [previousEmployeeId, setPreviousEmployeeId] = useState('');
   const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus>('Active');
   const [probationPeriod, setProbationPeriod] = useState('6 Months');
@@ -181,16 +181,16 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [experiences, setExperiences] = useState<StaffExperienceRecord[]>([
     {
       id: 'exp-1',
-      organization: 'St. Teresa Higher Secondary Institute',
-      designation: 'Senior Faculty & Department Coordinator',
-      department: 'Academic',
+      organization: 'Apex Enterprise Solutions Pvt Ltd',
+      designation: 'Senior Operations Executive & Team Coordinator',
+      department: 'Operations',
       employmentType: 'Full Time',
       dateOfJoining: '2021-06-01',
       dateOfLeaving: '2024-04-30',
       totalExperience: '2 Years 11 Months',
-      reasonForLeaving: 'Career Growth & Institutional Leadership',
-      certificateDoc: 'Experience_Certificate_StTeresa.pdf',
-      remarks: 'Exemplary service record with high academic student ratings.',
+      reasonForLeaving: 'Career Growth & Corporate Leadership',
+      certificateDoc: 'Experience_Certificate_Apex.pdf',
+      remarks: 'Exemplary service record with strong client delivery ratings.',
     },
   ]);
 
@@ -283,7 +283,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       verificationStatus: 'Verified',
       uploadDate: '2026-08-01',
       documentNumber: 'CAS-APPT-2026-001',
-      notes: 'Signed institutional agreement with probation terms',
+      notes: 'Signed corporate employment agreement with probation terms',
     },
     {
       id: 'doc-ref-2',
@@ -294,7 +294,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       verificationStatus: 'Verified',
       uploadDate: '2026-08-01',
       documentNumber: 'DEG-78912',
-      notes: 'Original verified by Directorate of Academics',
+      notes: 'Original verified by HR & Compliance Division',
     },
   ]);
 
@@ -311,7 +311,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
   // 9. System & Access Information State (Connect User Creation & Staff Onboarding)
   const [enableLogin, setEnableLogin] = useState(true);
-  const [systemUserType, setSystemUserType] = useState('Faculty / Staff');
+  const [systemUserType, setSystemUserType] = useState('Staff');
   const [systemUsername, setSystemUsername] = useState('');
   const [systemPassword, setSystemPassword] = useState('Password@123');
   const [showPassword, setShowPassword] = useState(false);
@@ -322,7 +322,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     'HR & Staff Directory',
     'Attendance & Leave',
   ]);
-  const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Main Campus');
+  const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Corporate HQ');
   const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
   const [copiedPass, setCopiedPass] = useState(false);
 
@@ -332,13 +332,13 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
     const latestBranches = hrStorage.getBranchesMaster();
     setBranchesList(latestBranches);
-    const defaultBranchName = latestBranches[0]?.branchName || 'Kochi Main Campus';
+    const defaultBranchName = latestBranches[0]?.branchName || 'Kochi Corporate HQ';
 
     setActiveTab('personal');
     const sourceData = staffToEdit || prefillStaffData;
 
     if (sourceData) {
-      const code = sourceData.departmentCode || hrStorage.getDepartmentCodeByNameOrCode(sourceData.department || 'Academic');
+      const code = sourceData.departmentCode || hrStorage.getDepartmentCodeByNameOrCode(sourceData.department || 'Operations');
       const existingId = sourceData.staffCode || sourceData.id || hrStorage.generateNextEmployeeId(code);
       setStaffId(existingId);
       setFullName(sourceData.fullName || '');
@@ -388,14 +388,14 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
       // Employment
       setDateOfJoining(sourceData.joiningDate || new Date().toISOString().split('T')[0]);
-      setDepartment(sourceData.department || 'Academic');
+      setDepartment(sourceData.department || 'Operations');
       setDepartmentCode(code);
       setPosition(sourceData.position || '');
-      setEmployeeCategory(sourceData.employeeCategory || 'Administrator');
+      setEmployeeCategory(sourceData.employeeCategory || 'Staff');
       setEmploymentType(sourceData.employmentType || 'Full Time');
       setBranchLocation(sourceData.branchLocation || defaultBranchName);
-      setReportingManager(sourceData.reportingTo || sourceData.reportingManager || 'Dr. Ramesh Nambiar');
-      setWorkLocation(sourceData.workLocation || 'On-site (Campus Wing A)');
+      setReportingManager(sourceData.reportingTo || sourceData.reportingManager || 'Ramesh Nambiar');
+      setWorkLocation(sourceData.workLocation || 'On-site (Corporate HQ)');
       setPreviousEmployeeId(sourceData.previousEmployeeId || '');
       setEmploymentStatus(sourceData.employmentStatus || 'Active');
       setProbationPeriod(sourceData.probationPeriod || '6 Months');
@@ -474,7 +474,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             documentNumber: d.documentNumber,
             issueDate: d.issueDate,
             expiryDate: d.expiryDate,
-            notes: d.notes || 'Official institutional record',
+            notes: d.notes || 'Official corporate record',
           }))
         );
       }
@@ -482,7 +482,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       // System Access
       if (sourceData.systemAccess) {
         setEnableLogin(sourceData.systemAccess.enableLogin ?? true);
-        setSystemUserType(sourceData.systemAccess.userType || 'Faculty / Staff');
+        setSystemUserType(sourceData.systemAccess.userType || 'Staff');
         setSystemUsername(sourceData.systemAccess.username || '');
         setSystemRole(sourceData.systemAccess.role || 'Staff');
         setAccessLevel(sourceData.systemAccess.accessLevel || 'Standard');
@@ -500,7 +500,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         setRegistrationDate(sourceData.verification.registrationDate || sourceData.createdDate || new Date().toISOString().split('T')[0]);
         setRegisteredBy(sourceData.verification.registeredBy || 'HR Admin');
         setVerificationStatus(sourceData.verification.verificationStatus || 'Verified');
-        setVerifiedBy(sourceData.verification.verifiedBy || 'Dr. Ramesh Nambiar');
+        setVerifiedBy(sourceData.verification.verifiedBy || 'Ramesh Nambiar');
         setVerificationDate(sourceData.verification.verificationDate || new Date().toISOString().split('T')[0]);
         setRegistrationRemarks(sourceData.verification.remarks || sourceData.notes || '');
       } else if (sourceData.notes) {
@@ -515,6 +515,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       setFullName('');
       setProfilePhoto('');
       setPosition('');
+      setEmployeeCategory('Staff');
       setPersonalEmail('');
       setOfficialEmail('');
       setContactNumber('');
@@ -688,7 +689,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [registrationDate, setRegistrationDate] = useState(new Date().toISOString().split('T')[0]);
   const [registeredBy, setRegisteredBy] = useState('HR Admin - Sri. Ananthan K.');
   const [verificationStatus, setVerificationStatus] = useState<'Pending' | 'Verified' | 'Under Review' | 'Rejected'>('Verified');
-  const [verifiedBy, setVerifiedBy] = useState('Dr. Ramesh Nambiar (Principal)');
+  const [verifiedBy, setVerifiedBy] = useState('Ramesh Nambiar (Managing Director)');
   const [verificationDate, setVerificationDate] = useState(new Date().toISOString().split('T')[0]);
   const [registrationRemarks, setRegistrationRemarks] = useState(
     'All original credentials, certificates and background clearances thoroughly cross-checked and approved.'
@@ -714,9 +715,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       pinCode: '682030',
     });
     setSameAsPermanent(true);
-    setPosition('Assistant Professor & Coordinator');
-    setDepartment('Academic');
-    setEmployeeCategory('Administrator');
+    setPosition('Operations Manager & Team Lead');
+    setDepartment('Operations');
+    setEmployeeCategory('Staff');
     setEmploymentType('Full Time');
     setAccountHolderName('Meera Gopikrishnan');
     setAccountNo('309481920481');
@@ -1004,7 +1005,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       : { ...communicationAddress, sameAsPermanent: false },
     joiningDate: dateOfJoining,
     department,
-    position: position || 'Institutional Staff',
+    position: position || 'Corporate Staff',
     employeeCategory,
     employmentType,
     branchLocation,
@@ -1130,22 +1131,12 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   ? 'Update staff demographics, department assignment, document attachments, allowances, and system credentials.'
                   : isPrefillMode
                   ? 'Candidate details, designation, joining date, salary, allowances, and deductions have been prefilled from the Appointment & Offer Letter.'
-                  : 'Official institutional staff registration form spanning 10 structured sections.'}
+                  : 'Official corporate staff registration form spanning 10 structured sections.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            <button
-              type="button"
-              onClick={handlePreloadDemo}
-              title="Click to populate realistic sample staff credentials"
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl font-semibold cursor-pointer transition-all text-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Fill Demo Details</span>
-            </button>
-
             <button
               type="button"
               onClick={handleDownloadOnboardingPdf}
@@ -1632,7 +1623,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">3. Employment Information</h3>
-                  <p className="text-slate-500 text-[11px]">Designation, cadre, department, and institutional hierarchy.</p>
+                  <p className="text-slate-500 text-[11px]">Designation, category, department, and corporate hierarchy.</p>
                 </div>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   Step 3 of 10
@@ -1704,7 +1695,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     type="text"
                     value={position}
                     onChange={(e) => setPosition(e.target.value)}
-                    placeholder="e.g. Senior Faculty / Admission Head"
+                    placeholder="e.g. Operations Manager / Business Executive"
                     required
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
@@ -1717,13 +1708,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     onChange={(e) => setEmployeeCategory(e.target.value as any)}
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-semibold text-emerald-800"
                   >
-                    <option value="Administrator">Administrator</option>
                     <option value="Manager">Manager</option>
-                    <option value="Accountant">Accountant</option>
-                    <option value="CSR">CSR</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Other">Other Cadre</option>
+                    <option value="Executive">Executive</option>
+                    <option value="Staff">Staff</option>
                   </select>
                 </div>
 
@@ -1807,7 +1794,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                           type="text"
                           value={newBranchCityInput}
                           onChange={(e) => setNewBranchCityInput(e.target.value)}
-                          placeholder="City / Campus Location (optional)"
+                          placeholder="City / Office Location (optional)"
                           className="flex-1 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-xs bg-white"
                         />
                         <button
@@ -1821,8 +1808,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                               branchCode: code,
                               branchName: newBranchNameInput.trim(),
                               city: newBranchCityInput.trim() || 'Kerala',
-                              address: newBranchCityInput.trim() || 'Institutional Campus',
-                              contactPerson: reportingManager || 'Campus Head',
+                              address: newBranchCityInput.trim() || 'Corporate Branch Office',
+                              contactPerson: reportingManager || 'Branch Manager',
                               contactPhone: '+91 98460 00000',
                               status: 'Active',
                             });
@@ -1858,7 +1845,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     type="text"
                     value={workLocation}
                     onChange={(e) => setWorkLocation(e.target.value)}
-                    placeholder="e.g. On-site (Campus Wing A)"
+                    placeholder="e.g. On-site (Corporate HQ)"
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
                 </div>
@@ -1956,7 +1943,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                             type="text"
                             value={exp.organization}
                             onChange={(e) => handleUpdateExperience(idx, 'organization', e.target.value)}
-                            placeholder="e.g. St. Teresa Higher Secondary Institute"
+                            placeholder="e.g. Apex Enterprise Solutions Pvt Ltd"
                             className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                           />
                         </div>
@@ -1967,7 +1954,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                             type="text"
                             value={exp.designation}
                             onChange={(e) => handleUpdateExperience(idx, 'designation', e.target.value)}
-                            placeholder="e.g. Senior Faculty"
+                            placeholder="e.g. Senior Executive"
                             className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                           />
                         </div>
@@ -1978,7 +1965,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                             type="text"
                             value={exp.department}
                             onChange={(e) => handleUpdateExperience(idx, 'department', e.target.value)}
-                            placeholder="e.g. Academic Wing"
+                            placeholder="e.g. Operations / Sales"
                             className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                           />
                         </div>
@@ -2073,7 +2060,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">5. Academic & Professional Qualifications</h3>
+                  <h3 className="text-sm font-bold text-slate-900">5. Educational &amp; Professional Qualifications</h3>
                   <p className="text-slate-500 text-[11px]">Degrees, diplomas, certifications, passing years, and institutions.</p>
                 </div>
                 <button
@@ -2357,7 +2344,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                           onChange={(e) => handleUpdateFamilyMember(idx, 'isDependent', e.target.checked)}
                           className="rounded text-[#168A45] focus:ring-emerald-500 w-4 h-4"
                         />
-                        <span>Institutional Dependent (ESI / Medical Benefit)?</span>
+                        <span>Company Dependent (ESI / Medical Benefit)?</span>
                       </label>
                     </div>
                   </div>
@@ -2588,7 +2575,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       { label: '+ Over time', name: 'Over time', amount: 1500 },
                       { label: '+ Food Allowance', name: 'Food Allowance', amount: 1500 },
                       { label: '+ Medical Allowance', name: 'Medical Allowance', amount: 1000 },
-                      { label: '+ Academic Allowance', name: 'Academic Allowance', amount: 1000 },
+                      { label: '+ Performance Allowance', name: 'Performance Allowance', amount: 1000 },
                     ].map((preset, idx) => (
                       <button
                         key={idx}
@@ -2770,7 +2757,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">8. Identity & Institutional Documents</h3>
+                  <h3 className="text-sm font-bold text-slate-900">8. Identity & Corporate Documents</h3>
                   <p className="text-slate-500 text-[11px]">Aadhaar, PAN, certificates, resume, and joining dossier verification.</p>
                 </div>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
@@ -2847,13 +2834,13 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                 </div>
               </div>
 
-              {/* Document Attachments & Institutional Contracts (documentReferences) */}
+              {/* Document Attachments & Corporate Contracts (documentReferences) */}
               <div className="space-y-3 pt-3 border-t border-slate-200">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <div className="flex items-center space-x-2">
                       <Paperclip className="w-4 h-4 text-emerald-600" />
-                      <span className="font-bold text-slate-900 text-sm">Institutional Document Attachments & Contracts</span>
+                      <span className="font-bold text-slate-900 text-sm">Corporate Document Attachments & Contracts</span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                         {docReferences.length} files
                       </span>
@@ -2972,7 +2959,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       </div>
 
                       <div className="sm:col-span-2 md:col-span-3">
-                        <label className="font-semibold text-slate-700">Verification Notes / Institutional Remarks</label>
+                        <label className="font-semibold text-slate-700">Verification Notes / Corporate Remarks</label>
                         <input
                           type="text"
                           value={newDocNotes}
@@ -3095,7 +3082,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">9. System & Access Permissions</h3>
-                  <p className="text-slate-500 text-[11px]">Configure ERP portal access, role tier, assigned institutional modules, and security status.</p>
+                  <p className="text-slate-500 text-[11px]">Configure ERP portal access, role tier, assigned system modules, and security status.</p>
                 </div>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   Step 9 of 10
@@ -3149,27 +3136,22 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         value={systemUserType}
                         onChange={(e) => {
                           setSystemUserType(e.target.value);
-                          if (e.target.value === 'Administrator') {
-                            setSystemRole('HR Admin');
-                            setAccessLevel('Administrator');
-                          } else if (e.target.value === 'Manager') {
+                          if (e.target.value === 'Manager') {
                             setSystemRole('Manager');
                             setAccessLevel('Manager');
-                          } else if (e.target.value === 'Accountant') {
-                            setSystemRole('Accountant');
+                          } else if (e.target.value === 'Executive') {
+                            setSystemRole('Executive');
+                            setAccessLevel('Standard');
+                          } else {
+                            setSystemRole('Staff');
                             setAccessLevel('Standard');
                           }
                         }}
                         className="w-full mt-1 border border-emerald-300 bg-white rounded-xl px-3 py-2 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500"
                       >
-                        <option value="Faculty / Staff">Faculty / Teaching Staff</option>
-                        <option value="Administrator">Administrator (Full ERP Control)</option>
-                        <option value="Manager">Department / Campus Manager</option>
-                        <option value="Sales / Admissions">Sales / Admission Counselor</option>
-                        <option value="Marketing">Marketing Executive</option>
-                        <option value="CSR / Front Office">CSR / Front Office Desk</option>
-                        <option value="Accountant">Finance & Accountant</option>
-                        <option value="HR Admin">HR Specialist / Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Executive">Executive</option>
+                        <option value="Staff">Staff</option>
                       </select>
                       <p className="text-[10px] text-slate-500 mt-1">Defines dashboard views & permissions</p>
                     </div>
@@ -3255,12 +3237,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         onChange={(e) => setSystemRole(e.target.value)}
                         className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                       >
-                        <option value="Staff">Faculty / Teaching Staff</option>
-                        <option value="Department Coordinator">Department Coordinator</option>
-                        <option value="Manager">Office / Campus Manager</option>
-                        <option value="Accountant">Finance & Accountant</option>
-                        <option value="HR Admin">HR Administrator</option>
-                        <option value="Principal">Principal / Executive Director</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Executive">Executive</option>
+                        <option value="Staff">Staff</option>
                       </select>
                     </div>
 
@@ -3324,7 +3303,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="font-bold text-slate-800">Assigned Institutional Modules (Staff Access Control)</label>
+                    <label className="font-bold text-slate-800">Assigned Corporate Modules (Staff Access Control)</label>
                     <p className="text-[11px] text-slate-500">
                       When this staff member logs in, they will only view and access the modules selected below.
                     </p>
@@ -3384,7 +3363,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">10. Registration & Audit Verification</h3>
-                  <p className="text-slate-500 text-[11px]">Final institutional audit, approval sign-off, and permanent registry commit.</p>
+                  <p className="text-slate-500 text-[11px]">Final corporate audit, approval sign-off, and permanent registry commit.</p>
                 </div>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   Step 10 of 10
@@ -3427,12 +3406,12 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700">Verified By (Auditor / Principal)</label>
+                  <label className="font-semibold text-slate-700">Verified By (Auditor / Director)</label>
                   <input
                     type="text"
                     value={verifiedBy}
                     onChange={(e) => setVerifiedBy(e.target.value)}
-                    placeholder="e.g. Dr. Ramesh Nambiar (Principal)"
+                    placeholder="e.g. Ramesh Nambiar (Managing Director)"
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white"
                   />
                 </div>
@@ -3468,7 +3447,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   <div>
                     <div className="font-bold text-slate-900 text-sm">Download Official Application Form (PDF)</div>
                     <div className="text-slate-500 text-xs">
-                      Export the complete 10-section formal onboarding dossier with candidate declaration and institutional signature blocks.
+                      Export the complete 10-section formal onboarding dossier with candidate declaration and corporate signature blocks.
                     </div>
                   </div>
                 </div>

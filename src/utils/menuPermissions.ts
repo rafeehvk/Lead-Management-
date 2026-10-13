@@ -18,7 +18,7 @@ export interface MenuItemDefinition {
 export const SIDE_MENU_CATEGORIES = [
   'Dashboard & Overview',
   'Lead Management (CRM)',
-  'HR & Institution Management',
+  'HR & People Management',
   'Sales Management',
   'Purchase Management',
   'Inventory Management',
@@ -36,7 +36,7 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     name: 'ERP Executive Dashboard',
     category: 'Dashboard & Overview',
     categoryIcon: 'LayoutDashboard',
-    description: 'Institutional overview, quick metrics, pending approvals, and operational alerts.',
+    description: 'Company overview, quick metrics, pending approvals, and operational alerts.',
   },
   {
     id: 'operations-dashboard',
@@ -56,31 +56,31 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
   },
   {
     id: 'leads',
-    name: 'All Leads & Institutional Accounts',
+    name: 'All Leads & Client Accounts',
     category: 'Lead Management (CRM)',
     categoryIcon: 'Users',
-    description: 'Directory of institutional leads, account assignments, and conversion stages.',
+    description: 'Directory of client leads, account assignments, and conversion stages.',
   },
   {
     id: 'followups',
     name: 'Follow-Ups & Meeting Tasks',
     category: 'Lead Management (CRM)',
     categoryIcon: 'CalendarClock',
-    description: 'Daily scheduled follow-up visits, institutional calls, and status logs.',
+    description: 'Daily scheduled follow-up visits, client calls, and status logs.',
   },
   {
     id: 'proposals',
     name: 'Quotations & Commercial Proposals',
     category: 'Lead Management (CRM)',
     categoryIcon: 'FileText',
-    description: 'Pricing proposals, fee quotes, SLA contracts, and client approval signatures.',
+    description: 'Pricing proposals, service quotes, SLA contracts, and client approval signatures.',
   },
   {
     id: 'meet',
     name: 'Google Meet Scheduler',
     category: 'Lead Management (CRM)',
     categoryIcon: 'Video',
-    description: 'Institutional video demo scheduling and Google Meet integration.',
+    description: 'Client video demo scheduling and Google Meet integration.',
   },
   {
     id: 'gmail',
@@ -97,83 +97,97 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Representative performance, conversion velocity, and deal volumes.',
   },
 
-  // HR & Institution Management
+  // HR & People Management
   {
     id: 'hr-dashboard',
     name: 'HR Executive Dashboard',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Building2',
-    description: 'Headcount metrics, payroll outlays, and institutional KPI charts.',
+    description: 'Headcount metrics, payroll outlays, and company KPI charts.',
   },
   {
     id: 'hr-recruitment-positions',
     name: 'Job Positions & Vacancies',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Briefcase',
-    description: 'Institutional vacancies, qualification requirements, and salary brackets.',
+    description: 'Open company vacancies, qualification requirements, and salary brackets.',
   },
   {
     id: 'hr-recruitment-applicants',
     name: 'Applicants & Talent Pool',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'UserSearch',
     description: 'Candidate screening, stage tracking, resume files, and qualifications.',
   },
   {
     id: 'hr-recruitment-interviews',
     name: 'Interview Schedule & Evaluations',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Calendar',
     description: 'Candidate interview scheduling, panellist scorecards, and remarks.',
   },
   {
     id: 'hr-recruitment-offers',
     name: 'Offer Letters Dispatch',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'FileCheck',
     description: 'Formal job offer generation, salary packages, and acceptance status.',
   },
   {
     id: 'hr-recruitment-appointments',
     name: 'Appointment Letters',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Award',
-    description: 'Institutional appointment letters, probation terms, and staff conversion.',
+    description: 'Corporate appointment letters, probation terms, and staff conversion.',
   },
   {
     id: 'hr-staff',
-    name: 'Staff & Faculty Directory',
-    category: 'HR & Institution Management',
+    name: 'Staff Directory',
+    category: 'HR & People Management',
     categoryIcon: 'Users',
-    description: 'Faculty profiles, staff master, biometrics, and digital ID cards.',
+    description: 'Employee profiles, staff master, biometrics, and digital ID cards.',
+  },
+  {
+    id: 'hr-branch-dashboard',
+    name: 'Branch & Location Dashboard',
+    category: 'HR & People Management',
+    categoryIcon: 'Building2',
+    description: 'Branch-level staff metrics, active employee count, and pending asset movements.',
+  },
+  {
+    id: 'hr-staff-access',
+    name: 'Staff Access & Module Control',
+    category: 'HR & People Management',
+    categoryIcon: 'ShieldCheck',
+    description: 'Staff portal login credentials, branch access, and assigned modules.',
   },
   {
     id: 'hr-attendance',
     name: 'Attendance, Shifts & Leaves',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Clock',
     description: 'Shift tracking, biometric logs, leave balances, and absence approvals.',
   },
   {
     id: 'hr-payroll',
     name: 'Payroll & Payslips',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'CreditCard',
     description: 'Monthly payroll runs, statutory EPF/ESI deductions, and digital pay slips.',
   },
   {
     id: 'hr-kpi',
     name: 'KPI & Performance Reviews',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Award',
     description: 'Staff KPI benchmarks, quarterly performance reviews, and ratings.',
   },
   {
     id: 'hr-settings',
     name: 'HR System Policies & Matrix',
-    category: 'HR & Institution Management',
+    category: 'HR & People Management',
     categoryIcon: 'Sliders',
-    description: 'Department & roles definition matrix, shift rules, and leave quotas.',
+    description: 'Department & roles definition matrix, branch master, shift rules, and leave quotas.',
   },
 
   // Sales Management
@@ -278,11 +292,18 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Multiple vendor price bids and comparative price matrix analysis.',
   },
   {
+    id: 'purchase-quotation-comparison',
+    name: 'Purchase Quotation Comparison',
+    category: 'Purchase Management',
+    categoryIcon: 'SlidersHorizontal',
+    description: 'Side-by-side vendor bid comparison and award approval.',
+  },
+  {
     id: 'purchase-order',
     name: 'Purchase Orders (PO)',
     category: 'Purchase Management',
     categoryIcon: 'ShoppingBag',
-    description: 'Formal PO documents dispatched to approved institutional suppliers.',
+    description: 'Formal PO documents dispatched to approved company suppliers.',
   },
   {
     id: 'goods-receipt',
@@ -297,6 +318,13 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     category: 'Purchase Management',
     categoryIcon: 'Receipt',
     description: 'Vendor bill booking, 3-way matching against PO and GRN, and input tax.',
+  },
+  {
+    id: 'purchase-return-request',
+    name: 'Purchase Return Requests',
+    category: 'Purchase Management',
+    categoryIcon: 'RotateCcw',
+    description: 'Vendor return authorization requests and inspection notes.',
   },
   {
     id: 'purchase-return',
@@ -363,7 +391,7 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     name: 'Party Directory (Vendors & Clients)',
     category: 'Party Management',
     categoryIcon: 'Building2',
-    description: 'Master directory of institutional customers, vendors, GSTINs, and contacts.',
+    description: 'Master directory of corporate customers, vendors, GSTINs, and contacts.',
   },
   {
     id: 'party-ledger',
@@ -386,7 +414,7 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     name: 'Financial Budget & Planner',
     category: 'Finance & Accounts',
     categoryIcon: 'TrendingUp',
-    description: 'Institutional operational budgets, quarterly runway, and capital plans.',
+    description: 'Company operational budgets, quarterly runway, and capital plans.',
   },
   {
     id: 'finance-gl',
@@ -404,10 +432,10 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
   },
   {
     id: 'finance-loans',
-    name: 'Loans & Institutional Liabilities',
+    name: 'Loans & Corporate Liabilities',
     category: 'Finance & Accounts',
     categoryIcon: 'ShieldAlert',
-    description: 'Institutional borrowings, EMI payment schedules, and interest expense.',
+    description: 'Corporate borrowings, EMI payment schedules, and interest expense.',
   },
   {
     id: 'finance-payments',
@@ -423,6 +451,48 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     categoryIcon: 'Receipt',
     description: 'Non-sales revenue receipts, donation receipts, and grant entries.',
   },
+  {
+    id: 'finance-advances',
+    name: 'Advance Adjustments',
+    category: 'Finance & Accounts',
+    categoryIcon: 'Layers',
+    description: 'Vendor and employee advance settlements and allocations.',
+  },
+  {
+    id: 'finance-controls-audit',
+    name: 'Controls & Audit Trail',
+    category: 'Finance & Accounts',
+    categoryIcon: 'ShieldCheck',
+    description: 'Financial control policies, voucher approvals, and audit trails.',
+  },
+  {
+    id: 'finance-tax',
+    name: 'Tax & GST / TDS Compliance',
+    category: 'Finance & Accounts',
+    categoryIcon: 'FileSpreadsheet',
+    description: 'GST input/output registers, TDS deductions, and tax compliance.',
+  },
+  {
+    id: 'finance-budget',
+    name: 'Budget & Commitments',
+    category: 'Finance & Accounts',
+    categoryIcon: 'BarChart3',
+    description: 'Departmental budget allocations and purchase order commitments.',
+  },
+  {
+    id: 'finance-projections',
+    name: 'Budget Projections',
+    category: 'Finance & Accounts',
+    categoryIcon: 'TrendingUp',
+    description: 'Multi-quarter financial forecasting and cashflow projections.',
+  },
+  {
+    id: 'finance-ledger',
+    name: 'Expense Ledger & Vouchers',
+    category: 'Finance & Accounts',
+    categoryIcon: 'Receipt',
+    description: 'Itemized corporate expense ledger and payment vouchers.',
+  },
 
   // Document Expiry & Compliance
   {
@@ -434,10 +504,10 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
   },
   {
     id: 'doc-registry',
-    name: 'Institutional Document Registry',
+    name: 'Corporate Document Registry',
     category: 'Document Expiry & Compliance',
     categoryIcon: 'FileText',
-    description: 'Repository of government licenses, land deeds, insurance, and AMC policies.',
+    description: 'Repository of government licenses, lease deeds, insurance, and AMC policies.',
   },
   {
     id: 'doc-calendar',
@@ -459,6 +529,13 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     category: 'Document Expiry & Compliance',
     categoryIcon: 'History',
     description: 'Renewal submission tracking, historical document versions, and audit trails.',
+  },
+  {
+    id: 'doc-types',
+    name: 'Document & Expiry Types',
+    category: 'Document Expiry & Compliance',
+    categoryIcon: 'Layers',
+    description: 'Categories, statutory alert windows, and compliance rules.',
   },
 
   // Asset Management
@@ -484,11 +561,25 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Staff equipment requests, IT asset allocation, and procurement POs.',
   },
   {
+    id: 'asset-pos',
+    name: 'Asset Purchase Orders',
+    category: 'Asset Management',
+    categoryIcon: 'ShoppingBag',
+    description: 'Capital equipment purchase orders and vendor deliveries.',
+  },
+  {
+    id: 'asset-receiving',
+    name: 'Asset Goods Intake (GRN)',
+    category: 'Asset Management',
+    categoryIcon: 'PackageCheck',
+    description: 'Receiving and tagging new capital assets into the register.',
+  },
+  {
     id: 'asset-movements',
     name: 'Asset Movements & Transfers',
     category: 'Asset Management',
     categoryIcon: 'ArrowRightLeft',
-    description: 'Inter-campus transfers, temporary staff checkouts, and return receipts.',
+    description: 'Inter-branch transfers, temporary staff checkouts, and return receipts.',
   },
   {
     id: 'asset-maintenance',
@@ -498,11 +589,32 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Preventative servicing logs, vendor AMCs, and breakdown tickets.',
   },
   {
+    id: 'asset-warranties',
+    name: 'Warranties & AMC Tracker',
+    category: 'Asset Management',
+    categoryIcon: 'ShieldCheck',
+    description: 'Equipment warranty coverage and service contract expirations.',
+  },
+  {
+    id: 'asset-retirements',
+    name: 'Decommissioned Assets',
+    category: 'Asset Management',
+    categoryIcon: 'Trash2',
+    description: 'Asset write-offs, scrap disposal, and retirement approvals.',
+  },
+  {
     id: 'asset-reports',
     name: 'Asset Depreciation & Audit Logs',
     category: 'Asset Management',
     categoryIcon: 'BarChart3',
     description: 'Asset depreciation schedules, write-offs, and physical verification audits.',
+  },
+  {
+    id: 'asset-settings',
+    name: 'Asset Masters & Config',
+    category: 'Asset Management',
+    categoryIcon: 'Sliders',
+    description: 'Asset categories, locations, and depreciation rules.',
   },
 
   // Settings & Administration
@@ -511,14 +623,14 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     name: 'Pricing & Product Masters',
     category: 'Settings & Administration',
     categoryIcon: 'Sliders',
-    description: 'Academic fee plans, subscription tiers, and pricing presets.',
+    description: 'Product & service plans, subscription tiers, and pricing presets.',
   },
   {
     id: 'company',
     name: 'Company Profile & Branding',
     category: 'Settings & Administration',
     categoryIcon: 'Building2',
-    description: 'MYSAR institutional details, logos, GST credentials, and bank info.',
+    description: 'MYSAR company details, logos, GST credentials, and bank info.',
   },
   {
     id: 'proposal',
@@ -526,6 +638,13 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     category: 'Settings & Administration',
     categoryIcon: 'FileText',
     description: 'Proposal numbering prefixes, default terms, and legal clauses.',
+  },
+  {
+    id: 'templates',
+    name: 'Proposal Templates Master',
+    category: 'Settings & Administration',
+    categoryIcon: 'FileText',
+    description: 'Customizable multi-tier commercial proposal templates.',
   },
   {
     id: 'users',
@@ -539,7 +658,7 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     name: 'Data Import & CSV Migrations',
     category: 'Settings & Administration',
     categoryIcon: 'FileSpreadsheet',
-    description: 'Bulk CSV spreadsheets import for leads, students, and institutional data.',
+    description: 'Bulk CSV spreadsheets import for leads, clients, and company data.',
   },
   {
     id: 'integrations',
@@ -547,6 +666,13 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     category: 'Settings & Administration',
     categoryIcon: 'Mail',
     description: 'Google Apps Script deployment, Gmail automated notifications, and Drive sync.',
+  },
+  {
+    id: 'themes',
+    name: 'Invoice & Voucher Themes',
+    category: 'Settings & Administration',
+    categoryIcon: 'Sliders',
+    description: 'Custom print layouts and branding themes for invoices and vouchers.',
   },
 ];
 
@@ -570,9 +696,8 @@ export function getDefaultMenuPermissionsForRole(role: UserRole): Record<string,
 
       case 'Manager':
         if (item.category === 'Settings & Administration') {
-          // Limited admin access
           result[item.id] = {
-            viewOnly: true,
+            viewOnly: false,
             entry: false,
             edit: false,
             delete: false,
@@ -651,6 +776,17 @@ export function getDefaultMenuPermissionsForRole(role: UserRole): Record<string,
 }
 
 /**
+ * Checks whether a user has custom saved side-menu permissions in localStorage
+ */
+export function hasCustomUserMenuPermissions(userId: string): boolean {
+  try {
+    return localStorage.getItem(`mysar_user_menu_perms_${userId}`) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Get user-specific menu permissions with fallback to role defaults
  */
 export function getUserMenuPermissions(user: User): Record<string, UserSideMenuPermission> {
@@ -675,7 +811,78 @@ export function getUserMenuPermissions(user: User): Record<string, UserSideMenuP
     console.warn(`Failed to read menu permissions for user ${user.id}`, e);
   }
 
+  // If the user has assignedModules from Staff Onboarding / User configuration, reflect those in default view
+  if (user.assignedModules && user.assignedModules.length > 0) {
+    const allowedSet = resolveAssignedModulesToNavTabs(user.assignedModules, user.accessLevel);
+    const fromModules: Record<string, UserSideMenuPermission> = {};
+    SIDE_MENU_DEFINITIONS.forEach((item) => {
+      const isAllowed = allowedSet.has(item.id);
+      fromModules[item.id] = {
+        viewOnly: isAllowed,
+        entry: isAllowed && user.accessLevel !== 'Read-Only',
+        edit: isAllowed && (user.role === 'Admin' || user.role === 'Manager' || user.accessLevel === 'Manager' || user.accessLevel === 'Administrator' || user.accessLevel === 'Super Admin'),
+        delete: isAllowed && (user.role === 'Admin' || user.accessLevel === 'Administrator' || user.accessLevel === 'Super Admin'),
+      };
+    });
+    return fromModules;
+  }
+
   return roleDefaults;
+}
+
+/**
+ * Resolves the exact granular CRUD permission (`viewOnly`, `entry`, `edit`, `delete`)
+ * for a given user and menu / NavTab ID.
+ */
+export function getMenuPermissionForUser(
+  user: User | null | undefined,
+  menuId: string
+): UserSideMenuPermission {
+  if (!user) {
+    return { viewOnly: false, entry: false, edit: false, delete: false };
+  }
+
+  const allPerms = getUserMenuPermissions(user);
+
+  // Direct match on menuId
+  if (allPerms[menuId]) {
+    return allPerms[menuId];
+  }
+
+  // Handle parent/alias NavTab IDs (e.g., 'sales' -> 'sales-dashboard', 'purchase' -> 'purchase-dashboard', etc.)
+  const aliasMap: Record<string, string> = {
+    sales: 'sales-dashboard',
+    purchase: 'purchase-dashboard',
+    inventory: 'inventory-dashboard',
+    'item-master': 'inventory-items',
+    'finance-item-master': 'inventory-items',
+    'party-management': 'party-directory',
+    'finance-parties': 'party-directory',
+    'finance-party-ledger': 'party-ledger',
+    'doc-expiry': 'doc-dashboard',
+    assets: 'asset-overview',
+    'hr-recruitment': 'hr-recruitment-positions',
+    'branch-dashboard': 'hr-branch-dashboard',
+    finance: 'finance-dashboard',
+    settings: 'users',
+  };
+
+  const mappedId = aliasMap[menuId];
+  if (mappedId && allPerms[mappedId]) {
+    return allPerms[mappedId];
+  }
+
+  // Fallback for unrestricted Admin
+  if (user.role === 'Admin' || user.accessLevel === 'Super Admin' || user.accessLevel === 'Administrator') {
+    return { viewOnly: true, entry: true, edit: true, delete: true };
+  }
+
+  return {
+    viewOnly: true,
+    entry: user.accessLevel !== 'Read-Only',
+    edit: user.role === 'Manager' || user.accessLevel === 'Manager',
+    delete: false,
+  };
 }
 
 /**
@@ -687,6 +894,10 @@ export function saveUserMenuPermissions(
 ): void {
   try {
     localStorage.setItem(`mysar_user_menu_perms_${userId}`, JSON.stringify(permissions));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_user_menu_permissions_changed', { detail: { userId } }));
+      window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+    }
   } catch (e) {
     console.error(`Failed to save menu permissions for user ${userId}`, e);
   }
@@ -698,6 +909,10 @@ export function saveUserMenuPermissions(
 export function resetUserMenuPermissions(userId: string): void {
   try {
     localStorage.removeItem(`mysar_user_menu_perms_${userId}`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_user_menu_permissions_changed', { detail: { userId } }));
+      window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+    }
   } catch (e) {
     console.error(`Failed to reset menu permissions for user ${userId}`, e);
   }
@@ -713,12 +928,12 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
     id: 'Dashboard',
     label: 'Dashboard',
     category: 'Executive & Branch Overview',
-    navTabs: ['dashboard', 'branch-dashboard', 'operations-dashboard'],
+    navTabs: ['dashboard', 'hr-branch-dashboard', 'operations-dashboard'],
   },
   {
-    id: 'Leads & Admissions',
-    label: 'Leads & Admissions',
-    category: 'CRM & Admissions',
+    id: 'Leads & CRM',
+    label: 'Leads & CRM',
+    category: 'CRM & Sales',
     navTabs: ['lead-overview', 'leads', 'followups', 'proposals', 'meet', 'gmail', 'reports'],
   },
   {
@@ -727,6 +942,7 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
     category: 'Human Resources',
     navTabs: [
       'hr-dashboard',
+      'hr-branch-dashboard',
       'hr-staff',
       'hr-staff-access',
       'hr-recruitment',
@@ -775,6 +991,7 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
       'sales-return-report',
       'sales-ar',
       'sales-receipts',
+      'sales-reports',
     ],
   },
   {
@@ -803,6 +1020,7 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
       'purchase-return-report',
       'purchase-payments',
       'purchase-advances',
+      'purchase-reports',
     ],
   },
   {
@@ -880,13 +1098,13 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
       'asset-retirements',
       'asset-reports',
       'asset-settings',
-      'branch-dashboard',
+      'hr-branch-dashboard',
     ],
   },
   {
-    id: 'Academic Schedules',
-    label: 'Academic Schedules',
-    category: 'Academics',
+    id: 'Operations & Schedules',
+    label: 'Operations & Schedules',
+    category: 'Operations',
     navTabs: ['dashboard', 'meet', 'hr-attendance', 'hr-kpi'],
   },
   {
@@ -904,29 +1122,175 @@ export const ONBOARDING_ASSIGNABLE_MODULES: Array<{
 ];
 
 /**
+ * Expands a Set of allowed menu IDs to include parent/alias NavTab IDs
+ */
+export function expandAllowedMenuIdsToNavTabs(menuIds: Iterable<string>): Set<string> {
+  const expanded = new Set<string>();
+  for (const id of menuIds) {
+    if (!id) continue;
+    expanded.add(id);
+    if (id === 'branch-dashboard') expanded.add('hr-branch-dashboard');
+    if (id === 'hr-branch-dashboard') expanded.add('branch-dashboard');
+    if (id === 'party-directory' || id === 'party-management') {
+      expanded.add('party-directory');
+      expanded.add('party-management');
+      expanded.add('finance-parties');
+    }
+    if (id === 'party-ledger') {
+      expanded.add('finance-party-ledger');
+    }
+    if (id === 'inventory-items' || id === 'item-master') {
+      expanded.add('inventory-items');
+      expanded.add('item-master');
+      expanded.add('inventory');
+      expanded.add('finance-item-master');
+    }
+    if (id === 'sales-reports') {
+      expanded.add('sales-quotation-report');
+      expanded.add('sales-order-report');
+      expanded.add('sales-invoice-report');
+      expanded.add('sales-return-request-report');
+      expanded.add('sales-return-report');
+    }
+    if (id === 'purchase-reports') {
+      expanded.add('purchase-request-report');
+      expanded.add('purchase-quotation-report');
+      expanded.add('purchase-quotation-comparison-report');
+      expanded.add('purchase-order-report');
+      expanded.add('goods-receipt-report');
+      expanded.add('purchase-invoice-report');
+      expanded.add('purchase-return-request-report');
+      expanded.add('purchase-return-report');
+    }
+    if (id.startsWith('hr-recruitment-')) {
+      expanded.add('hr-recruitment');
+    }
+    if (id === 'hr-recruitment') {
+      expanded.add('hr-recruitment-positions');
+      expanded.add('hr-recruitment-applicants');
+      expanded.add('hr-recruitment-interviews');
+      expanded.add('hr-recruitment-offers');
+      expanded.add('hr-recruitment-appointments');
+    }
+    if (id.startsWith('doc-')) {
+      expanded.add('doc-expiry');
+    }
+    if (id.startsWith('asset-')) {
+      expanded.add('assets');
+    }
+    if (id.startsWith('sales-')) {
+      expanded.add('sales');
+    }
+    if (id.startsWith('purchase-') || id === 'goods-receipt') {
+      expanded.add('purchase');
+    }
+    if (id.startsWith('inventory-')) {
+      expanded.add('inventory');
+    }
+    if (id.startsWith('finance-')) {
+      expanded.add('finance');
+    }
+    if (['pricing', 'company', 'proposal', 'templates', 'users', 'import', 'integrations', 'themes'].includes(id)) {
+      expanded.add('settings');
+    }
+  }
+  return expanded;
+}
+
+/**
  * Resolves a staff member's assignedModules list (from Onboard Staff > System & Access)
- * into concrete NavTab IDs. Supports both high-level module names (e.g., "Dashboard", "HR & Staff Directory")
+ * into a Set of concrete NavTab IDs. Supports both high-level module names (e.g., "Dashboard", "HR & Staff Directory")
  * and direct NavTab IDs (e.g., "hr-attendance", "leads").
  */
-export function resolveAssignedModulesToNavTabs(assignedModules?: string[]): string[] {
-  if (!assignedModules || assignedModules.length === 0) return [];
-  const resolved = new Set<string>();
+export function resolveAssignedModulesToNavTabs(
+  assignedModules?: string[],
+  _accessLevel?: string
+): Set<string> {
+  if (!assignedModules || assignedModules.length === 0) return new Set<string>();
+  const rawIds = new Set<string>();
 
   assignedModules.forEach((mod) => {
     const clean = mod.trim();
     if (!clean) return;
-    // Direct NavTab ID
-    resolved.add(clean);
+    rawIds.add(clean);
 
-    // Match high-level module label
     const match = ONBOARDING_ASSIGNABLE_MODULES.find(
       (m) => m.id.toLowerCase() === clean.toLowerCase() || m.label.toLowerCase() === clean.toLowerCase()
     );
     if (match) {
-      match.navTabs.forEach((t) => resolved.add(t));
+      match.navTabs.forEach((t) => rawIds.add(t));
     }
   });
 
-  return Array.from(resolved);
+  return expandAllowedMenuIdsToNavTabs(rawIds);
 }
+
+/**
+ * Master resolver that determines the exact Set of allowed NavTab / menu IDs for a given User.
+ * Returns `null` ONLY if the user is an unrestricted Super Admin with no custom menu restrictions or assigned module filters.
+ * Otherwise returns a `Set<string>` of allowed menu IDs so that ONLY allowed menus are shown and all others are hidden.
+ */
+export function getAllowedNavTabsForUser(
+  user: User | null | undefined,
+  matchedStaff?: {
+    systemAccess?: {
+      assignedModules?: string[];
+      accessLevel?: string;
+    };
+  } | null,
+  activeDeptAllowedMenus?: string[] | null
+): Set<string> | null {
+  if (!user) return new Set<string>();
+
+  // 1. Check if explicit per-user Side Menu Permissions were saved for this user in localStorage
+  if (hasCustomUserMenuPermissions(user.id)) {
+    const perms = getUserMenuPermissions(user);
+    const allowedFromPerms: string[] = [];
+    Object.entries(perms).forEach(([menuId, perm]) => {
+      if (perm && (perm.viewOnly || perm.entry || perm.edit || perm.delete)) {
+        allowedFromPerms.push(menuId);
+      }
+    });
+    return expandAllowedMenuIdsToNavTabs(allowedFromPerms);
+  }
+
+  // 2. Check if the user (or linked HR Staff profile) has explicit `assignedModules`
+  const assignedModules =
+    matchedStaff?.systemAccess?.assignedModules && matchedStaff.systemAccess.assignedModules.length > 0
+      ? matchedStaff.systemAccess.assignedModules
+      : user.assignedModules && user.assignedModules.length > 0
+      ? user.assignedModules
+      : undefined;
+
+  const accessLevel = matchedStaff?.systemAccess?.accessLevel ?? user.accessLevel;
+
+  if (assignedModules && assignedModules.length > 0) {
+    // If Super Admin explicitly selected all modules or is unrestricted master admin without restriction, check
+    if (accessLevel === 'Super Admin') {
+      return null;
+    }
+    return resolveAssignedModulesToNavTabs(assignedModules, accessLevel);
+  }
+
+  // 3. If user belongs to a Department with allowedMenuIds (and is not unrestricted Admin)
+  if (user.role !== 'Admin' && activeDeptAllowedMenus && activeDeptAllowedMenus.length > 0) {
+    return expandAllowedMenuIdsToNavTabs(activeDeptAllowedMenus);
+  }
+
+  // 4. Unrestricted Admin sees all menus
+  if (user.role === 'Admin' || accessLevel === 'Super Admin' || accessLevel === 'Administrator') {
+    return null;
+  }
+
+  // 5. For non-Admin roles (Manager, Salesperson, Staff) without custom overrides, enforce role-based menu permissions
+  const rolePerms = getDefaultMenuPermissionsForRole(user.role);
+  const allowedRoleMenus: string[] = [];
+  Object.entries(rolePerms).forEach(([menuId, perm]) => {
+    if (perm && (perm.viewOnly || perm.entry || perm.edit || perm.delete)) {
+      allowedRoleMenus.push(menuId);
+    }
+  });
+  return expandAllowedMenuIdsToNavTabs(allowedRoleMenus);
+}
+
 

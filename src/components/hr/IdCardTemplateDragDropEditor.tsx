@@ -135,13 +135,13 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       id: 'static_wing_label',
       category: 'static_text',
       type: 'text',
-      label: 'Institutional Subtitle / Wing',
+      label: 'Company Subtitle / Division',
       icon: Shield,
-      description: 'e.g. "Campus Management & HR Division"',
+      description: 'e.g. "Corporate Operations & HR Division"',
       defaultConfig: {
         category: 'static_text',
         label: 'Division Subtitle',
-        customValue: 'Campus Management & HR Wing',
+        customValue: 'Corporate Operations & HR Division',
         fontSize: 9,
         fontWeight: 'medium',
         color: '#64748B',
@@ -158,7 +158,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       defaultConfig: {
         category: 'static_text',
         label: 'Security Disclaimer',
-        customValue: 'Property of Casbiro Solutions. If found, please return to campus HR.',
+        customValue: 'Property of Casbiro Solutions. If found, please return to corporate HR.',
         fontSize: 7,
         fontWeight: 'normal',
         color: '#94A3B8',
@@ -228,7 +228,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       type: 'text',
       label: 'Designation / Position',
       icon: Shield,
-      description: 'Job role title or academic rank',
+      description: 'Job role title or executive rank',
       defaultConfig: {
         category: 'dynamic_field',
         dynamicBindingKey: 'position',
@@ -245,7 +245,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       type: 'text',
       label: 'Department',
       icon: Layers,
-      description: 'Department (Academic, IT, Admin)',
+      description: 'Department (Operations, IT, Admin)',
       defaultConfig: {
         category: 'dynamic_field',
         dynamicBindingKey: 'department',
@@ -264,7 +264,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       type: 'text',
       label: 'Division / Branch',
       icon: Layers,
-      description: 'Operational branch or institutional wing',
+      description: 'Operational branch or corporate division',
       defaultConfig: {
         category: 'dynamic_field',
         dynamicBindingKey: 'division',
@@ -391,15 +391,15 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       id: 'workLocation',
       category: 'dynamic_field',
       type: 'text',
-      label: 'Work Campus / Location',
+      label: 'Work Branch / Location',
       icon: MapPin,
-      description: 'Campus name or office station',
+      description: 'Branch name or office station',
       defaultConfig: {
         category: 'dynamic_field',
         dynamicBindingKey: 'workLocation',
-        label: 'Work Campus',
+        label: 'Work Branch',
         showLabel: true,
-        customPrefix: 'Campus: ',
+        customPrefix: 'Branch: ',
         fontSize: 9,
         fontWeight: 'normal',
         color: '#475569',
@@ -442,7 +442,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
       type: 'signature',
       label: 'Authorized Signatory Block',
       icon: PenTool,
-      description: 'Institutional signature and verification title',
+      description: 'Company signature and verification title',
       defaultConfig: {
         category: 'dynamic_field',
         type: 'signature',
@@ -1294,7 +1294,7 @@ export const IdCardTemplateDragDropEditor: React.FC<IdCardTemplateDragDropEditor
                         <option value="emergencyPhone">Emergency Helpline</option>
                         <option value="joiningDate">Date of Joining</option>
                         <option value="validUntil">Valid Upto Date</option>
-                        <option value="workLocation">Work Campus</option>
+                        <option value="workLocation">Work Branch</option>
                         <option value="signature">Authorized Signatory</option>
                       </select>
                     </div>

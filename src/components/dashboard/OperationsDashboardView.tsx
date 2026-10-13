@@ -313,7 +313,7 @@ export const OperationsDashboardView: React.FC<OperationsDashboardViewProps> = (
       erpFinanceStorage.savePurchaseRequest({
         requestedBy: currentUserName,
         department: 'Operations & Inventory',
-        branch: item.warehouse || 'Kochi Campus Warehouse',
+        branch: item.warehouse || 'Kochi Central Warehouse',
         priority: item.currentStock <= 0 ? 'Urgent' : 'High',
         reason: `Auto-generated Reorder Trigger: Stock (${item.currentStock} ${item.baseUnit}) below reorder threshold (${item.reorderLevel})`,
         items: [
