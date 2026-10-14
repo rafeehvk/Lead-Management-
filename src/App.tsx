@@ -43,6 +43,7 @@ import { AttendanceAndLeaveView } from './components/hr/AttendanceAndLeaveView';
 import { PayrollManagementView } from './components/hr/PayrollManagementView';
 import { KpiManagementView } from './components/hr/KpiManagementView';
 import { HrSettingsView } from './components/hr/HrSettingsView';
+import { TaskAllocationView } from './components/tasks/TaskAllocationView';
 import { hrStorage } from './services/hrStorageService';
 import {
   getAllowedNavTabsForUser,
@@ -1171,6 +1172,10 @@ export default function App() {
               prefillStaffData={pendingStaffOnboarding?.prefillData || null}
               onClearPrefillStaffData={() => setPendingStaffOnboarding(null)}
             />
+          )}
+
+          {activeTab === 'task-allocation' && currentUser && (
+            <TaskAllocationView currentUser={currentUser} />
           )}
 
           {activeTab === 'hr-branch-dashboard' && (

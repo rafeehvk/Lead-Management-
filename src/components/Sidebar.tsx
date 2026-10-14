@@ -44,6 +44,7 @@ import {
   CornerDownLeft,
   Sparkles,
   FileSignature,
+  CheckSquare,
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { hasPermission, ROLE_DEFINITIONS } from '../utils/rbac';
@@ -51,6 +52,7 @@ import { documentExpiryStorage } from '../services/documentExpiryStorage';
 import { assetStorage } from '../services/assetStorageService';
 import { financeStorage } from '../services/financeStorageService';
 import { hrStorage } from '../services/hrStorageService';
+import { taskAllocationStorage } from '../services/taskAllocationStorageService';
 import { DepartmentMaster } from '../types/hr';
 import { getAllowedNavTabsForUser } from '../utils/menuPermissions';
 
@@ -68,6 +70,7 @@ export type NavTab =
   | 'settings'
   | 'gashub'
   | 'hr-dashboard'
+  | 'task-allocation'
   | 'hr-recruitment'
   | 'hr-recruitment-positions'
   | 'hr-recruitment-applicants'
@@ -283,6 +286,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isHrTabActive = [
     'hr-dashboard',
+    'task-allocation',
     'hr-branch-dashboard',
     'hr-recruitment',
     'hr-recruitment-positions',
@@ -366,87 +370,69 @@ export const Sidebar: React.FC<SidebarProps> = ({
     !isPurchaseTabActive &&
     !isInventoryTabActive;
 
-  const [isLeadManagementOpen, setIsLeadManagementOpen] = useState(() => {
+  const [isLeadManagementOpen, setIsLeadManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_lead_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isLeadTabActive;
+      return saved === 'true';
     } catch {
-      return isLeadTabActive;
+      return false;
     }
   });
 
-  const [isHrManagementOpen, setIsHrManagementOpen] = useState(() => {
+  const [isHrManagementOpen, setIsHrManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_hr_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isHrTabActive;
+      return saved === 'true';
     } catch {
-      return isHrTabActive;
+      return false;
     }
   });
 
-  useEffect(() => {
-    if (isLeadTabActive) {
-      setIsLeadManagementOpen(true);
-    }
-  }, [isLeadTabActive]);
-
-  useEffect(() => {
-    if (isHrTabActive) {
-      setIsHrManagementOpen(true);
-    }
-  }, [isHrTabActive]);
-
-  const [isRecruitmentsOpen, setIsRecruitmentsOpen] = useState(() => {
+  const [isRecruitmentsOpen, setIsRecruitmentsOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_recruitments_open');
-      if (saved !== null) return saved === 'true';
-      return isRecruitmentTabActive;
+      return saved === 'true';
     } catch {
-      return isRecruitmentTabActive;
+      return false;
     }
   });
 
-  useEffect(() => {
-    if (isRecruitmentTabActive) {
-      setIsRecruitmentsOpen(true);
-    }
-  }, [isRecruitmentTabActive]);
-
-  const [isDocExpiryOpen, setIsDocExpiryOpen] = useState(() => {
+  const [isDocExpiryOpen, setIsDocExpiryOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_doc_expiry_open');
-      if (saved !== null) return saved === 'true';
-      return isDocExpiryTabActive;
+      return saved === 'true';
     } catch {
-      return isDocExpiryTabActive;
+      return false;
     }
   });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(() => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_settings_open');
-      if (saved !== null) return saved === 'true';
-      return activeTab === 'settings';
+      return saved === 'true';
     } catch {
-      return activeTab === 'settings';
+      return false;
     }
   });
 
-  useEffect(() => {
-    if (activeTab === 'settings') {
-      setIsSettingsOpen(true);
-    }
-  }, [activeTab]);
-
-  const [isAssetManagementOpen, setIsAssetManagementOpen] = useState(() => {
+  const [isAssetManagementOpen, setIsAssetManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_asset_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isAssetTabActive;
+      return saved === 'true';
     } catch {
-      return isAssetTabActive;
+      return false;
     }
   });
 
@@ -459,12 +445,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   useEffect(() => {
-    if (isAssetTabActive) {
-      setIsAssetManagementOpen(true);
-    }
-  }, [isAssetTabActive]);
-
-  useEffect(() => {
     const handleAssetChange = () => {
       try {
         setAssetMetrics(assetStorage.getMetrics());
@@ -474,115 +454,80 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => window.removeEventListener('mysar_asset_data_changed', handleAssetChange);
   }, []);
 
-  const [isPartyManagementOpen, setIsPartyManagementOpen] = useState(() => {
+  const [isPartyManagementOpen, setIsPartyManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_party_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isPartyTabActive;
+      return saved === 'true';
     } catch {
-      return isPartyTabActive;
+      return false;
     }
   });
 
-  const [isSalesManagementOpen, setIsSalesManagementOpen] = useState(() => {
+  const [isSalesManagementOpen, setIsSalesManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_sales_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isSalesTabActive;
+      return saved === 'true';
     } catch {
-      return isSalesTabActive;
+      return false;
     }
   });
 
-  const [isSalesReportsOpen, setIsSalesReportsOpen] = useState(() => {
+  const [isSalesReportsOpen, setIsSalesReportsOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_sales_reports_open');
-      if (saved !== null) return saved === 'true';
-      return activeTab.startsWith('sales-') && activeTab.endsWith('-report');
+      return saved === 'true';
     } catch {
       return false;
     }
   });
 
-  const [isPurchaseManagementOpen, setIsPurchaseManagementOpen] = useState(() => {
+  const [isPurchaseManagementOpen, setIsPurchaseManagementOpen] = useState<boolean>(() => {
     try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
       const saved = localStorage.getItem('sidebar_purchase_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isPurchaseTabActive;
-    } catch {
-      return isPurchaseTabActive;
-    }
-  });
-
-  const [isPurchaseReportsOpen, setIsPurchaseReportsOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem('sidebar_purchase_reports_open');
-      if (saved !== null) return saved === 'true';
-      return (
-        (activeTab.startsWith('purchase-') && activeTab.endsWith('-report')) ||
-        activeTab === 'goods-receipt-report'
-      );
+      return saved === 'true';
     } catch {
       return false;
     }
   });
 
-  const [isInventoryManagementOpen, setIsInventoryManagementOpen] = useState(() => {
+  const [isPurchaseReportsOpen, setIsPurchaseReportsOpen] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('sidebar_inventory_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isInventoryTabActive;
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
+      const saved = localStorage.getItem('sidebar_purchase_reports_open');
+      return saved === 'true';
     } catch {
-      return isInventoryTabActive;
+      return false;
     }
   });
 
-  useEffect(() => {
-    if (isPartyTabActive) {
-      setIsPartyManagementOpen(true);
-    }
-  }, [isPartyTabActive]);
-
-  useEffect(() => {
-    if (isSalesTabActive) {
-      setIsSalesManagementOpen(true);
-    }
-  }, [isSalesTabActive]);
-
-  useEffect(() => {
-    if (activeTab.startsWith('sales-') && activeTab.endsWith('-report')) {
-      setIsSalesReportsOpen(true);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (isPurchaseTabActive) {
-      setIsPurchaseManagementOpen(true);
-    }
-  }, [isPurchaseTabActive]);
-
-  useEffect(() => {
-    if (
-      (activeTab.startsWith('purchase-') && activeTab.endsWith('-report')) ||
-      activeTab === 'goods-receipt-report'
-    ) {
-      setIsPurchaseReportsOpen(true);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (isInventoryTabActive) {
-      setIsInventoryManagementOpen(true);
-    }
-  }, [isInventoryTabActive]);
-
-  const [isFinanceManagementOpen, setIsFinanceManagementOpen] = useState(() => {
+  const [isInventoryManagementOpen, setIsInventoryManagementOpen] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('sidebar_finance_mgmt_open');
-      if (saved !== null) return saved === 'true';
-      return isFinanceTabActive;
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
+      const saved = localStorage.getItem('sidebar_inventory_mgmt_open');
+      return saved === 'true';
     } catch {
-      return isFinanceTabActive;
+      return false;
+    }
+  });
+
+  const [isFinanceManagementOpen, setIsFinanceManagementOpen] = useState<boolean>(() => {
+    try {
+      const isDefaultApplied = localStorage.getItem('sidebar_default_collapsed_v3');
+      if (!isDefaultApplied) return false;
+      const saved = localStorage.getItem('sidebar_finance_mgmt_open');
+      return saved === 'true';
+    } catch {
+      return false;
     }
   });
 
@@ -593,12 +538,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return { overallUtilizationRate: 94.6, overBudgetMonthsCount: 2 };
     }
   });
-
-  useEffect(() => {
-    if (isFinanceTabActive) {
-      setIsFinanceManagementOpen(true);
-    }
-  }, [isFinanceTabActive]);
 
   useEffect(() => {
     const handleFinanceChange = () => {
@@ -629,12 +568,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   useEffect(() => {
-    if (isDocExpiryTabActive) {
-      setIsDocExpiryOpen(true);
-    }
-  }, [isDocExpiryTabActive]);
-
-  useEffect(() => {
     const handleDocChange = () => {
       try {
         setDocMetrics(documentExpiryStorage.getDashboardMetrics());
@@ -642,6 +575,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
     window.addEventListener('mysar_doc_expiry_changed', handleDocChange);
     return () => window.removeEventListener('mysar_doc_expiry_changed', handleDocChange);
+  }, []);
+
+  // Ensure initial one-time migration mark so that default is Collapse All
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('sidebar_default_collapsed_v3')) {
+        localStorage.setItem('sidebar_default_collapsed_v3', 'true');
+        localStorage.setItem('sidebar_lead_mgmt_open', 'false');
+        localStorage.setItem('sidebar_hr_mgmt_open', 'false');
+        localStorage.setItem('sidebar_recruitments_open', 'false');
+        localStorage.setItem('sidebar_doc_expiry_open', 'false');
+        localStorage.setItem('sidebar_settings_open', 'false');
+        localStorage.setItem('sidebar_asset_mgmt_open', 'false');
+        localStorage.setItem('sidebar_party_mgmt_open', 'false');
+        localStorage.setItem('sidebar_sales_mgmt_open', 'false');
+        localStorage.setItem('sidebar_sales_reports_open', 'false');
+        localStorage.setItem('sidebar_purchase_mgmt_open', 'false');
+        localStorage.setItem('sidebar_purchase_reports_open', 'false');
+        localStorage.setItem('sidebar_inventory_mgmt_open', 'false');
+        localStorage.setItem('sidebar_finance_mgmt_open', 'false');
+      }
+    } catch {}
+  }, []);
+
+  const [taskMetrics, setTaskMetrics] = useState(() => {
+    try {
+      return taskAllocationStorage.getMetrics();
+    } catch {
+      return { total: 0, assigned: 0, inProgress: 0, underReview: 0 };
+    }
+  });
+
+  useEffect(() => {
+    const handleTaskChange = () => {
+      try {
+        setTaskMetrics(taskAllocationStorage.getMetrics());
+      } catch {}
+    };
+    window.addEventListener('mysar_tasks_updated', handleTaskChange);
+    return () => window.removeEventListener('mysar_tasks_updated', handleTaskChange);
   }, []);
 
   // Navigation & Toggle Handlers for Accordion Groups
@@ -706,6 +679,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         navigateToFirstAuthorized('hr-dashboard', [
           'hr-branch-dashboard',
           'hr-staff',
+          'task-allocation',
           'hr-staff-access',
           'hr-attendance',
           'hr-payroll',
@@ -1283,6 +1257,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: undefined,
     },
     {
+      id: 'task-allocation' as NavTab,
+      label: 'Task Allocation',
+      icon: CheckSquare,
+      badge: (taskMetrics.inProgress + taskMetrics.underReview) > 0 ? (taskMetrics.inProgress + taskMetrics.underReview) : null,
+      badgeColor: 'bg-emerald-100 text-[#0B5D2A] border border-emerald-300 font-bold',
+    },
+    {
       id: 'hr-staff-access' as NavTab,
       label: 'Staff Access',
       icon: ShieldCheck,
@@ -1844,6 +1825,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } catch {}
   };
 
+  const handleExpandAll = () => {
+    setIsLeadManagementOpen(true);
+    setIsHrManagementOpen(true);
+    setIsRecruitmentsOpen(true);
+    setIsDocExpiryOpen(true);
+    setIsSettingsOpen(true);
+    setIsAssetManagementOpen(true);
+    setIsPartyManagementOpen(true);
+    setIsSalesManagementOpen(true);
+    setIsSalesReportsOpen(true);
+    setIsPurchaseManagementOpen(true);
+    setIsPurchaseReportsOpen(true);
+    setIsInventoryManagementOpen(true);
+    setIsFinanceManagementOpen(true);
+    try {
+      localStorage.setItem('sidebar_lead_mgmt_open', 'true');
+      localStorage.setItem('sidebar_hr_mgmt_open', 'true');
+      localStorage.setItem('sidebar_recruitments_open', 'true');
+      localStorage.setItem('sidebar_doc_expiry_open', 'true');
+      localStorage.setItem('sidebar_settings_open', 'true');
+      localStorage.setItem('sidebar_asset_mgmt_open', 'true');
+      localStorage.setItem('sidebar_party_mgmt_open', 'true');
+      localStorage.setItem('sidebar_sales_mgmt_open', 'true');
+      localStorage.setItem('sidebar_sales_reports_open', 'true');
+      localStorage.setItem('sidebar_purchase_mgmt_open', 'true');
+      localStorage.setItem('sidebar_purchase_reports_open', 'true');
+      localStorage.setItem('sidebar_inventory_mgmt_open', 'true');
+      localStorage.setItem('sidebar_finance_mgmt_open', 'true');
+    } catch {}
+  };
+
   const areAnyGroupsOpen =
     isLeadManagementOpen ||
     isHrManagementOpen ||
@@ -1863,16 +1875,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
           <span>ERP Navigation</span>
           <div className="flex items-center space-x-2">
-            {areAnyGroupsOpen && (
-              <button
-                type="button"
-                onClick={handleCollapseAll}
-                title="Collapse all menus"
-                className="text-[10px] text-slate-500 hover:text-[#168A45] hover:underline normal-case font-semibold cursor-pointer"
-              >
-                Collapse All
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={areAnyGroupsOpen ? handleCollapseAll : handleExpandAll}
+              title={areAnyGroupsOpen ? 'Collapse all menu groups' : 'Expand all menu groups'}
+              className="text-[10px] text-slate-500 hover:text-[#168A45] hover:underline normal-case font-semibold cursor-pointer transition-colors"
+            >
+              {areAnyGroupsOpen ? 'Collapse All' : 'Expand All'}
+            </button>
             <span className={`text-[9px] px-1.5 py-0.2 rounded-full border ${roleDef.badgeClass}`}>
               {currentUser.role}
             </span>

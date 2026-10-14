@@ -183,6 +183,13 @@ export const SIDE_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Staff KPI benchmarks, quarterly performance reviews, and ratings.',
   },
   {
+    id: 'task-allocation',
+    name: 'Task Allocation System',
+    category: 'HR & People Management',
+    categoryIcon: 'CheckSquare',
+    description: 'Corporate task allocation for employees, delegated by department managers & directors with milestone verifications.',
+  },
+  {
     id: 'hr-settings',
     name: 'HR System Policies & Matrix',
     category: 'HR & People Management',
@@ -721,7 +728,7 @@ export function getDefaultMenuPermissionsForRole(role: UserRole): Record<string,
         break;
 
       case 'Salesperson':
-        if (item.category === 'Lead Management (CRM)' || item.category === 'Sales Management') {
+        if (item.category === 'Lead Management (CRM)' || item.category === 'Sales Management' || item.id === 'task-allocation') {
           result[item.id] = {
             viewOnly: true,
             entry: true,
@@ -752,12 +759,13 @@ export function getDefaultMenuPermissionsForRole(role: UserRole): Record<string,
           item.id === 'dashboard' ||
           item.id === 'hr-staff' ||
           item.id === 'hr-attendance' ||
-          item.id === 'hr-kpi'
+          item.id === 'hr-kpi' ||
+          item.id === 'task-allocation'
         ) {
           result[item.id] = {
             viewOnly: true,
-            entry: item.id === 'hr-attendance',
-            edit: false,
+            entry: item.id === 'hr-attendance' || item.id === 'task-allocation',
+            edit: item.id === 'task-allocation',
             delete: false,
           };
         } else {

@@ -27,6 +27,7 @@ interface HrManagementSectionProps {
   onNavigateToStaffDirectory: () => void;
   onNavigateToAttendance: () => void;
   onNavigateToLeaveManagement: () => void;
+  onNavigateToTaskAllocation?: () => void;
 }
 
 export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
@@ -38,6 +39,7 @@ export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
   onNavigateToStaffDirectory,
   onNavigateToAttendance,
   onNavigateToLeaveManagement,
+  onNavigateToTaskAllocation,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -134,6 +136,14 @@ export const HrManagementSection: React.FC<HrManagementSectionProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {onNavigateToTaskAllocation && (
+            <button
+              onClick={onNavigateToTaskAllocation}
+              className="px-3 py-1.5 rounded-xl bg-[#168A45] hover:bg-[#0B5D2A] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              Task Allocation
+            </button>
+          )}
           <button
             onClick={onNavigateToAttendance}
             className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all cursor-pointer shadow-2xs"

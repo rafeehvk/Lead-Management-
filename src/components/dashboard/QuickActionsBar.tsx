@@ -20,6 +20,7 @@ interface QuickActionsBarProps {
   onRenewDocument: () => void;
   onScheduleFollowUp: () => void;
   onGenerateReport: () => void;
+  onAllocateTask?: () => void;
 }
 
 export const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
@@ -31,8 +32,16 @@ export const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
   onRenewDocument,
   onScheduleFollowUp,
   onGenerateReport,
+  onAllocateTask,
 }) => {
   const actions = [
+    {
+      id: 'allocate-task',
+      label: 'Allocate Task',
+      icon: CalendarCheck,
+      color: 'bg-[#168A45] text-white hover:bg-[#0B5D2A]',
+      onClick: onAllocateTask || onAddEmployee,
+    },
     {
       id: 'create-lead',
       label: 'Create Lead',

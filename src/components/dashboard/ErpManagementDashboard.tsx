@@ -556,6 +556,7 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
         }}
         onScheduleFollowUp={() => onNavigateToTab('followups')}
         onGenerateReport={() => setIsReportModalOpen(true)}
+        onAllocateTask={() => onNavigateToTab('task-allocation')}
       />
 
       {/* 5b. COMMERCIAL & SUPPLY CHAIN OPERATIONS (SALES, PURCHASE & INVENTORY) */}
@@ -584,6 +585,7 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
         onNavigateToStaffDirectory={() => onNavigateToTab('hr-staff')}
         onNavigateToAttendance={() => onNavigateToTab('hr-attendance')}
         onNavigateToLeaveManagement={() => onNavigateToTab('hr-staff')}
+        onNavigateToTaskAllocation={() => onNavigateToTab('task-allocation')}
       />
 
       {/* 8. MODULE 3: DOCUMENT EXPIRY MANAGEMENT SECTION */}
