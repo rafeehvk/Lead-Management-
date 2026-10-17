@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "Commercial CRM client leads and institutional sales opportunities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "leadDate": { "type": "string" },
+        "instituteName": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "mobile": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "studentCount": { "type": "number" },
+        "leadSource": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "followUpDate": { "type": "string" },
+        "remarks": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdDate": { "type": "string" },
+        "updatedDate": { "type": "string" }
+      },
+      "required": ["id", "instituteName", "contactPerson", "mobile", "status"]
+    },
+    "FollowUp": {
+      "title": "FollowUp",
+      "description": "Follow-up schedules and client interaction history logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "leadId": { "type": "string" },
+        "followUpDate": { "type": "string" },
+        "type": { "type": "string" },
+        "discussion": { "type": "string" },
+        "nextFollowUpDate": { "type": "string" },
+        "status": { "type": "string" },
+        "remarks": { "type": "string" },
+        "createdDate": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "staff": { "type": "string" }
+      },
+      "required": ["id", "leadId", "status"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Institutional commercial proposals and generated quotes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "proposalNumber": { "type": "string" },
+        "leadId": { "type": "string" },
+        "instituteName": { "type": "string" },
+        "templateId": { "type": "string" },
+        "planId": { "type": "string" },
+        "planName": { "type": "string" },
+        "studentCount": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "taxAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "createdDate": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "validUntil": { "type": "string" }
+      },
+      "required": ["id", "proposalNumber", "leadId", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Authorized system user profiles and role allocations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "password": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "mobile": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "avatar": { "type": "string" },
+        "staffId": { "type": "string" },
+        "department": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "status"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global enterprise settings and brand configurations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "brandName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "website": { "type": "string" },
+        "gstNumber": { "type": "string" }
+      },
+      "required": ["id", "companyName"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Collection of all sales and institutional leads across all systems"
+    },
+    "/followups/{followUpId}": {
+      "schema": "FollowUp",
+      "description": "Collection of lead follow-up interactions across all systems"
+    },
+    "/proposals/{proposalId}": {
+      "schema": "Proposal",
+      "description": "Collection of commercial proposals across all systems"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user accounts across all systems"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Global enterprise configuration and branding"
+    }
+  }
+}

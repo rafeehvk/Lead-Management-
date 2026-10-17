@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Leads collection
+    match /leads/{leadId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(leadId) &&
+        request.resource.data.instituteName is string &&
+        request.resource.data.instituteName.size() > 0 &&
+        request.resource.data.instituteName.size() <= 300;
+      allow update: if isSignedIn() && isValidId(leadId);
+      allow delete: if isSignedIn() && isValidId(leadId);
+    }
+
+    // Follow-ups collection
+    match /followups/{followUpId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(followUpId);
+      allow delete: if isSignedIn() && isValidId(followUpId);
+    }
+
+    // Proposals collection
+    match /proposals/{proposalId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(proposalId);
+      allow delete: if isSignedIn() && isValidId(proposalId);
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(userId);
+      allow delete: if isSignedIn() && isValidId(userId);
+    }
+
+    // Settings collection
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(settingId);
+      allow delete: if isSignedIn() && isValidId(settingId);
+    }
+  }
+}

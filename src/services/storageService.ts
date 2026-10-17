@@ -26,6 +26,7 @@ import {
   initialScheduledMeetings,
 } from '../mockData';
 import { DEFAULT_PROPOSAL_TEMPLATES } from '../data/defaultProposalTemplates';
+import { cloudSync } from './cloudSyncService';
 
 const STORAGE_KEYS = {
   LEADS: 'mysar_leads_data_v1',
@@ -88,6 +89,7 @@ class StorageService {
         };
         leads[index] = updatedLead;
         this.setStorage(STORAGE_KEYS.LEADS, leads);
+        cloudSync.syncLead(updatedLead);
 
         // Audit changes
         if (oldLead.status !== updatedLead.status) {
@@ -207,6 +209,7 @@ class StorageService {
 
     leads.unshift(newLead);
     this.setStorage(STORAGE_KEYS.LEADS, leads);
+    cloudSync.syncLead(newLead);
 
     // Log creation activity
     this.saveActivity({
@@ -248,6 +251,7 @@ class StorageService {
       updatedDate: today,
     };
     this.setStorage(STORAGE_KEYS.LEADS, leads);
+    cloudSync.syncLead(leads[index]);
 
     if (oldStatus !== newStatus || notes) {
       const desc = notes
@@ -387,6 +391,7 @@ class StorageService {
   public deleteLead(leadId: string): boolean {
     const leads = this.getLeads().filter((l) => l.id !== leadId);
     this.setStorage(STORAGE_KEYS.LEADS, leads);
+    cloudSync.deleteLead(leadId);
     return true;
   }
 
@@ -1007,26 +1012,29 @@ class StorageService {
       users.push(user);
     }
     this.setStorage(STORAGE_KEYS.USERS, users);
+    cloudSync.syncUser(user);
     return users;
   }
 
   public updateUser(user: User): User {
     const users = this.getUsers();
     const index = users.findIndex((u) => u.id === user.id);
+    let target = user;
     if (index !== -1) {
       users[index] = { ...users[index], ...user };
-      this.setStorage(STORAGE_KEYS.USERS, users);
-      return users[index];
+      target = users[index];
     } else {
       users.push(user);
-      this.setStorage(STORAGE_KEYS.USERS, users);
-      return user;
     }
+    this.setStorage(STORAGE_KEYS.USERS, users);
+    cloudSync.syncUser(target);
+    return target;
   }
 
   public deleteUser(userId: string): boolean {
     const users = this.getUsers().filter((u) => u.id !== userId);
     this.setStorage(STORAGE_KEYS.USERS, users);
+    cloudSync.deleteUser(userId);
     return true;
   }
 
@@ -1036,6 +1044,7 @@ class StorageService {
     if (index === -1) return null;
     users[index].status = users[index].status === 'Active' ? 'Inactive' : 'Active';
     this.setStorage(STORAGE_KEYS.USERS, users);
+    cloudSync.syncUser(users[index]);
     return users[index];
   }
 
@@ -1949,6 +1958,64 @@ class StorageService {
         // ignore
       }
     }
+  }
+
+  // --- CLOUD SYNC RECEIVERS (Real-time updates across multiple systems) ---
+  public syncFromCloudLeads(cloudLeads: Lead[]): void {
+    if (!cloudLeads) return;
+    const localLeads = this.getLeads();
+    const leadMap = new Map<string, Lead>();
+    localLeads.forEach((l) => leadMap.set(l.id, l));
+    cloudLeads.forEach((cl) => leadMap.set(cl.id, cl));
+    const merged = Array.from(leadMap.values());
+    merged.sort((a, b) => {
+      const dateA = a.updatedDate || a.createdDate || a.leadDate || '';
+      const dateB = b.updatedDate || b.createdDate || b.leadDate || '';
+      return dateB.localeCompare(dateA);
+    });
+    this.setStorage(STORAGE_KEYS.LEADS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_leads_updated'));
+    } catch {}
+  }
+
+  public syncFromCloudUsers(cloudUsers: User[]): void {
+    if (!cloudUsers || cloudUsers.length === 0) return;
+    const localUsers = this.getUsers();
+    const userMap = new Map<string, User>();
+    localUsers.forEach((u) => userMap.set(u.id, u));
+    cloudUsers.forEach((cu) => userMap.set(cu.id, cu));
+    const merged = Array.from(userMap.values());
+    this.setStorage(STORAGE_KEYS.USERS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_users_updated'));
+    } catch {}
+  }
+
+  public syncFromCloudFollowUps(cloudFollowUps: FollowUp[]): void {
+    if (!cloudFollowUps) return;
+    const local = this.getFollowUps();
+    const map = new Map<string, FollowUp>();
+    local.forEach((f) => map.set(f.id, f));
+    cloudFollowUps.forEach((cf) => map.set(cf.id, cf));
+    const merged = Array.from(map.values());
+    this.setStorage(STORAGE_KEYS.FOLLOWUPS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_followups_updated'));
+    } catch {}
+  }
+
+  public syncFromCloudProposals(cloudProposals: Proposal[]): void {
+    if (!cloudProposals) return;
+    const local = this.getProposals();
+    const map = new Map<string, Proposal>();
+    local.forEach((p) => map.set(p.id, p));
+    cloudProposals.forEach((cp) => map.set(cp.id, cp));
+    const merged = Array.from(map.values());
+    this.setStorage(STORAGE_KEYS.PROPOSALS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_proposals_updated'));
+    } catch {}
   }
 }
 

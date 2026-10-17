@@ -84,6 +84,15 @@ class HrStorageService {
   private setStorage<T>(key: string, data: T): void {
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      if (key === HR_STORAGE_KEYS.STAFF) {
+        try {
+          window.dispatchEvent(new CustomEvent('mysar_staff_updated'));
+          window.dispatchEvent(new CustomEvent('mysar_tasks_updated'));
+        } catch {}
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+      } catch {}
     } catch (e) {
       console.error('Failed to save HR data to localStorage', e);
     }

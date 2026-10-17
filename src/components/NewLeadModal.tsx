@@ -76,7 +76,7 @@ export const NewLeadModal: React.FC<NewLeadModalProps> = ({
         address: '',
         studentCount: 500,
         leadSource: 'Referral',
-        assignedTo: users[0]?.name || 'Anand Kumar',
+        assignedTo: currentUser?.name || users[0]?.name || 'Anand Kumar',
         priority: 'Medium',
         status: 'New',
         followUpDate: today,
@@ -84,7 +84,7 @@ export const NewLeadModal: React.FC<NewLeadModalProps> = ({
       });
     }
     setErrors({});
-  }, [editLead, isOpen, users]);
+  }, [editLead, isOpen, users, currentUser]);
 
   if (!isOpen) return null;
 
@@ -109,7 +109,10 @@ export const NewLeadModal: React.FC<NewLeadModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSave(formData);
+    onSave({
+      ...formData,
+      createdBy: formData.createdBy || currentUser?.name || 'System',
+    });
     onClose();
   };
 

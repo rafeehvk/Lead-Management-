@@ -44,7 +44,9 @@ import { PayrollManagementView } from './components/hr/PayrollManagementView';
 import { KpiManagementView } from './components/hr/KpiManagementView';
 import { HrSettingsView } from './components/hr/HrSettingsView';
 import { TaskAllocationView } from './components/tasks/TaskAllocationView';
+import { taskAllocationStorage } from './services/taskAllocationStorageService';
 import { hrStorage } from './services/hrStorageService';
+import { cloudSync } from './services/cloudSyncService';
 import {
   getAllowedNavTabsForUser,
   getMenuPermissionForUser,
@@ -297,18 +299,57 @@ export default function App() {
     dataPurgeService.ensureLiveProductionState();
     refreshAllData();
 
+    // Initialize multi-system cloud sync via Firestore
+    cloudSync.initSync({
+      onLeadsUpdate: (cloudLeads) => {
+        storage.syncFromCloudLeads(cloudLeads);
+        setLeads(storage.getLeads());
+        setMetrics(storage.getDashboardMetrics());
+      },
+      onUsersUpdate: (cloudUsers) => {
+        storage.syncFromCloudUsers(cloudUsers);
+        setUsers(storage.getUsers());
+      },
+      onFollowUpsUpdate: (cloudFollowUps) => {
+        storage.syncFromCloudFollowUps(cloudFollowUps);
+        setFollowUps(storage.getFollowUps());
+        setMetrics(storage.getDashboardMetrics());
+      },
+      onProposalsUpdate: (cloudProposals) => {
+        storage.syncFromCloudProposals(cloudProposals);
+        setProposals(storage.getProposals());
+        setMetrics(storage.getDashboardMetrics());
+      },
+    });
+
+    // Seed existing local items if cloud is initialized for the first time
+    cloudSync.seedLocalToCloud(storage.getLeads(), storage.getUsers());
+
     const handleLogoOrSettingsChange = () => {
       const refreshedSettings = storage.getSettings();
       setSettings(refreshedSettings);
     };
 
+    const handleLeadsUpdated = () => {
+      setLeads(storage.getLeads());
+      setMetrics(storage.getDashboardMetrics());
+    };
+
+    const handleUsersUpdated = () => {
+      setUsers(storage.getUsers());
+    };
+
     window.addEventListener('mysar_company_logo_changed', handleLogoOrSettingsChange);
     window.addEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
+    window.addEventListener('mysar_leads_updated', handleLeadsUpdated);
+    window.addEventListener('mysar_users_updated', handleUsersUpdated);
     window.addEventListener('storage', handleLogoOrSettingsChange);
 
     return () => {
       window.removeEventListener('mysar_company_logo_changed', handleLogoOrSettingsChange);
       window.removeEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
+      window.removeEventListener('mysar_leads_updated', handleLeadsUpdated);
+      window.removeEventListener('mysar_users_updated', handleUsersUpdated);
       window.removeEventListener('storage', handleLogoOrSettingsChange);
     };
   }, []);
@@ -316,6 +357,7 @@ export default function App() {
   const handleSwitchUser = (user: User) => {
     storage.setSessionUser(user, true);
     setCurrentUser(user);
+    refreshAllData();
   };
 
   const handleLogout = () => {
@@ -686,6 +728,7 @@ export default function App() {
 
   const handleClearAllDummyData = () => {
     hrStorage.clearAllDummyData(currentUser?.name || 'HR Admin');
+    taskAllocationStorage.clearDummyTasks();
     refreshHrData();
     setUsers(storage.getUsers());
   };
@@ -1175,7 +1218,12 @@ export default function App() {
           )}
 
           {activeTab === 'task-allocation' && currentUser && (
-            <TaskAllocationView currentUser={currentUser} />
+            <TaskAllocationView
+              currentUser={currentUser}
+              staffList={hrStaff}
+              departments={departmentsList}
+              onNavigateToStaff={() => setActiveTab('hr-staff')}
+            />
           )}
 
           {activeTab === 'hr-branch-dashboard' && (

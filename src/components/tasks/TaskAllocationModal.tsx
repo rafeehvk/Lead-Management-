@@ -41,8 +41,16 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
     /director|md|principal|ceo/i.test(currentUser.name || '') ||
     /director|md|principal|ceo/i.test(currentUser.userType || '');
 
-  const departments: DepartmentMaster[] = hrStorage.getDepartmentsMaster();
-  const staffList: StaffMember[] = hrStorage.getStaff();
+  const [departments, setDepartments] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
+  const [staffList, setStaffList] = useState<StaffMember[]>(() => hrStorage.getStaff());
+
+  // Refresh fresh staff and departments whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setDepartments(hrStorage.getDepartmentsMaster());
+      setStaffList(hrStorage.getStaff());
+    }
+  }, [isOpen]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -138,9 +146,11 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
         setAssignedStaffId(deptStaff[0].id);
       } else if (staffList.length > 0) {
         setAssignedStaffId(staffList[0].id);
+      } else {
+        setAssignedStaffId('');
       }
     }
-  }, [taskToEdit, isOpen]);
+  }, [taskToEdit, isOpen, staffList.length]);
 
   // Update filtered staff when department changes
   const eligibleStaff = staffList.filter((s) => {
@@ -168,7 +178,17 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
       return;
     }
 
-    const assignedStaff = staffList.find((s) => s.id === assignedStaffId) || staffList[0];
+    if (staffList.length === 0) {
+      alert('No staff members are registered in the system. Please add staff in the Staff / HR module first.');
+      return;
+    }
+
+    const assignedStaff = staffList.find((s) => s.id === assignedStaffId) || eligibleStaff[0] || staffList[0];
+    if (!assignedStaff) {
+      alert('Please select an employee to assign this task to.');
+      return;
+    }
+
     const supporting = supportingStaffIds
       .map((sid) => staffList.find((s) => s.id === sid))
       .filter(Boolean)
@@ -196,11 +216,11 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
           allocatorType,
           allocatedByName: allocatorName,
           allocatedByRole: allocatorRole,
-          assignedToStaffId: assignedStaff?.id || assignedStaffId,
-          assignedToName: assignedStaff?.fullName || 'Assigned Staff',
-          assignedToRole: assignedStaff?.position || 'Staff Role',
-          assignedToDepartment: assignedStaff?.department || selectedDept,
-          assignedToEmail: assignedStaff?.email,
+          assignedToStaffId: assignedStaff.id,
+          assignedToName: assignedStaff.fullName,
+          assignedToRole: assignedStaff.position,
+          assignedToDepartment: assignedStaff.department || selectedDept,
+          assignedToEmail: assignedStaff.email,
           supportingAssignees: supporting,
           startDate,
           dueDate,
@@ -223,14 +243,14 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
         department: selectedDept,
         priority,
         allocatorType,
-        allocatedById: currentUser.staffId || currentUser.id || 'DIR-001',
+        allocatedById: currentUser.staffId || currentUser.id || 'MGT-001',
         allocatedByName: allocatorName,
         allocatedByRole: allocatorRole,
-        assignedToStaffId: assignedStaff?.id || assignedStaffId || 'CB/101/001',
-        assignedToName: assignedStaff?.fullName || 'Staff Member',
-        assignedToRole: assignedStaff?.position || 'Specialist',
-        assignedToDepartment: assignedStaff?.department || selectedDept,
-        assignedToEmail: assignedStaff?.email,
+        assignedToStaffId: assignedStaff.id,
+        assignedToName: assignedStaff.fullName,
+        assignedToRole: assignedStaff.position,
+        assignedToDepartment: assignedStaff.department || selectedDept,
+        assignedToEmail: assignedStaff.email,
         supportingAssignees: supporting,
         startDate,
         dueDate,
@@ -240,7 +260,7 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
         tags: parsedTags,
         actorName: currentUser.name || 'Executive',
         actorRole: isDirector ? 'Director' : 'Department Manager',
-        notes: `Allocated with ${priority} priority to ${assignedStaff?.fullName}`,
+        notes: `Allocated with ${priority} priority to ${assignedStaff.fullName}`,
       });
       if (created && onTaskSaved) onTaskSaved(created);
     }
@@ -442,35 +462,60 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
 
           {/* Assignee Selection */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
-              <UserCheck className="w-4 h-4 text-[#168A45]" />
-              <span>Employee Assignment</span>
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                <UserCheck className="w-4 h-4 text-[#168A45]" />
+                <span>Employee Assignment</span>
+              </h4>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded">
+                Connected: {staffList.length} Staff
+              </span>
+            </div>
+
+            {staffList.length === 0 && (
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold">No Staff Records Found</div>
+                  <div className="text-[11px] text-amber-800 mt-0.5">
+                    Task Allocation connects directly with Staff Management. Please onboard or register staff in the Staff / HR module to allocate tasks.
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Primary Employee Assignee *
                 </label>
-                <select
-                  value={assignedStaffId}
-                  onChange={(e) => setAssignedStaffId(e.target.value)}
-                  className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#168A45]"
-                >
-                  {eligibleStaff.length > 0 ? (
-                    eligibleStaff.map((staff) => (
-                      <option key={staff.id} value={staff.id}>
-                        {staff.fullName} - {staff.position} ({staff.id})
-                      </option>
-                    ))
-                  ) : (
-                    staffList.map((staff) => (
-                      <option key={staff.id} value={staff.id}>
-                        {staff.fullName} - {staff.position} ({staff.department})
-                      </option>
-                    ))
-                  )}
-                </select>
+                {staffList.length === 0 ? (
+                  <div className="text-xs text-rose-600 font-medium p-2.5 bg-rose-50 rounded-xl border border-rose-200">
+                    No staff available. Add staff in HR module first.
+                  </div>
+                ) : (
+                  <select
+                    value={assignedStaffId}
+                    onChange={(e) => setAssignedStaffId(e.target.value)}
+                    required
+                    className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#168A45]"
+                  >
+                    <option value="">-- Choose Staff Member --</option>
+                    {eligibleStaff.length > 0 ? (
+                      eligibleStaff.map((staff) => (
+                        <option key={staff.id} value={staff.id}>
+                          {staff.fullName} - {staff.position} ({staff.id || staff.staffCode})
+                        </option>
+                      ))
+                    ) : (
+                      staffList.map((staff) => (
+                        <option key={staff.id} value={staff.id}>
+                          {staff.fullName} - {staff.position} ({staff.department})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -651,10 +696,11 @@ export const TaskAllocationModal: React.FC<TaskAllocationModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0B5D2A] to-[#168A45] hover:from-[#094d23] hover:to-[#127239] text-white text-xs font-bold shadow-md shadow-emerald-900/10 transition-all cursor-pointer flex items-center space-x-2"
+              disabled={staffList.length === 0}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0B5D2A] to-[#168A45] hover:from-[#094d23] hover:to-[#127239] text-white text-xs font-bold shadow-md shadow-emerald-900/10 transition-all cursor-pointer flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckSquare className="w-4 h-4" />
-              <span>{taskToEdit ? 'Save Task Changes' : 'Confirm & Allocate Task'}</span>
+              <span>{taskToEdit ? 'Save Task Changes' : staffList.length === 0 ? 'No Staff Available' : 'Confirm & Allocate Task'}</span>
             </button>
           </div>
         </form>

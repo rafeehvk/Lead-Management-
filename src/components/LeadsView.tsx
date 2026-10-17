@@ -73,19 +73,22 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState<string>('All');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('All');
+  const canViewAll = hasPermission.canViewAllLeads(currentUser);
   const [viewScope, setViewScope] = useState<'all' | 'my'>(
-    currentUser.role === 'Salesperson' ? 'my' : 'all'
+    canViewAll ? 'all' : 'my'
   );
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leadToPrint, setLeadToPrint] = useState<Lead | null>(null);
   const [leadForHistoryLog, setLeadForHistoryLog] = useState<Lead | null>(null);
 
-  // Sync viewScope if currentUser changes
+  // Sync viewScope if currentUser changes or switches role
   useEffect(() => {
-    if (currentUser.role === 'Salesperson') {
+    if (canViewAll) {
+      setViewScope('all');
+    } else {
       setViewScope('my');
     }
-  }, [currentUser]);
+  }, [currentUser, canViewAll]);
 
   useEffect(() => {
     if (initialStatusFilter) {
@@ -112,8 +115,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   // Filtering with RBAC
   const filteredLeads = leads.filter((lead) => {
     // 1. Role Scope Filter
-    if (viewScope === 'my' && lead.assignedTo !== currentUser.name) {
-      return false;
+    if (viewScope === 'my') {
+      const isMine =
+        lead.assignedTo?.toLowerCase() === currentUser.name?.toLowerCase() ||
+        lead.createdBy?.toLowerCase() === currentUser.name?.toLowerCase() ||
+        (currentUser.staffId && lead.assignedTo === currentUser.staffId);
+      if (!isMine) {
+        return false;
+      }
     }
 
     // 2. Search
@@ -158,11 +167,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             >
               Role: {currentUser.role}
             </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-[#0B5D2A] border border-emerald-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#168A45] animate-pulse"></span>
+              Live Multi-System Sync
+            </span>
           </div>
           <p className="text-xs text-slate-500">
             {currentUser.role === 'Salesperson'
               ? `Viewing leads assigned to ${currentUser.name}. Full edit & proposal capabilities for your accounts.`
-              : 'Institutional sales pipeline synchronized with Google Sheets & Apps Script database.'}
+              : 'Institutional sales pipeline synchronized in real-time across all connected devices and users.'}
           </p>
         </div>
 
@@ -177,7 +190,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              My Leads ({leads.filter((l) => l.assignedTo === currentUser.name).length})
+              My Leads (
+                {
+                  leads.filter(
+                    (l) =>
+                      l.assignedTo?.toLowerCase() === currentUser.name?.toLowerCase() ||
+                      l.createdBy?.toLowerCase() === currentUser.name?.toLowerCase()
+                  ).length
+                }
+              )
             </button>
             <button
               onClick={() => setViewScope('all')}

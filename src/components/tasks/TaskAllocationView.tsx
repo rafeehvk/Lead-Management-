@@ -44,179 +44,53 @@ import { TaskDetailModal } from './TaskDetailModal';
 
 interface TaskAllocationViewProps {
   currentUser: User;
+  staffList?: StaffMember[];
+  departments?: DepartmentMaster[];
+  onNavigateToStaff?: () => void;
 }
 
 type ViewMode = 'board' | 'table' | 'workload' | 'analytics';
 
-// Reliable default corporate roster ensuring employees exist for every department
-const defaultStaffRoster: StaffMember[] = [
-  {
-    id: 'CB/101/001',
-    staffCode: 'CB/101/001',
-    fullName: 'Arvind Menon',
-    position: 'Lead Sales Strategist',
-    department: 'Sales & Business Development',
-    departmentCode: '101',
-    email: 'arvind.menon@mysar.com',
-    gender: 'Male',
-    contactNumber: '+91 98471 22334',
-    whatsappNumber: '+91 98471 22334',
-    joiningDate: '2023-01-15',
-    division: 'Corporate',
-    employmentType: 'Full Time',
-    dateOfBirth: '1988-06-12',
-    emergencyContact: { name: 'Suma Menon', relationship: 'Spouse', phone: '+91 98471 22335' },
-    permanentAddress: { addressLine1: '42 MG Road', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682001' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '42 MG Road', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682001' },
-  },
-  {
-    id: 'CB/104/005',
-    staffCode: 'CB/104/005',
-    fullName: 'Pooja Hegde',
-    position: 'Full Stack Software Engineer',
-    department: 'Engineering & IT',
-    departmentCode: '104',
-    email: 'pooja.hegde@mysar.com',
-    gender: 'Female',
-    contactNumber: '+91 98471 44556',
-    whatsappNumber: '+91 98471 44556',
-    joiningDate: '2023-04-10',
-    division: 'Technology',
-    employmentType: 'Full Time',
-    dateOfBirth: '1993-09-22',
-    emergencyContact: { name: 'K. Hegde', relationship: 'Father', phone: '+91 98471 44557' },
-    permanentAddress: { addressLine1: '12 Infopark Way', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682042' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '12 Infopark Way', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682042' },
-  },
-  {
-    id: 'CB/102/002',
-    staffCode: 'CB/102/002',
-    fullName: 'Siddharth Verma',
-    position: 'Senior Accountant',
-    department: 'Finance & Accounts',
-    departmentCode: '102',
-    email: 'siddharth.verma@mysar.com',
-    gender: 'Male',
-    contactNumber: '+91 98471 33445',
-    whatsappNumber: '+91 98471 33445',
-    joiningDate: '2022-11-01',
-    division: 'Finance',
-    employmentType: 'Full Time',
-    dateOfBirth: '1990-03-18',
-    emergencyContact: { name: 'Sunita Verma', relationship: 'Mother', phone: '+91 98471 33446' },
-    permanentAddress: { addressLine1: '88 Marine Drive', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682031' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '88 Marine Drive', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682031' },
-  },
-  {
-    id: 'CB/103/003',
-    staffCode: 'CB/103/003',
-    fullName: 'Kavya Nair',
-    position: 'Senior HR Specialist',
-    department: 'Human Resources',
-    departmentCode: '103',
-    email: 'kavya.nair@mysar.com',
-    gender: 'Female',
-    contactNumber: '+91 98471 55667',
-    whatsappNumber: '+91 98471 55667',
-    joiningDate: '2023-02-01',
-    division: 'Operations',
-    employmentType: 'Full Time',
-    dateOfBirth: '1992-12-05',
-    emergencyContact: { name: 'Madhavan Nair', relationship: 'Father', phone: '+91 98471 55668' },
-    permanentAddress: { addressLine1: '14 Panampilly Nagar', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682036' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '14 Panampilly Nagar', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682036' },
-  },
-  {
-    id: 'CB/105/004',
-    staffCode: 'CB/105/004',
-    fullName: 'Rahul Krishnan',
-    position: 'Inventory & Logistics Lead',
-    department: 'Inventory & Stock',
-    departmentCode: '105',
-    email: 'rahul.krishnan@mysar.com',
-    gender: 'Male',
-    contactNumber: '+91 98471 66778',
-    whatsappNumber: '+91 98471 66778',
-    joiningDate: '2023-03-15',
-    division: 'Logistics',
-    employmentType: 'Full Time',
-    dateOfBirth: '1991-08-30',
-    emergencyContact: { name: 'Geetha Krishnan', relationship: 'Mother', phone: '+91 98471 66779' },
-    permanentAddress: { addressLine1: '23 Willingdon Island', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682003' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '23 Willingdon Island', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682003' },
-  },
-  {
-    id: 'CB/105/007',
-    staffCode: 'CB/105/007',
-    fullName: 'Farhan Akhtar',
-    position: 'Procurement Specialist',
-    department: 'Purchases & Procurement',
-    departmentCode: '105',
-    email: 'farhan.akhtar@mysar.com',
-    gender: 'Male',
-    contactNumber: '+91 98471 77889',
-    whatsappNumber: '+91 98471 77889',
-    joiningDate: '2023-05-20',
-    division: 'Procurement',
-    employmentType: 'Full Time',
-    dateOfBirth: '1994-01-14',
-    emergencyContact: { name: 'Zoya Akhtar', relationship: 'Sister', phone: '+91 98471 77890' },
-    permanentAddress: { addressLine1: '5 Kakkanad Hub', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682030' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '5 Kakkanad Hub', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682030' },
-  },
-  {
-    id: 'CB/104/008',
-    staffCode: 'CB/104/008',
-    fullName: 'Meera Namboodiri',
-    position: 'Quality Assurance Lead',
-    department: 'Engineering & IT',
-    departmentCode: '104',
-    email: 'meera.namboodiri@mysar.com',
-    gender: 'Female',
-    contactNumber: '+91 98471 88990',
-    whatsappNumber: '+91 98471 88990',
-    joiningDate: '2023-06-01',
-    division: 'Technology',
-    employmentType: 'Full Time',
-    dateOfBirth: '1995-04-19',
-    emergencyContact: { name: 'Vasudevan Namboodiri', relationship: 'Father', phone: '+91 98471 88991' },
-    permanentAddress: { addressLine1: '18 Aluva Road', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '683101' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '18 Aluva Road', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '683101' },
-  },
-  {
-    id: 'CB/106/009',
-    staffCode: 'CB/106/009',
-    fullName: 'Naveen Kumar',
-    position: 'Operations Coordinator',
-    department: 'Operations',
-    departmentCode: '106',
-    email: 'naveen.kumar@mysar.com',
-    gender: 'Male',
-    contactNumber: '+91 98471 99001',
-    whatsappNumber: '+91 98471 99001',
-    joiningDate: '2023-07-15',
-    division: 'Operations',
-    employmentType: 'Full Time',
-    dateOfBirth: '1993-11-28',
-    emergencyContact: { name: 'Radha Kumar', relationship: 'Mother', phone: '+91 98471 99002' },
-    permanentAddress: { addressLine1: '9 Thoppumpady', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682005' },
-    communicationAddress: { sameAsPermanent: true, addressLine1: '9 Thoppumpady', city: 'Kochi', state: 'Kerala', country: 'India', pinCode: '682005' },
-  },
-] as StaffMember[];
-
-export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentUser }) => {
+export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({
+  currentUser,
+  staffList: propStaffList,
+  departments: propDepartments,
+  onNavigateToStaff,
+}) => {
   const [tasks, setTasks] = useState<AllocatedTask[]>(() => taskAllocationStorage.getTasks());
-  const [departments, setDepartments] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
-  const [staffList, setStaffList] = useState<StaffMember[]>(() => hrStorage.getStaff());
+  const [departments, setDepartments] = useState<DepartmentMaster[]>(() => propDepartments || hrStorage.getDepartmentsMaster());
+  const [staffList, setStaffList] = useState<StaffMember[]>(() => propStaffList || hrStorage.getStaff());
 
-  // Listen to custom updates
+  // Keep in sync with props
+  useEffect(() => {
+    if (propStaffList) {
+      setStaffList(propStaffList);
+    }
+  }, [propStaffList]);
+
+  useEffect(() => {
+    if (propDepartments) {
+      setDepartments(propDepartments);
+    }
+  }, [propDepartments]);
+
+  // Listen to custom updates and storage events
   useEffect(() => {
     const handleUpdate = () => {
       setTasks(taskAllocationStorage.getTasks());
       setStaffList(hrStorage.getStaff());
+      setDepartments(hrStorage.getDepartmentsMaster());
     };
     window.addEventListener('mysar_tasks_updated', handleUpdate);
-    return () => window.removeEventListener('mysar_tasks_updated', handleUpdate);
+    window.addEventListener('mysar_staff_updated', handleUpdate);
+    window.addEventListener('mysar_hr_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('mysar_tasks_updated', handleUpdate);
+      window.removeEventListener('mysar_staff_updated', handleUpdate);
+      window.removeEventListener('mysar_hr_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, []);
 
   // Role Detection
@@ -256,20 +130,9 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
   const [targetEmployeeId, setTargetEmployeeId] = useState<string>('');
   const [reassignNotes, setReassignNotes] = useState<string>('');
 
-  // Effective staff list combining HR records and default roster
-  const effectiveStaffList = useMemo(() => {
-    const list = staffList && staffList.length > 0 ? [...staffList] : [];
-    defaultStaffRoster.forEach((def) => {
-      if (!list.some((s) => s.id === def.id || s.fullName.toLowerCase() === def.fullName.toLowerCase())) {
-        list.push(def);
-      }
-    });
-    return list;
-  }, [staffList]);
-
-  // Active staff filtered by department and search query
+  // Active staff filtered by department and search query directly from HR records
   const activeStaffList = useMemo(() => {
-    let list = effectiveStaffList;
+    let list = staffList || [];
     if (selectedDept && selectedDept !== 'All') {
       list = list.filter(
         (s) =>
@@ -283,11 +146,12 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
         (s) =>
           s.fullName.toLowerCase().includes(q) ||
           s.position.toLowerCase().includes(q) ||
-          s.id.toLowerCase().includes(q)
+          s.id.toLowerCase().includes(q) ||
+          s.department?.toLowerCase().includes(q)
       );
     }
     return list;
-  }, [effectiveStaffList, selectedDept, employeeFilterQuery]);
+  }, [staffList, selectedDept, employeeFilterQuery]);
 
   // Currently dragged task object
   const draggedTask = useMemo(() => {
@@ -352,7 +216,7 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
 
   const handleConfirmReassignModal = () => {
     if (!reassignModalTask || !targetEmployeeId) return;
-    const targetStaff = effectiveStaffList.find((s) => s.id === targetEmployeeId);
+    const targetStaff = staffList.find((s) => s.id === targetEmployeeId);
     if (!targetStaff) return;
 
     handleDropOnEmployee(targetStaff, reassignModalTask.id, reassignNotes);
@@ -574,6 +438,45 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {onNavigateToStaff ? (
+              <button
+                type="button"
+                onClick={onNavigateToStaff}
+                className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80 text-[#0B5D2A] text-xs font-semibold shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                title="View Connected Staff Directory in HR"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-[#168A45]" />
+                <span>Connected Staff: <strong>{staffList.length}</strong></span>
+              </button>
+            ) : (
+              <div className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-[#0B5D2A] text-xs font-semibold shadow-2xs flex items-center space-x-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-[#168A45]" />
+                <span>Connected Staff: <strong>{staffList.length}</strong></span>
+              </div>
+            )}
+
+            {(isDirector || isDeptManager) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Clear all dummy tasks from Task Allocation? Real custom tasks will be preserved.')) {
+                    taskAllocationStorage.clearDummyTasks();
+                    setTasks(taskAllocationStorage.getTasks());
+                    setToastMessage({
+                      type: 'success',
+                      text: '✓ All task allocation dummy data has been cleared.',
+                    });
+                    setTimeout(() => setToastMessage(null), 4000);
+                  }
+                }}
+                className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                title="Purge dummy and mock tasks from database"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Clear Dummy Tasks</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleExportCsv}
@@ -1166,8 +1069,39 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
               })}
 
               {activeStaffList.length === 0 && (
-                <div className="w-full py-16 text-center text-slate-400 text-xs border border-dashed border-slate-300 rounded-2xl bg-white">
-                  No employees matched the selected department or search filter.
+                <div className="w-full p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs max-w-lg mx-auto">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-[#168A45] border border-emerald-200 flex items-center justify-center mx-auto mb-4">
+                    <UserCheck className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-800 mb-1.5">
+                    {staffList.length === 0 ? 'No Staff Records Registered' : 'No Staff Matching Current Filter'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                    {staffList.length === 0
+                      ? 'Task Allocation is connected directly with the Staff Management module. Currently there are no registered staff members in your organization. Onboard or add staff in the Staff / HR module to allocate tasks and manage employee boards.'
+                      : 'No employees matched the selected department or search filter. Try selecting "All" departments or clearing your search.'}
+                  </p>
+                  {staffList.length === 0 && onNavigateToStaff ? (
+                    <button
+                      type="button"
+                      onClick={onNavigateToStaff}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0B5D2A] to-[#168A45] hover:from-[#094d23] hover:to-[#127239] text-white text-xs font-bold shadow-md shadow-emerald-900/15 transition-all inline-flex items-center space-x-2 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Go to Staff Directory & Add Staff</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmployeeFilterQuery('');
+                        setSelectedDept('All');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1591,7 +1525,7 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {departments.map((dept) => {
               const deptTasks = tasks.filter((t) => t.department === dept.departmentName);
-              const deptStaff = effectiveStaffList.filter(
+              const deptStaff = staffList.filter(
                 (s) =>
                   s.department?.toLowerCase() === dept.departmentName.toLowerCase() ||
                   s.departmentCode?.toLowerCase() === dept.departmentCode?.toLowerCase()
@@ -1899,7 +1833,12 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
           </div>
 
           <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 scrollbar-thin">
-            {effectiveStaffList.map((st) => {
+            {staffList.length === 0 ? (
+              <div className="text-xs text-slate-400 py-1.5 px-3 bg-slate-800 rounded-lg">
+                No staff members available. Add staff in Staff module to reassign.
+              </div>
+            ) : (
+              staffList.map((st) => {
               const isCurrentAssignee = draggedTask?.assignedToStaffId === st.id;
               const isTrayTargetHovered = dragOverTargetId === `tray-${st.id}`;
 
@@ -1949,7 +1888,7 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}
@@ -2004,7 +1943,7 @@ export const TaskAllocationView: React.FC<TaskAllocationViewProps> = ({ currentU
                 className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-[#168A45]"
               >
                 <option value="">-- Choose Employee to Assign --</option>
-                {effectiveStaffList.map((s) => (
+                {staffList.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.fullName} • {s.position} ({s.department}) - {s.id}
                   </option>

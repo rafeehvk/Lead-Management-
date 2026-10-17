@@ -1,4 +1,4 @@
-export type TaskPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent' | 'Critical';
 
 export type TaskStatus =
   | 'Assigned'
