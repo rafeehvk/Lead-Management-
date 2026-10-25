@@ -46,6 +46,7 @@ import { HrSettingsView } from './components/hr/HrSettingsView';
 import { TaskAllocationView } from './components/tasks/TaskAllocationView';
 import { taskAllocationStorage } from './services/taskAllocationStorageService';
 import { hrStorage } from './services/hrStorageService';
+import { assetStorage } from './services/assetStorageService';
 import { cloudSync } from './services/cloudSyncService';
 import {
   getAllowedNavTabsForUser,
@@ -320,10 +321,40 @@ export default function App() {
         setProposals(storage.getProposals());
         setMetrics(storage.getDashboardMetrics());
       },
+      onStaffUpdate: (cloudStaff) => {
+        hrStorage.syncFromCloudStaff(cloudStaff);
+        setHrStaff(hrStorage.getStaff());
+      },
+      onAttendanceUpdate: (cloudAttendance) => {
+        hrStorage.syncFromCloudAttendance(cloudAttendance);
+      },
+      onLeavesUpdate: (cloudLeaves) => {
+        hrStorage.syncFromCloudLeaveRequests(cloudLeaves);
+      },
+      onDocsUpdate: (cloudDocs) => {
+        documentExpiryStorage.syncFromCloudDocuments(cloudDocs);
+      },
+      onTasksUpdate: (cloudTasks) => {
+        taskAllocationStorage.syncFromCloudTasks(cloudTasks);
+      },
+      onAssetsUpdate: (cloudAssets) => {
+        assetStorage.syncFromCloudAssets(cloudAssets);
+      },
     });
 
-    // Seed existing local items if cloud is initialized for the first time
-    cloudSync.seedLocalToCloud(storage.getLeads(), storage.getUsers());
+    // Automatically push any local data across all ERP modules to Firestore
+    cloudSync.syncAllModules({
+      leads: storage.getLeads(),
+      users: storage.getUsers(),
+      followUps: storage.getFollowUps(),
+      proposals: storage.getProposals(),
+      staff: hrStorage.getStaff(),
+      attendance: hrStorage.getAttendanceRecords(),
+      leaves: hrStorage.getLeaveRequests(),
+      documents: documentExpiryStorage.getDocuments(),
+      tasks: taskAllocationStorage.getTasks(),
+      assets: assetStorage.getAssets(),
+    });
 
     const handleLogoOrSettingsChange = () => {
       const refreshedSettings = storage.getSettings();
@@ -353,6 +384,28 @@ export default function App() {
       window.removeEventListener('storage', handleLogoOrSettingsChange);
     };
   }, []);
+
+  const handleManualRefresh = async () => {
+    try {
+      await cloudSync.syncAllModules({
+        leads: storage.getLeads(),
+        users: storage.getUsers(),
+        followUps: storage.getFollowUps(),
+        proposals: storage.getProposals(),
+        staff: hrStorage.getStaff(),
+        attendance: hrStorage.getAttendanceRecords(),
+        leaves: hrStorage.getLeaveRequests(),
+        documents: documentExpiryStorage.getDocuments(),
+        tasks: taskAllocationStorage.getTasks(),
+        assets: assetStorage.getAssets(),
+      });
+      refreshAllData();
+      refreshHrData();
+    } catch {
+      refreshAllData();
+      refreshHrData();
+    }
+  };
 
   const handleSwitchUser = (user: User) => {
     storage.setSessionUser(user, true);
@@ -808,7 +861,7 @@ export default function App() {
           setIsNewLeadOpen(true);
         }}
         onOpenGasHub={() => setIsGasHubOpen(true)}
-        onRefresh={refreshAllData}
+        onRefresh={handleManualRefresh}
         searchQuery={searchQuery}
         onSearchChange={(q) => {
           setSearchQuery(q);
@@ -1012,6 +1065,7 @@ export default function App() {
               onScheduleMeetForLead={(_lead) => {
                 setActiveTab('meet');
               }}
+              onSyncCloud={handleManualRefresh}
             />
           )}
 

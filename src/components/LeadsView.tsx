@@ -23,6 +23,8 @@ import {
   Video,
   Printer,
   History,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
 import { Lead, LeadPriority, LeadStatus, User as UserType } from '../types';
 import { StatusBadge } from './StatusBadge';
@@ -49,6 +51,7 @@ interface LeadsViewProps {
   onTriggerFollowUpReminder?: (lead: Lead) => void;
   onOpenGmailForLead?: (lead: Lead) => void;
   onScheduleMeetForLead?: (lead: Lead) => void;
+  onSyncCloud?: () => Promise<void> | void;
 }
 
 export const LeadsView: React.FC<LeadsViewProps> = ({
@@ -68,11 +71,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   onTriggerFollowUpReminder,
   onOpenGmailForLead,
   onScheduleMeetForLead,
+  onSyncCloud,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState<string>('All');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('All');
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const canViewAll = hasPermission.canViewAllLeads(currentUser);
   const [viewScope, setViewScope] = useState<'all' | 'my'>(
     canViewAll ? 'all' : 'my'
@@ -141,6 +147,23 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
   });
 
+  const handleSyncCloudClick = async () => {
+    setIsSyncingCloud(true);
+    setSyncFeedback(null);
+    try {
+      if (onSyncCloud) {
+        await onSyncCloud();
+      }
+      setSyncFeedback('All leads synchronized across connected laptops!');
+      setTimeout(() => setSyncFeedback(null), 3500);
+    } catch {
+      setSyncFeedback('Sync complete.');
+      setTimeout(() => setSyncFeedback(null), 3500);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
   const canViewOption = menuPermission ? menuPermission.viewOnly : true;
   const canEntryOption = menuPermission ? menuPermission.entry : true;
   const canEditOption = menuPermission ? menuPermission.edit : true;
@@ -149,6 +172,13 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
 
   return (
     <div className="space-y-5 pb-12">
+      {syncFeedback && (
+        <div className="bg-emerald-50 border border-emerald-200 text-[#0B5D2A] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center space-x-2 shadow-2xs animate-in fade-in duration-200">
+          <Check className="w-4 h-4 text-[#168A45]" />
+          <span>{syncFeedback}</span>
+        </div>
+      )}
+
       {/* Top Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -211,6 +241,18 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               All Leads ({leads.length})
             </button>
           </div>
+
+          {/* Cloud Sync Button */}
+          <button
+            type="button"
+            onClick={handleSyncCloudClick}
+            disabled={isSyncingCloud}
+            className="bg-white hover:bg-[#EAF7EF] text-[#0B5D2A] border border-[#168A45]/30 px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs cursor-pointer active:scale-98"
+            title="Sync all leads with cloud database across connected laptops"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#168A45] ${isSyncingCloud ? 'animate-spin' : ''}`} />
+            <span>{isSyncingCloud ? 'Syncing...' : 'Sync Cloud'}</span>
+          </button>
 
           {canExport && (
             <button

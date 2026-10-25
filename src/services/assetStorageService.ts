@@ -1910,6 +1910,20 @@ export class AssetStorageService {
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     return csvContent;
   }
+
+  // --- CLOUD SYNC RECEIVER (Real-time Firestore synchronization) ---
+  public syncFromCloudAssets(cloudAssets: Asset[]): void {
+    if (!cloudAssets) return;
+    const local = this.getAssets();
+    const map = new Map<string, Asset>();
+    local.forEach((a) => map.set(a.id, a));
+    cloudAssets.forEach((ca) => map.set(ca.id, ca));
+    const merged = Array.from(map.values());
+    this.setStorage(STORAGE_KEYS.ASSETS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_assets_updated'));
+    } catch {}
+  }
 }
 
 export const assetStorage = new AssetStorageService();

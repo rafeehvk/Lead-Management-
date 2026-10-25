@@ -462,6 +462,17 @@ class TaskAllocationStorageService {
       departmentMap,
     };
   }
+
+  // --- CLOUD SYNC RECEIVER (Real-time Firestore synchronization) ---
+  public syncFromCloudTasks(cloudTasks: AllocatedTask[]): void {
+    if (!cloudTasks) return;
+    const local = this.getTasks();
+    const map = new Map<string, AllocatedTask>();
+    local.forEach((t) => map.set(t.id, t));
+    cloudTasks.forEach((ct) => map.set(ct.id, ct));
+    const merged = Array.from(map.values());
+    this.saveTasks(merged);
+  }
 }
 
 export const taskAllocationStorage = new TaskAllocationStorageService();

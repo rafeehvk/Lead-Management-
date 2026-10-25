@@ -1,6 +1,7 @@
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent' | 'Critical';
 
 export type TaskStatus =
+  | 'Pending'
   | 'Assigned'
   | 'In Progress'
   | 'Under Review'

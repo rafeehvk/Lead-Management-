@@ -2540,6 +2540,37 @@ class HrStorageService {
     localStorage.removeItem(HR_STORAGE_KEYS.LOGS);
     localStorage.removeItem(HR_STORAGE_KEYS.ID_CARD_TEMPLATE);
   }
+
+  // --- CLOUD SYNC RECEIVERS (Real-time Firestore synchronization) ---
+  public syncFromCloudStaff(cloudStaff: StaffMember[]): void {
+    if (!cloudStaff || cloudStaff.length === 0) return;
+    const local = this.getStaff();
+    const map = new Map<string, StaffMember>();
+    local.forEach((s) => map.set(s.id, s));
+    cloudStaff.forEach((cs) => map.set(cs.id, cs));
+    const merged = Array.from(map.values());
+    this.setStorage(HR_STORAGE_KEYS.STAFF, merged);
+  }
+
+  public syncFromCloudAttendance(cloudAttendance: DailyAttendanceRecord[]): void {
+    if (!cloudAttendance) return;
+    const local = this.getAttendanceRecords();
+    const map = new Map<string, DailyAttendanceRecord>();
+    local.forEach((a) => map.set(a.id, a));
+    cloudAttendance.forEach((ca) => map.set(ca.id, ca));
+    const merged = Array.from(map.values());
+    this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, merged);
+  }
+
+  public syncFromCloudLeaveRequests(cloudLeaves: LeaveRequest[]): void {
+    if (!cloudLeaves) return;
+    const local = this.getLeaveRequests();
+    const map = new Map<string, LeaveRequest>();
+    local.forEach((l) => map.set(l.id, l));
+    cloudLeaves.forEach((cl) => map.set(cl.id, cl));
+    const merged = Array.from(map.values());
+    this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, merged);
+  }
 }
 
 export const hrStorage = new HrStorageService();

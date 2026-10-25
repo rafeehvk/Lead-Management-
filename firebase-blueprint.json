@@ -102,6 +102,85 @@
         "gstNumber": { "type": "string" }
       },
       "required": ["id", "companyName"]
+    },
+    "StaffMember": {
+      "title": "StaffMember",
+      "description": "HR Employee directory records and payroll allocations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "department": { "type": "string" },
+        "designation": { "type": "string" },
+        "employmentStatus": { "type": "string" }
+      },
+      "required": ["id", "fullName", "department"]
+    },
+    "DailyAttendanceRecord": {
+      "title": "DailyAttendanceRecord",
+      "description": "Daily employee punch-in and attendance logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "staffId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "staffId", "date", "status"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "HR Leave applications, balances and approval workflows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "staffId": { "type": "string" },
+        "leaveType": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "staffId", "status"]
+    },
+    "ExpiryDocument": {
+      "title": "ExpiryDocument",
+      "description": "Enterprise compliance documents, permits and licenses with expiry tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "title", "expiryDate"]
+    },
+    "AllocatedTask": {
+      "title": "AllocatedTask",
+      "description": "Work allocation tasks, checklists, and project deliverables",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "assignedToName": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      },
+      "required": ["id", "title", "status"]
+    },
+    "AssetItem": {
+      "title": "AssetItem",
+      "description": "Fixed enterprise assets, physical inventory and IT hardware tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "name", "category"]
     }
   },
   "firestore": {
@@ -124,6 +203,30 @@
     "/settings/{settingId}": {
       "schema": "Settings",
       "description": "Global enterprise configuration and branding"
+    },
+    "/hr_staff/{staffId}": {
+      "schema": "StaffMember",
+      "description": "Collection of HR staff and employee profiles across all systems"
+    },
+    "/hr_attendance/{attendanceId}": {
+      "schema": "DailyAttendanceRecord",
+      "description": "Collection of daily staff attendance records"
+    },
+    "/hr_leave_requests/{leaveId}": {
+      "schema": "LeaveRequest",
+      "description": "Collection of employee leave applications and approval workflows"
+    },
+    "/documents/{docId}": {
+      "schema": "ExpiryDocument",
+      "description": "Collection of corporate licenses, permits, and document renewals"
+    },
+    "/tasks/{taskId}": {
+      "schema": "AllocatedTask",
+      "description": "Collection of assigned department tasks and deliverables"
+    },
+    "/assets/{assetId}": {
+      "schema": "AssetItem",
+      "description": "Collection of enterprise equipment and asset registry items"
     }
   }
 }

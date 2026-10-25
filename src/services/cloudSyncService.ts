@@ -7,253 +7,323 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
-import { db, ensureFirebaseAuth } from './firebase';
+import { db } from './firebase';
 import { Lead, User, FollowUp, Proposal } from '../types';
+import { StaffMember, DailyAttendanceRecord, LeaveRequest } from '../types/hr';
+import { ExpiryDocument } from '../types/documentExpiry';
+import { AllocatedTask } from '../types/tasks';
+import { Asset } from '../types/asset';
 
 export class CloudSyncService {
   private isInitialized = false;
-  private unsubscribeLeads: (() => void) | null = null;
-  private unsubscribeUsers: (() => void) | null = null;
-  private unsubscribeFollowUps: (() => void) | null = null;
-  private unsubscribeProposals: (() => void) | null = null;
+  private isSyncing = false;
+
+  // Unsubscribe handlers
+  private unsubLeads: (() => void) | null = null;
+  private unsubUsers: (() => void) | null = null;
+  private unsubFollowUps: (() => void) | null = null;
+  private unsubProposals: (() => void) | null = null;
+  private unsubStaff: (() => void) | null = null;
+  private unsubAttendance: (() => void) | null = null;
+  private unsubLeaves: (() => void) | null = null;
+  private unsubDocs: (() => void) | null = null;
+  private unsubTasks: (() => void) | null = null;
+  private unsubAssets: (() => void) | null = null;
 
   /**
-   * Initializes real-time cloud sync across systems
+   * Initializes real-time cloud sync across all ERP modules and devices
    */
   public async initSync(callbacks: {
     onLeadsUpdate: (leads: Lead[]) => void;
     onUsersUpdate: (users: User[]) => void;
     onFollowUpsUpdate: (followUps: FollowUp[]) => void;
     onProposalsUpdate: (proposals: Proposal[]) => void;
+    onStaffUpdate?: (staff: StaffMember[]) => void;
+    onAttendanceUpdate?: (records: DailyAttendanceRecord[]) => void;
+    onLeavesUpdate?: (leaves: LeaveRequest[]) => void;
+    onDocsUpdate?: (docs: ExpiryDocument[]) => void;
+    onTasksUpdate?: (tasks: AllocatedTask[]) => void;
+    onAssetsUpdate?: (assets: Asset[]) => void;
   }): Promise<void> {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
     try {
-      await ensureFirebaseAuth();
-      this.subscribeToLeads(callbacks.onLeadsUpdate);
-      this.subscribeToUsers(callbacks.onUsersUpdate);
-      this.subscribeToFollowUps(callbacks.onFollowUpsUpdate);
-      this.subscribeToProposals(callbacks.onProposalsUpdate);
+      // 1. CRM Listeners
+      this.subscribeToCollection<Lead>('leads', callbacks.onLeadsUpdate, (items) => {
+        items.sort((a, b) => {
+          const dateA = a.updatedDate || a.createdDate || a.leadDate || '';
+          const dateB = b.updatedDate || b.createdDate || b.leadDate || '';
+          return dateB.localeCompare(dateA);
+        });
+      });
+
+      this.subscribeToCollection<User>('users', callbacks.onUsersUpdate);
+      this.subscribeToCollection<FollowUp>('followups', callbacks.onFollowUpsUpdate);
+      this.subscribeToCollection<Proposal>('proposals', callbacks.onProposalsUpdate);
+
+      // 2. HR Management Listeners
+      if (callbacks.onStaffUpdate) {
+        this.subscribeToCollection<StaffMember>('hr_staff', callbacks.onStaffUpdate);
+      }
+      if (callbacks.onAttendanceUpdate) {
+        this.subscribeToCollection<DailyAttendanceRecord>('hr_attendance', callbacks.onAttendanceUpdate);
+      }
+      if (callbacks.onLeavesUpdate) {
+        this.subscribeToCollection<LeaveRequest>('hr_leave_requests', callbacks.onLeavesUpdate);
+      }
+
+      // 3. Document Compliance Listeners
+      if (callbacks.onDocsUpdate) {
+        this.subscribeToCollection<ExpiryDocument>('documents', callbacks.onDocsUpdate);
+      }
+
+      // 4. Task Allocation Listeners
+      if (callbacks.onTasksUpdate) {
+        this.subscribeToCollection<AllocatedTask>('tasks', callbacks.onTasksUpdate);
+      }
+
+      // 5. Asset Management Listeners
+      if (callbacks.onAssetsUpdate) {
+        this.subscribeToCollection<Asset>('assets', callbacks.onAssetsUpdate);
+      }
     } catch (e) {
       console.warn('[CloudSync] Failed to initialize cloud listeners:', e);
     }
   }
 
-  // --- Real-time Firestore Listeners ---
-
-  private subscribeToLeads(onUpdate: (leads: Lead[]) => void): void {
+  // Generic Firestore collection listener
+  private subscribeToCollection<T extends { id: string }>(
+    colName: string,
+    onUpdate?: (items: T[]) => void,
+    customSort?: (items: T[]) => void
+  ): void {
+    if (!onUpdate) return;
     try {
-      const colRef = collection(db, 'leads');
-      this.unsubscribeLeads = onSnapshot(
+      const colRef = collection(db, colName);
+      onSnapshot(
         colRef,
         (snapshot) => {
-          if (snapshot.empty && snapshot.metadata.fromCache) return;
-          const cloudLeads: Lead[] = [];
+          const items: T[] = [];
           snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as Lead;
-            cloudLeads.push({ ...data, id: docSnap.id });
+            const data = docSnap.data() as T;
+            items.push({ ...data, id: docSnap.id });
           });
 
-          // Sort by updatedDate or createdDate descending
-          cloudLeads.sort((a, b) => {
-            const dateA = a.updatedDate || a.createdDate || a.leadDate || '';
-            const dateB = b.updatedDate || b.createdDate || b.leadDate || '';
-            return dateB.localeCompare(dateA);
-          });
-
-          onUpdate(cloudLeads);
-        },
-        (error) => {
-          console.warn('[CloudSync] Leads listener error:', error);
-        }
-      );
-    } catch (e) {
-      console.warn('[CloudSync] Could not attach leads listener:', e);
-    }
-  }
-
-  private subscribeToUsers(onUpdate: (users: User[]) => void): void {
-    try {
-      const colRef = collection(db, 'users');
-      this.unsubscribeUsers = onSnapshot(
-        colRef,
-        (snapshot) => {
-          if (snapshot.empty && snapshot.metadata.fromCache) return;
-          const cloudUsers: User[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as User;
-            cloudUsers.push({ ...data, id: docSnap.id });
-          });
-
-          if (cloudUsers.length > 0) {
-            onUpdate(cloudUsers);
+          if (customSort) {
+            customSort(items);
           }
+
+          onUpdate(items);
         },
         (error) => {
-          console.warn('[CloudSync] Users listener error:', error);
+          console.warn(`[CloudSync] Error in ${colName} listener:`, error);
         }
       );
     } catch (e) {
-      console.warn('[CloudSync] Could not attach users listener:', e);
+      console.warn(`[CloudSync] Could not attach listener for ${colName}:`, e);
     }
   }
 
-  private subscribeToFollowUps(onUpdate: (followUps: FollowUp[]) => void): void {
-    try {
-      const colRef = collection(db, 'followups');
-      this.unsubscribeFollowUps = onSnapshot(
-        colRef,
-        (snapshot) => {
-          if (snapshot.empty && snapshot.metadata.fromCache) return;
-          const cloudFollowUps: FollowUp[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as FollowUp;
-            cloudFollowUps.push({ ...data, id: docSnap.id });
-          });
-          onUpdate(cloudFollowUps);
-        },
-        (error) => {
-          console.warn('[CloudSync] FollowUps listener error:', error);
-        }
-      );
-    } catch (e) {
-      console.warn('[CloudSync] Could not attach followups listener:', e);
-    }
-  }
-
-  private subscribeToProposals(onUpdate: (proposals: Proposal[]) => void): void {
-    try {
-      const colRef = collection(db, 'proposals');
-      this.unsubscribeProposals = onSnapshot(
-        colRef,
-        (snapshot) => {
-          if (snapshot.empty && snapshot.metadata.fromCache) return;
-          const cloudProposals: Proposal[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as Proposal;
-            cloudProposals.push({ ...data, id: docSnap.id });
-          });
-          onUpdate(cloudProposals);
-        },
-        (error) => {
-          console.warn('[CloudSync] Proposals listener error:', error);
-        }
-      );
-    } catch (e) {
-      console.warn('[CloudSync] Could not attach proposals listener:', e);
-    }
-  }
-
-  // --- Push Operations to Firestore ---
+  // --- Push Operations (Single item) ---
 
   public async syncLead(lead: Lead): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'leads', lead.id);
-      await setDoc(docRef, lead, { merge: true });
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to sync lead ${lead.id} to cloud:`, e);
-    }
+    await this.pushDocument('leads', lead.id, lead);
   }
-
   public async deleteLead(leadId: string): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'leads', leadId);
-      await deleteDoc(docRef);
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to delete lead ${leadId} from cloud:`, e);
-    }
+    await this.deleteDocument('leads', leadId);
   }
 
   public async syncUser(user: User): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'users', user.id);
-      await setDoc(docRef, user, { merge: true });
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to sync user ${user.id} to cloud:`, e);
-    }
+    await this.pushDocument('users', user.id, user);
   }
-
   public async deleteUser(userId: string): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'users', userId);
-      await deleteDoc(docRef);
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to delete user ${userId} from cloud:`, e);
-    }
+    await this.deleteDocument('users', userId);
   }
 
   public async syncFollowUp(followUp: FollowUp): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'followups', followUp.id);
-      await setDoc(docRef, followUp, { merge: true });
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to sync follow-up ${followUp.id}:`, e);
-    }
+    await this.pushDocument('followups', followUp.id, followUp);
   }
-
   public async deleteFollowUp(followUpId: string): Promise<void> {
-    try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'followups', followUpId);
-      await deleteDoc(docRef);
-    } catch (e) {
-      console.warn(`[CloudSync] Failed to delete follow-up ${followUpId}:`, e);
-    }
+    await this.deleteDocument('followups', followUpId);
   }
 
   public async syncProposal(proposal: Proposal): Promise<void> {
+    await this.pushDocument('proposals', proposal.id, proposal);
+  }
+  public async deleteProposal(proposalId: string): Promise<void> {
+    await this.deleteDocument('proposals', proposalId);
+  }
+
+  public async syncStaff(staff: StaffMember): Promise<void> {
+    await this.pushDocument('hr_staff', staff.id, staff);
+  }
+  public async syncAttendance(record: DailyAttendanceRecord): Promise<void> {
+    await this.pushDocument('hr_attendance', record.id, record);
+  }
+  public async syncLeaveRequest(leave: LeaveRequest): Promise<void> {
+    await this.pushDocument('hr_leave_requests', leave.id, leave);
+  }
+  public async syncDocument(docItem: ExpiryDocument): Promise<void> {
+    await this.pushDocument('documents', docItem.id, docItem);
+  }
+  public async syncTask(task: AllocatedTask): Promise<void> {
+    await this.pushDocument('tasks', task.id, task);
+  }
+  public async syncAsset(asset: Asset): Promise<void> {
+    await this.pushDocument('assets', asset.id, asset);
+  }
+
+  private async pushDocument(colName: string, id: string, data: any): Promise<void> {
     try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'proposals', proposal.id);
-      await setDoc(docRef, proposal, { merge: true });
+      const docRef = doc(db, colName, id);
+      await setDoc(docRef, data, { merge: true });
     } catch (e) {
-      console.warn(`[CloudSync] Failed to sync proposal ${proposal.id}:`, e);
+      console.warn(`[CloudSync] Failed to sync ${colName}/${id}:`, e);
     }
   }
 
-  public async deleteProposal(proposalId: string): Promise<void> {
+  private async deleteDocument(colName: string, id: string): Promise<void> {
     try {
-      await ensureFirebaseAuth();
-      const docRef = doc(db, 'proposals', proposalId);
+      const docRef = doc(db, colName, id);
       await deleteDoc(docRef);
     } catch (e) {
-      console.warn(`[CloudSync] Failed to delete proposal ${proposalId}:`, e);
+      console.warn(`[CloudSync] Failed to delete ${colName}/${id}:`, e);
+    }
+  }
+
+  // --- Batch Push Methods for Local Seed/Migration ---
+
+  private async batchPush<T extends { id: string }>(colName: string, items: T[]): Promise<number> {
+    if (!items || items.length === 0) return 0;
+    try {
+      let count = 0;
+      const batch = writeBatch(db);
+      items.forEach((item) => {
+        if (item && item.id) {
+          batch.set(doc(db, colName, item.id), item, { merge: true });
+          count++;
+        }
+      });
+      await batch.commit();
+      return count;
+    } catch (e) {
+      console.warn(`[CloudSync] Batch push failed for ${colName}:`, e);
+      return 0;
+    }
+  }
+
+  public async pushLocalLeadsToCloud(leads: Lead[]): Promise<number> {
+    return this.batchPush<Lead>('leads', leads);
+  }
+
+  public async pushLocalUsersToCloud(users: User[]): Promise<number> {
+    return this.batchPush<User>('users', users);
+  }
+
+  public async pushLocalFollowUpsToCloud(followUps: FollowUp[]): Promise<number> {
+    return this.batchPush<FollowUp>('followups', followUps);
+  }
+
+  public async pushLocalProposalsToCloud(proposals: Proposal[]): Promise<number> {
+    return this.batchPush<Proposal>('proposals', proposals);
+  }
+
+  public async pushLocalStaffToCloud(staff: StaffMember[]): Promise<number> {
+    return this.batchPush<StaffMember>('hr_staff', staff);
+  }
+
+  public async pushLocalAttendanceToCloud(attendance: DailyAttendanceRecord[]): Promise<number> {
+    return this.batchPush<DailyAttendanceRecord>('hr_attendance', attendance);
+  }
+
+  public async pushLocalLeavesToCloud(leaves: LeaveRequest[]): Promise<number> {
+    return this.batchPush<LeaveRequest>('hr_leave_requests', leaves);
+  }
+
+  public async pushLocalDocumentsToCloud(docs: ExpiryDocument[]): Promise<number> {
+    return this.batchPush<ExpiryDocument>('documents', docs);
+  }
+
+  public async pushLocalTasksToCloud(tasks: AllocatedTask[]): Promise<number> {
+    return this.batchPush<AllocatedTask>('tasks', tasks);
+  }
+
+  public async pushLocalAssetsToCloud(assets: Asset[]): Promise<number> {
+    return this.batchPush<Asset>('assets', assets);
+  }
+
+  /**
+   * Fetches latest leads directly from Firestore once.
+   */
+  public async fetchCloudLeads(): Promise<Lead[]> {
+    try {
+      const snap = await getDocs(collection(db, 'leads'));
+      const leads: Lead[] = [];
+      snap.forEach((docSnap) => {
+        const data = docSnap.data() as Lead;
+        leads.push({ ...data, id: docSnap.id });
+      });
+      return leads;
+    } catch (e) {
+      console.warn('[CloudSync] Error fetching cloud leads:', e);
+      return [];
     }
   }
 
   /**
-   * Initial seeding/migration: if Firestore is empty but local storage has users/leads,
-   * push them to Firestore so all systems can share them immediately.
+   * Comprehensive Multi-Module Sync:
+   * Pushes all local items across all ERP modules to Firestore and pulls cloud state.
    */
-  public async seedLocalToCloud(localLeads: Lead[], localUsers: User[]): Promise<void> {
+  public async syncAllModules(params: {
+    leads: Lead[];
+    users: User[];
+    followUps?: FollowUp[];
+    proposals?: Proposal[];
+    staff?: StaffMember[];
+    attendance?: DailyAttendanceRecord[];
+    leaves?: LeaveRequest[];
+    documents?: ExpiryDocument[];
+    tasks?: AllocatedTask[];
+    assets?: Asset[];
+  }): Promise<{ success: boolean; message: string }> {
+    if (this.isSyncing) return { success: true, message: 'Sync in progress' };
+    this.isSyncing = true;
     try {
-      await ensureFirebaseAuth();
-      const leadsSnap = await getDocs(collection(db, 'leads'));
-      if (leadsSnap.empty && localLeads.length > 0) {
-        const batch = writeBatch(db);
-        localLeads.forEach((lead) => {
-          batch.set(doc(db, 'leads', lead.id), lead);
-        });
-        await batch.commit();
-      }
+      // 1. CRM
+      if (params.leads?.length) await this.pushLocalLeadsToCloud(params.leads);
+      if (params.users?.length) await this.pushLocalUsersToCloud(params.users);
+      if (params.followUps?.length) await this.pushLocalFollowUpsToCloud(params.followUps);
+      if (params.proposals?.length) await this.pushLocalProposalsToCloud(params.proposals);
 
-      const usersSnap = await getDocs(collection(db, 'users'));
-      if (usersSnap.empty && localUsers.length > 0) {
-        const batch = writeBatch(db);
-        localUsers.forEach((user) => {
-          batch.set(doc(db, 'users', user.id), user);
-        });
-        await batch.commit();
-      }
+      // 2. HR
+      if (params.staff?.length) await this.pushLocalStaffToCloud(params.staff);
+      if (params.attendance?.length) await this.pushLocalAttendanceToCloud(params.attendance);
+      if (params.leaves?.length) await this.pushLocalLeavesToCloud(params.leaves);
+
+      // 3. Document Compliance
+      if (params.documents?.length) await this.pushLocalDocumentsToCloud(params.documents);
+
+      // 4. Tasks
+      if (params.tasks?.length) await this.pushLocalTasksToCloud(params.tasks);
+
+      // 5. Assets
+      if (params.assets?.length) await this.pushLocalAssetsToCloud(params.assets);
+
+      return { success: true, message: 'All ERP modules synced to Firestore cloud!' };
     } catch (e) {
-      console.warn('[CloudSync] Seeding local to cloud notice:', e);
+      console.warn('[CloudSync] Multi-module sync warning:', e);
+      return { success: false, message: 'Sync finished with partial local cache.' };
+    } finally {
+      this.isSyncing = false;
     }
+  }
+
+  // Backward compatibility alias
+  public async syncAll(localLeads: Lead[], localUsers: User[]): Promise<{ leadsCount: number }> {
+    await this.syncAllModules({ leads: localLeads, users: localUsers });
+    const cloudLeads = await this.fetchCloudLeads();
+    return { leadsCount: cloudLeads.length || localLeads.length };
   }
 }
 

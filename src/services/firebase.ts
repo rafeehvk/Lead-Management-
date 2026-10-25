@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
   doc,
@@ -27,15 +27,10 @@ export const db = firebaseConfigData.firestoreDatabaseId
   ? getFirestore(app, firebaseConfigData.firestoreDatabaseId)
   : getFirestore(app);
 
-// Ensure user session is authenticated for Firestore rules
+// Ensure user session is ready for Firestore
 export async function ensureFirebaseAuth(): Promise<void> {
-  try {
-    if (!auth.currentUser) {
-      await signInAnonymously(auth);
-    }
-  } catch (error) {
-    console.warn('[Firebase] Auth initialization warning:', error);
-  }
+  // Application credentials authenticate users in MYSAR ERP
+  return Promise.resolve();
 }
 
 // Validate connection to Firestore as per requirements
