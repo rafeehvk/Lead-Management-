@@ -1,4 +1,5 @@
 import { User, UserRole } from '../types';
+import { cloudSync } from '../services/cloudSyncService';
 
 export interface UserSideMenuPermission {
   viewOnly: boolean; // View screens & listings
@@ -902,6 +903,7 @@ export function saveUserMenuPermissions(
 ): void {
   try {
     localStorage.setItem(`mysar_user_menu_perms_${userId}`, JSON.stringify(permissions));
+    cloudSync.syncUserMenuPermissions(userId, permissions);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mysar_user_menu_permissions_changed', { detail: { userId } }));
       window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
@@ -917,6 +919,7 @@ export function saveUserMenuPermissions(
 export function resetUserMenuPermissions(userId: string): void {
   try {
     localStorage.removeItem(`mysar_user_menu_perms_${userId}`);
+    cloudSync.deleteUserMenuPermissions(userId);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mysar_user_menu_permissions_changed', { detail: { userId } }));
       window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));

@@ -8,27 +8,31 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Lead, User, FollowUp, Proposal } from '../types';
-import { StaffMember, DailyAttendanceRecord, LeaveRequest } from '../types/hr';
+import { Lead, User, FollowUp, Proposal, Settings } from '../types';
+import {
+  StaffMember,
+  DailyAttendanceRecord,
+  LeaveRequest,
+  DepartmentMaster,
+  BranchMaster,
+} from '../types/hr';
 import { ExpiryDocument } from '../types/documentExpiry';
 import { AllocatedTask } from '../types/tasks';
 import { Asset } from '../types/asset';
 
+export function toSafeDocId(id: string): string {
+  if (!id) return '';
+  return String(id).replace(/\//g, '___').replace(/\s+/g, '_');
+}
+
+export function fromSafeDocId(safeId: string): string {
+  if (!safeId) return '';
+  return String(safeId).replace(/___/g, '/');
+}
+
 export class CloudSyncService {
   private isInitialized = false;
   private isSyncing = false;
-
-  // Unsubscribe handlers
-  private unsubLeads: (() => void) | null = null;
-  private unsubUsers: (() => void) | null = null;
-  private unsubFollowUps: (() => void) | null = null;
-  private unsubProposals: (() => void) | null = null;
-  private unsubStaff: (() => void) | null = null;
-  private unsubAttendance: (() => void) | null = null;
-  private unsubLeaves: (() => void) | null = null;
-  private unsubDocs: (() => void) | null = null;
-  private unsubTasks: (() => void) | null = null;
-  private unsubAssets: (() => void) | null = null;
 
   /**
    * Initializes real-time cloud sync across all ERP modules and devices
@@ -41,9 +45,13 @@ export class CloudSyncService {
     onStaffUpdate?: (staff: StaffMember[]) => void;
     onAttendanceUpdate?: (records: DailyAttendanceRecord[]) => void;
     onLeavesUpdate?: (leaves: LeaveRequest[]) => void;
+    onDepartmentsUpdate?: (departments: DepartmentMaster[]) => void;
+    onBranchesUpdate?: (branches: BranchMaster[]) => void;
     onDocsUpdate?: (docs: ExpiryDocument[]) => void;
     onTasksUpdate?: (tasks: AllocatedTask[]) => void;
     onAssetsUpdate?: (assets: Asset[]) => void;
+    onSettingsUpdate?: (settings: Settings) => void;
+    onUserPermissionsUpdate?: (permsByUser: Record<string, any>) => void;
   }): Promise<void> {
     if (this.isInitialized) return;
     this.isInitialized = true;
@@ -72,6 +80,12 @@ export class CloudSyncService {
       if (callbacks.onLeavesUpdate) {
         this.subscribeToCollection<LeaveRequest>('hr_leave_requests', callbacks.onLeavesUpdate);
       }
+      if (callbacks.onDepartmentsUpdate) {
+        this.subscribeToCollection<DepartmentMaster>('hr_departments', callbacks.onDepartmentsUpdate);
+      }
+      if (callbacks.onBranchesUpdate) {
+        this.subscribeToCollection<BranchMaster>('hr_branches', callbacks.onBranchesUpdate);
+      }
 
       // 3. Document Compliance Listeners
       if (callbacks.onDocsUpdate) {
@@ -87,6 +101,45 @@ export class CloudSyncService {
       if (callbacks.onAssetsUpdate) {
         this.subscribeToCollection<Asset>('assets', callbacks.onAssetsUpdate);
       }
+
+      // 6. User Menu Permissions Listener
+      if (callbacks.onUserPermissionsUpdate) {
+        const colRef = collection(db, 'user_menu_permissions');
+        onSnapshot(
+          colRef,
+          (snapshot) => {
+            const map: Record<string, any> = {};
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              const userId = fromSafeDocId(docSnap.id);
+              if (data && data.permissions) {
+                map[userId] = data.permissions;
+                try {
+                  localStorage.setItem(`mysar_user_menu_perms_${userId}`, JSON.stringify(data.permissions));
+                } catch {}
+              }
+            });
+            callbacks.onUserPermissionsUpdate?.(map);
+          },
+          (err) => console.warn('[CloudSync] Error in user_menu_permissions listener:', err)
+        );
+      }
+
+      // 7. Settings Listener
+      if (callbacks.onSettingsUpdate) {
+        const colRef = collection(db, 'settings');
+        onSnapshot(
+          colRef,
+          (snapshot) => {
+            snapshot.forEach((docSnap) => {
+              if (docSnap.id === 'general' || docSnap.id === 'settings') {
+                callbacks.onSettingsUpdate?.(docSnap.data() as Settings);
+              }
+            });
+          },
+          (err) => console.warn('[CloudSync] Error in settings listener:', err)
+        );
+      }
     } catch (e) {
       console.warn('[CloudSync] Failed to initialize cloud listeners:', e);
     }
@@ -97,17 +150,18 @@ export class CloudSyncService {
     colName: string,
     onUpdate?: (items: T[]) => void,
     customSort?: (items: T[]) => void
-  ): void {
-    if (!onUpdate) return;
+  ): () => void {
+    if (!onUpdate) return () => {};
     try {
       const colRef = collection(db, colName);
-      onSnapshot(
+      const unsubscribe = onSnapshot(
         colRef,
         (snapshot) => {
           const items: T[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as T;
-            items.push({ ...data, id: docSnap.id });
+            const originalId = data.id || fromSafeDocId(docSnap.id);
+            items.push({ ...data, id: originalId });
           });
 
           if (customSort) {
@@ -120,8 +174,10 @@ export class CloudSyncService {
           console.warn(`[CloudSync] Error in ${colName} listener:`, error);
         }
       );
+      return unsubscribe;
     } catch (e) {
       console.warn(`[CloudSync] Could not attach listener for ${colName}:`, e);
+      return () => {};
     }
   }
 
@@ -158,34 +214,109 @@ export class CloudSyncService {
   public async syncStaff(staff: StaffMember): Promise<void> {
     await this.pushDocument('hr_staff', staff.id, staff);
   }
+  public async deleteStaff(staffId: string): Promise<void> {
+    await this.deleteDocument('hr_staff', staffId);
+  }
+
   public async syncAttendance(record: DailyAttendanceRecord): Promise<void> {
     await this.pushDocument('hr_attendance', record.id, record);
   }
+
   public async syncLeaveRequest(leave: LeaveRequest): Promise<void> {
     await this.pushDocument('hr_leave_requests', leave.id, leave);
   }
+
+  public async syncDepartment(dept: DepartmentMaster): Promise<void> {
+    await this.pushDocument('hr_departments', dept.id, dept);
+  }
+  public async deleteDepartment(deptId: string): Promise<void> {
+    await this.deleteDocument('hr_departments', deptId);
+  }
+
+  public async syncBranch(branch: BranchMaster): Promise<void> {
+    await this.pushDocument('hr_branches', branch.id, branch);
+  }
+  public async deleteBranch(branchId: string): Promise<void> {
+    await this.deleteDocument('hr_branches', branchId);
+  }
+
+  public async syncUserMenuPermissions(userId: string, permissions: any): Promise<void> {
+    await this.pushDocument('user_menu_permissions', userId, { userId, permissions, updatedAt: new Date().toISOString() });
+  }
+  public async deleteUserMenuPermissions(userId: string): Promise<void> {
+    await this.deleteDocument('user_menu_permissions', userId);
+  }
+
   public async syncDocument(docItem: ExpiryDocument): Promise<void> {
     await this.pushDocument('documents', docItem.id, docItem);
   }
+  public async deleteDocumentItem(docId: string): Promise<void> {
+    await this.deleteDocument('documents', docId);
+  }
+
   public async syncTask(task: AllocatedTask): Promise<void> {
     await this.pushDocument('tasks', task.id, task);
   }
+  public async deleteTask(taskId: string): Promise<void> {
+    await this.deleteDocument('tasks', taskId);
+  }
+
   public async syncAsset(asset: Asset): Promise<void> {
     await this.pushDocument('assets', asset.id, asset);
   }
+  public async deleteAsset(assetId: string): Promise<void> {
+    await this.deleteDocument('assets', assetId);
+  }
 
-  private async pushDocument(colName: string, id: string, data: any): Promise<void> {
+  public async syncSettings(settings: Settings): Promise<void> {
+    await this.pushDocument('settings', 'general', settings);
+  }
+
+  // --- ERP Core Push Operations ---
+  public async syncParty(party: any): Promise<void> {
+    if (party?.id) await this.pushDocument('erp_parties', party.id, party);
+  }
+  public async deleteParty(partyId: string): Promise<void> {
+    await this.deleteDocument('erp_parties', partyId);
+  }
+
+  public async syncItem(item: any): Promise<void> {
+    if (item?.id) await this.pushDocument('erp_items', item.id, item);
+  }
+  public async deleteItem(itemId: string): Promise<void> {
+    await this.deleteDocument('erp_items', itemId);
+  }
+
+  public async syncSalesOrder(order: any): Promise<void> {
+    if (order?.id) await this.pushDocument('erp_sales_orders', order.id, order);
+  }
+  public async syncSalesInvoice(invoice: any): Promise<void> {
+    if (invoice?.id) await this.pushDocument('erp_sales_invoices', invoice.id, invoice);
+  }
+  public async syncPurchaseOrder(po: any): Promise<void> {
+    if (po?.id) await this.pushDocument('erp_purchase_orders', po.id, po);
+  }
+  public async syncPurchaseInvoice(pi: any): Promise<void> {
+    if (pi?.id) await this.pushDocument('erp_purchase_invoices', pi.id, pi);
+  }
+
+  public async pushDocument(colName: string, id: string, data: any): Promise<void> {
+    if (!id) return;
     try {
-      const docRef = doc(db, colName, id);
-      await setDoc(docRef, data, { merge: true });
+      const safeId = toSafeDocId(id);
+      const docRef = doc(db, colName, safeId);
+      const payload = { ...data, id };
+      await setDoc(docRef, payload, { merge: true });
     } catch (e) {
       console.warn(`[CloudSync] Failed to sync ${colName}/${id}:`, e);
     }
   }
 
-  private async deleteDocument(colName: string, id: string): Promise<void> {
+  public async deleteDocument(colName: string, id: string): Promise<void> {
+    if (!id) return;
     try {
-      const docRef = doc(db, colName, id);
+      const safeId = toSafeDocId(id);
+      const docRef = doc(db, colName, safeId);
       await deleteDoc(docRef);
     } catch (e) {
       console.warn(`[CloudSync] Failed to delete ${colName}/${id}:`, e);
@@ -201,7 +332,9 @@ export class CloudSyncService {
       const batch = writeBatch(db);
       items.forEach((item) => {
         if (item && item.id) {
-          batch.set(doc(db, colName, item.id), item, { merge: true });
+          const safeId = toSafeDocId(item.id);
+          const payload = { ...item, id: item.id };
+          batch.set(doc(db, colName, safeId), payload, { merge: true });
           count++;
         }
       });
@@ -241,6 +374,14 @@ export class CloudSyncService {
     return this.batchPush<LeaveRequest>('hr_leave_requests', leaves);
   }
 
+  public async pushLocalDepartmentsToCloud(depts: DepartmentMaster[]): Promise<number> {
+    return this.batchPush<DepartmentMaster>('hr_departments', depts);
+  }
+
+  public async pushLocalBranchesToCloud(branches: BranchMaster[]): Promise<number> {
+    return this.batchPush<BranchMaster>('hr_branches', branches);
+  }
+
   public async pushLocalDocumentsToCloud(docs: ExpiryDocument[]): Promise<number> {
     return this.batchPush<ExpiryDocument>('documents', docs);
   }
@@ -254,19 +395,20 @@ export class CloudSyncService {
   }
 
   /**
-   * Fetches latest leads directly from Firestore once.
+   * Fetches collection directly from Firestore once.
    */
-  public async fetchCloudLeads(): Promise<Lead[]> {
+  public async fetchCollection<T extends { id: string }>(colName: string): Promise<T[]> {
     try {
-      const snap = await getDocs(collection(db, 'leads'));
-      const leads: Lead[] = [];
+      const snap = await getDocs(collection(db, colName));
+      const items: T[] = [];
       snap.forEach((docSnap) => {
-        const data = docSnap.data() as Lead;
-        leads.push({ ...data, id: docSnap.id });
+        const data = docSnap.data() as T;
+        const originalId = data.id || fromSafeDocId(docSnap.id);
+        items.push({ ...data, id: originalId });
       });
-      return leads;
+      return items;
     } catch (e) {
-      console.warn('[CloudSync] Error fetching cloud leads:', e);
+      console.warn(`[CloudSync] Error fetching cloud ${colName}:`, e);
       return [];
     }
   }
@@ -276,39 +418,61 @@ export class CloudSyncService {
    * Pushes all local items across all ERP modules to Firestore and pulls cloud state.
    */
   public async syncAllModules(params: {
-    leads: Lead[];
-    users: User[];
+    leads?: Lead[];
+    users?: User[];
     followUps?: FollowUp[];
     proposals?: Proposal[];
     staff?: StaffMember[];
     attendance?: DailyAttendanceRecord[];
     leaves?: LeaveRequest[];
+    departments?: DepartmentMaster[];
+    branches?: BranchMaster[];
     documents?: ExpiryDocument[];
     tasks?: AllocatedTask[];
     assets?: Asset[];
+    parties?: any[];
+    items?: any[];
+    salesOrders?: any[];
+    purchaseOrders?: any[];
   }): Promise<{ success: boolean; message: string }> {
     if (this.isSyncing) return { success: true, message: 'Sync in progress' };
     this.isSyncing = true;
     try {
       // 1. CRM
-      if (params.leads?.length) await this.pushLocalLeadsToCloud(params.leads);
-      if (params.users?.length) await this.pushLocalUsersToCloud(params.users);
-      if (params.followUps?.length) await this.pushLocalFollowUpsToCloud(params.followUps);
-      if (params.proposals?.length) await this.pushLocalProposalsToCloud(params.proposals);
+      if (params.leads && params.leads.length > 0) await this.pushLocalLeadsToCloud(params.leads);
+      if (params.users && params.users.length > 0) await this.pushLocalUsersToCloud(params.users);
+      if (params.followUps && params.followUps.length > 0) await this.pushLocalFollowUpsToCloud(params.followUps);
+      if (params.proposals && params.proposals.length > 0) await this.pushLocalProposalsToCloud(params.proposals);
 
       // 2. HR
-      if (params.staff?.length) await this.pushLocalStaffToCloud(params.staff);
-      if (params.attendance?.length) await this.pushLocalAttendanceToCloud(params.attendance);
-      if (params.leaves?.length) await this.pushLocalLeavesToCloud(params.leaves);
+      if (params.staff && params.staff.length > 0) await this.pushLocalStaffToCloud(params.staff);
+      if (params.attendance && params.attendance.length > 0) await this.pushLocalAttendanceToCloud(params.attendance);
+      if (params.leaves && params.leaves.length > 0) await this.pushLocalLeavesToCloud(params.leaves);
+      if (params.departments && params.departments.length > 0) await this.pushLocalDepartmentsToCloud(params.departments);
+      if (params.branches && params.branches.length > 0) await this.pushLocalBranchesToCloud(params.branches);
 
       // 3. Document Compliance
-      if (params.documents?.length) await this.pushLocalDocumentsToCloud(params.documents);
+      if (params.documents && params.documents.length > 0) await this.pushLocalDocumentsToCloud(params.documents);
 
       // 4. Tasks
-      if (params.tasks?.length) await this.pushLocalTasksToCloud(params.tasks);
+      if (params.tasks && params.tasks.length > 0) await this.pushLocalTasksToCloud(params.tasks);
 
       // 5. Assets
-      if (params.assets?.length) await this.pushLocalAssetsToCloud(params.assets);
+      if (params.assets && params.assets.length > 0) await this.pushLocalAssetsToCloud(params.assets);
+
+      // 6. ERP Core (Parties, Items, Orders)
+      if (params.parties && params.parties.length > 0) {
+        await this.batchPush('erp_parties', params.parties);
+      }
+      if (params.items && params.items.length > 0) {
+        await this.batchPush('erp_items', params.items);
+      }
+      if (params.salesOrders && params.salesOrders.length > 0) {
+        await this.batchPush('erp_sales_orders', params.salesOrders);
+      }
+      if (params.purchaseOrders && params.purchaseOrders.length > 0) {
+        await this.batchPush('erp_purchase_orders', params.purchaseOrders);
+      }
 
       return { success: true, message: 'All ERP modules synced to Firestore cloud!' };
     } catch (e) {
@@ -317,13 +481,6 @@ export class CloudSyncService {
     } finally {
       this.isSyncing = false;
     }
-  }
-
-  // Backward compatibility alias
-  public async syncAll(localLeads: Lead[], localUsers: User[]): Promise<{ leadsCount: number }> {
-    await this.syncAllModules({ leads: localLeads, users: localUsers });
-    const cloudLeads = await this.fetchCloudLeads();
-    return { leadsCount: cloudLeads.length || localLeads.length };
   }
 }
 

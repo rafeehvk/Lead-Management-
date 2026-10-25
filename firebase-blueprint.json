@@ -227,6 +227,18 @@
     "/assets/{assetId}": {
       "schema": "AssetItem",
       "description": "Collection of enterprise equipment and asset registry items"
+    },
+    "/hr_departments/{deptId}": {
+      "schema": "StaffMember",
+      "description": "Collection of department master definitions"
+    },
+    "/hr_branches/{branchId}": {
+      "schema": "StaffMember",
+      "description": "Collection of branch master locations"
+    },
+    "/user_menu_permissions/{permId}": {
+      "schema": "User",
+      "description": "Granular user side-menu authorizations"
     }
   }
 }

@@ -23,8 +23,15 @@ import {
   ArrowRight,
   User,
   LayoutGrid,
+  LogIn,
+  LogOut,
+  MapPin,
+  Fingerprint,
 } from 'lucide-react';
+import { User as UserType } from '../../types';
 import { WeeklyAttendanceHeatmap } from './WeeklyAttendanceHeatmap';
+import { TeamLeaveCalendar } from './TeamLeaveCalendar';
+import { UserMonthlyAttendanceHeatmap } from './UserMonthlyAttendanceHeatmap';
 import {
   DailyAttendanceRecord,
   LeaveRequest,
@@ -48,6 +55,7 @@ interface AttendanceAndLeaveViewProps {
   attendance: DailyAttendanceRecord[];
   leaveRequests: LeaveRequest[];
   leaveBalances: LeaveBalance[];
+  currentUser?: UserType | null;
   onMarkAttendance: (
     staffId: string,
     date: string,
@@ -66,16 +74,82 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
   attendance = [],
   leaveRequests = [],
   leaveBalances = [],
+  currentUser,
   onMarkAttendance,
   onBulkMarkAttendance,
   onSubmitLeaveRequest,
   onUpdateLeaveStatus,
 }) => {
-  const [activeTab, setActiveTab] = useState<'attendance' | 'heatmap' | 'leave-requests' | 'leave-balances'>('attendance');
+  const [activeTab, setActiveTab] = useState<
+    'attendance' | 'my-heatmap' | 'leave-calendar' | 'heatmap' | 'leave-requests' | 'leave-balances'
+  >('attendance');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedStaffForHeatmap, setSelectedStaffForHeatmap] = useState<StaffMember | null>(null);
+
+  // Resolve logged-in staff member for Self-Service Punching and Leave Application
+  const loggedInStaff = useMemo(() => {
+    if (!currentUser) return null;
+    return (
+      staff.find((s) => s.id === currentUser.staffId) ||
+      staff.find(
+        (s) =>
+          (s.systemAccess?.username && s.systemAccess.username.toLowerCase() === currentUser.userId?.toLowerCase()) ||
+          (s.email && s.email.toLowerCase() === currentUser.email?.toLowerCase()) ||
+          (s.personalEmail && s.personalEmail.toLowerCase() === currentUser.email?.toLowerCase()) ||
+          (s.fullName && s.fullName.toLowerCase() === currentUser.name?.toLowerCase())
+      ) ||
+      null
+    );
+  }, [currentUser, staff]);
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const myTodayRecord = useMemo(() => {
+    if (!loggedInStaff) return null;
+    return attendance.find((a) => a.staffId === loggedInStaff.id && a.date === todayStr);
+  }, [loggedInStaff, attendance, todayStr]);
+
+  const [punchFeedback, setPunchFeedback] = useState<string | null>(null);
+
+  const handleSelfPunchIn = () => {
+    if (!loggedInStaff) return;
+    const nowTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    onMarkAttendance(
+      loggedInStaff.id,
+      todayStr,
+      'Present',
+      nowTime,
+      undefined,
+      'Self-Punch In via Staff Portal'
+    );
+    setPunchFeedback(`Punched In successfully at ${nowTime}!`);
+    setTimeout(() => setPunchFeedback(null), 4000);
+  };
+
+  const handleSelfPunchOut = () => {
+    if (!loggedInStaff || !myTodayRecord) return;
+    const nowTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    onMarkAttendance(
+      loggedInStaff.id,
+      todayStr,
+      myTodayRecord.status || 'Present',
+      myTodayRecord.checkIn || '08:30 AM',
+      nowTime,
+      'Self-Punch Out via Staff Portal'
+    );
+    setPunchFeedback(`Punched Out successfully at ${nowTime}! Shift completed.`);
+    setTimeout(() => setPunchFeedback(null), 4000);
+  };
 
   // Modal for Applying Leave
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
@@ -119,17 +193,18 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
     staff,
   ]);
 
-  const handleOpenApplyLeave = (targetStaffId?: string) => {
-    const st = (targetStaffId ? staff.find((s) => s.id === targetStaffId) : staff[0]) || staff[0];
-    const today = new Date().toISOString().split('T')[0];
+  const handleOpenApplyLeave = (targetStaffId?: string, defaultDate?: string) => {
+    const defaultStaff = loggedInStaff || staff[0];
+    const st = (targetStaffId ? staff.find((s) => s.id === targetStaffId) : defaultStaff) || staff[0];
+    const targetDate = defaultDate || new Date().toISOString().split('T')[0];
     setLeaveForm({
       staffId: st?.id || '',
       staffName: st?.fullName || '',
       department: st?.department || '',
       position: st?.position || '',
       leaveType: 'Casual Leave',
-      fromDate: today,
-      toDate: today,
+      fromDate: targetDate,
+      toDate: targetDate,
       numberOfDays: 1,
       reason: '',
       substituteStaff: '',
@@ -171,9 +246,132 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
+      {/* STAFF SELF-SERVICE PORTAL: Quick Punch In/Out & Leave Application */}
+      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl p-5 text-white shadow-sm border border-emerald-700/50">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          {/* User Identity & Live Date */}
+          <div className="flex items-start sm:items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+              {loggedInStaff?.profilePhoto ? (
+                <img
+                  src={loggedInStaff.profilePhoto}
+                  alt={loggedInStaff.fullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserCheck className="w-6 h-6 text-emerald-300" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 flex-wrap">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300 bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
+                  Staff Self-Service Access
+                </span>
+                <span className="text-xs text-emerald-200">
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black tracking-tight mt-1">
+                {loggedInStaff ? loggedInStaff.fullName : currentUser?.name || 'Staff Member'}
+              </h2>
+              <p className="text-xs text-emerald-100/80 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span>ID: {loggedInStaff?.staffCode || loggedInStaff?.id || currentUser?.staffId || 'CB-STAFF'}</span>
+                <span>•</span>
+                <span>{loggedInStaff?.department || 'Operations'}</span>
+                <span>•</span>
+                <span className="flex items-center gap-0.5 text-emerald-200">
+                  <MapPin className="w-3 h-3" />
+                  {loggedInStaff?.branchLocation || 'Kochi Corporate HQ'}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Action Hub: Punch In/Out & Apply Leave */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Punch In / Out Button */}
+            {!myTodayRecord?.checkIn ? (
+              <button
+                type="button"
+                onClick={handleSelfPunchIn}
+                className="px-4 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 active:scale-98 text-slate-950 font-black text-xs flex items-center space-x-2 shadow-md transition-all cursor-pointer"
+              >
+                <Fingerprint className="w-4 h-4 text-emerald-950" />
+                <span>Punch In (Check-In)</span>
+              </button>
+            ) : !myTodayRecord?.checkOut ? (
+              <div className="flex items-center space-x-2 bg-white/10 border border-white/20 p-1.5 rounded-xl">
+                <div className="px-2.5 py-1 text-left">
+                  <div className="text-[10px] text-emerald-200 font-medium">In: {myTodayRecord.checkIn}</div>
+                  <div className="text-[11px] font-bold text-white flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    On Duty
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSelfPunchOut}
+                  className="px-3.5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 active:scale-98 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Punch Out</span>
+                </button>
+              </div>
+            ) : (
+              <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 text-left">
+                <div className="text-[10px] text-emerald-200 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                  Shift Completed Today
+                </div>
+                <div className="text-xs font-bold text-white mt-0.5">
+                  In: {myTodayRecord.checkIn} • Out: {myTodayRecord.checkOut}
+                </div>
+              </div>
+            )}
+
+            {/* View Monthly Attendance Heatmap Button */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('my-heatmap')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer shadow-xs ${
+                activeTab === 'my-heatmap'
+                  ? 'bg-emerald-400 text-slate-950 font-black shadow-md'
+                  : 'bg-white/15 hover:bg-white/25 active:scale-98 text-white border border-white/30'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-emerald-300" />
+              <span>My Attendance Heatmap</span>
+            </button>
+
+            {/* Apply Leave Request Button */}
+            <button
+              type="button"
+              onClick={() => handleOpenApplyLeave(loggedInStaff?.id)}
+              className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-98 text-white border border-white/30 font-bold text-xs flex items-center space-x-2 transition-all cursor-pointer shadow-xs"
+            >
+              <CalendarCheck className="w-4 h-4 text-emerald-300" />
+              <span>Apply For Leave</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Punch Notification Feedback */}
+        {punchFeedback && (
+          <div className="mt-3 bg-emerald-400/20 border border-emerald-400/40 text-emerald-100 px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 animate-in fade-in duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <span>{punchFeedback}</span>
+          </div>
+        )}
+      </div>
+
       {/* Sub-tab Navigation */}
       <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
           <button
             onClick={() => setActiveTab('attendance')}
             className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -184,6 +382,38 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
           >
             <Clock className="w-4 h-4 text-[#168A45]" />
             <span>Daily Biometric Attendance</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('my-heatmap')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'my-heatmap'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] border border-[#D9E5DD] shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#168A45]" />
+            <span>My Monthly Heatmap</span>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-300">
+              Personal
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('leave-calendar')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'leave-calendar'
+                ? 'bg-[#EAF7EF] text-[#0B5D2A] border border-[#D9E5DD] shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-[#168A45]" />
+            <span>Team Leave Calendar</span>
+            {leaveRequests.filter((l) => l.status === 'Approved').length > 0 && (
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-300">
+                {leaveRequests.filter((l) => l.status === 'Approved').length}
+              </span>
+            )}
           </button>
 
           <button
@@ -226,7 +456,7 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
           </button>
         </div>
 
-        {(activeTab === 'leave-requests' || activeTab === 'leave-balances') && (
+        {(activeTab === 'leave-requests' || activeTab === 'leave-balances' || activeTab === 'leave-calendar' || activeTab === 'my-heatmap') && (
           <button
             onClick={() => handleOpenApplyLeave()}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -240,6 +470,31 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
       {/* SUB-TAB 1: DAILY BIOMETRIC ATTENDANCE */}
       {activeTab === 'attendance' && (
         <div className="space-y-4">
+          {/* Quick Jump to My Monthly Heatmap Banner */}
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white border border-emerald-200/80 rounded-2xl p-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">
+                  Track Your Personal Attendance Patterns
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  View daily status (Present, Late, Leave, Absent), hours worked, and monthly compliance metrics for {loggedInStaff?.fullName || 'your profile'}.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('my-heatmap')}
+              className="px-3.5 py-1.5 bg-[#168A45] hover:bg-[#0B5D2A] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center space-x-1.5 cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <span>View My Monthly Heatmap</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Quick Metrics Bar for Selected Date */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
@@ -254,9 +509,19 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
               <span className="text-[11px] text-amber-600 font-medium">Late Punches</span>
               <div className="text-xl font-bold text-amber-700 mt-0.5">{lateCount}</div>
             </div>
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] text-blue-600 font-medium">On Leave</span>
-              <div className="text-xl font-bold text-blue-700 mt-0.5">{leaveCount}</div>
+            <div
+              onClick={() => setActiveTab('leave-calendar')}
+              className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group"
+              title="Click to view Team Leave Calendar"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-blue-600 font-medium">On Leave</span>
+                <Calendar className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 transition-colors" />
+              </div>
+              <div className="text-xl font-bold text-blue-700 mt-0.5 flex items-baseline justify-between">
+                <span>{leaveCount}</span>
+                <span className="text-[10px] text-blue-500 font-normal group-hover:underline">View Calendar →</span>
+              </div>
             </div>
             <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
               <span className="text-[11px] text-rose-600 font-medium">Absent</span>
@@ -399,6 +664,18 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
         </div>
       )}
 
+      {/* SUB-TAB: USER MONTHLY ATTENDANCE HEATMAP (LOGGED-IN USER) */}
+      {activeTab === 'my-heatmap' && (
+        <UserMonthlyAttendanceHeatmap
+          staffMember={selectedStaffForHeatmap || loggedInStaff || staff[0] || null}
+          allStaff={staff}
+          attendance={attendance}
+          leaveRequests={leaveRequests}
+          onApplyLeave={(staffId, defaultDate) => handleOpenApplyLeave(staffId, defaultDate)}
+          onSelectStaff={(s) => setSelectedStaffForHeatmap(s)}
+        />
+      )}
+
       {/* SUB-TAB: WEEKLY ATTENDANCE HEATMAP */}
       {activeTab === 'heatmap' && (
         <WeeklyAttendanceHeatmap
@@ -409,9 +686,33 @@ export const AttendanceAndLeaveView: React.FC<AttendanceAndLeaveViewProps> = ({
         />
       )}
 
+      {/* SUB-TAB: TEAM LEAVE & AVAILABILITY CALENDAR */}
+      {activeTab === 'leave-calendar' && (
+        <TeamLeaveCalendar
+          staff={staff}
+          leaveRequests={leaveRequests}
+          onApplyLeave={(staffId) => handleOpenApplyLeave(staffId)}
+        />
+      )}
+
       {/* SUB-TAB 2: LEAVE REQUESTS */}
       {activeTab === 'leave-requests' && (
         <div className="space-y-4">
+          {/* Quick Switch to Calendar Header */}
+          <div className="bg-white p-3 px-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-slate-800 text-xs">Leave Requests Management</span>
+              <span className="text-[11px] text-slate-400">• Review, approve, and track staff leaves</span>
+            </div>
+            <button
+              onClick={() => setActiveTab('leave-calendar')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#168A45]" />
+              <span>View Team Availability Calendar →</span>
+            </button>
+          </div>
+
           <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-600">

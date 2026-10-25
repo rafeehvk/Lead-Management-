@@ -35,6 +35,11 @@ interface ErpManagementDashboardProps {
   onOpenNewLeadModal?: () => void;
   onNavigateToLeadDetail?: (leadId: string) => void;
   onLogout?: () => void;
+  allowedNavTabs?: Set<string> | null;
+  staff?: StaffMember[];
+  attendance?: DailyAttendanceRecord[];
+  leaveRequests?: LeaveRequest[];
+  documents?: ExpiryDocument[];
 }
 
 export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
@@ -43,6 +48,11 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   onOpenNewLeadModal,
   onNavigateToLeadDetail,
   onLogout,
+  allowedNavTabs,
+  staff: propStaff,
+  attendance: propAttendance,
+  leaveRequests: propLeaveRequests,
+  documents: propDocuments,
 }) => {
   // 1. Data States
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -50,11 +60,11 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [attendance, setAttendance] = useState<DailyAttendanceRecord[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>(() => propStaff || hrStorage.getStaff());
+  const [attendance, setAttendance] = useState<DailyAttendanceRecord[]>(() => propAttendance || hrStorage.getAttendanceRecords());
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => propLeaveRequests || hrStorage.getLeaveRequests());
 
-  const [documents, setDocuments] = useState<ExpiryDocument[]>([]);
+  const [documents, setDocuments] = useState<ExpiryDocument[]>(() => propDocuments || documentExpiryStorage.getDocuments());
 
   // 2. Dashboard Header Filter States
   const [filterState, setFilterState] = useState<DashboardFilterState>({
@@ -98,22 +108,56 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
     setUsers(loadedUsers);
 
     // HR
-    const loadedStaff = hrStorage.getStaff();
-    const loadedAttendance = hrStorage.getAttendanceRecords();
-    const loadedLeaves = hrStorage.getLeaveRequests();
+    const loadedStaff = propStaff || hrStorage.getStaff();
+    const loadedAttendance = propAttendance || hrStorage.getAttendanceRecords();
+    const loadedLeaves = propLeaveRequests || hrStorage.getLeaveRequests();
 
     setStaff(loadedStaff);
     setAttendance(loadedAttendance);
     setLeaveRequests(loadedLeaves);
 
     // Document Expiry
-    const loadedDocs = documentExpiryStorage.getDocuments();
+    const loadedDocs = propDocuments || documentExpiryStorage.getDocuments();
     setDocuments(loadedDocs);
-  }, []);
+  }, [propStaff, propAttendance, propLeaveRequests, propDocuments]);
 
   useEffect(() => {
     refreshAllData();
   }, [refreshAllData]);
+
+  // Multi-device cloud sync real-time listeners
+  useEffect(() => {
+    const handleCloudSync = () => {
+      refreshAllData();
+    };
+    window.addEventListener('mysar_hr_updated', handleCloudSync);
+    window.addEventListener('mysar_doc_expiry_changed', handleCloudSync);
+    window.addEventListener('mysar_cloud_data_synced', handleCloudSync);
+    window.addEventListener('storage', handleCloudSync);
+    return () => {
+      window.removeEventListener('mysar_hr_updated', handleCloudSync);
+      window.removeEventListener('mysar_doc_expiry_changed', handleCloudSync);
+      window.removeEventListener('mysar_cloud_data_synced', handleCloudSync);
+      window.removeEventListener('storage', handleCloudSync);
+    };
+  }, [refreshAllData]);
+
+  // Sync prop updates from parent
+  useEffect(() => {
+    if (propStaff) setStaff(propStaff);
+  }, [propStaff]);
+
+  useEffect(() => {
+    if (propAttendance) setAttendance(propAttendance);
+  }, [propAttendance]);
+
+  useEffect(() => {
+    if (propLeaveRequests) setLeaveRequests(propLeaveRequests);
+  }, [propLeaveRequests]);
+
+  useEffect(() => {
+    if (propDocuments) setDocuments(propDocuments);
+  }, [propDocuments]);
 
   // Filter change handler
   const handleFilterChange = (newFilters: Partial<DashboardFilterState>) => {

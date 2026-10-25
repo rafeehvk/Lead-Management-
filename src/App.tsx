@@ -21,7 +21,7 @@ import { LoginPage } from './components/LoginPage';
 import { storage } from './services/storageService';
 import { notificationService } from './services/notificationService';
 import { documentExpiryStorage } from './services/documentExpiryStorage';
-import { calculateDaysRemaining } from './types/documentExpiry';
+import { calculateDaysRemaining, ExpiryDocument } from './types/documentExpiry';
 import {
   Lead,
   Proposal,
@@ -251,6 +251,41 @@ export default function App() {
   const [hrPerformance, setHrPerformance] = useState<StaffPerformanceEvaluation[]>([]);
   const [hrActivityLogs, setHrActivityLogs] = useState<HrActivityLog[]>([]);
   const [hrSettings, setHrSettings] = useState<HrSettingsConfig>(() => hrStorage.getHrSettings());
+  const [documentsList, setDocumentsList] = useState<ExpiryDocument[]>(() =>
+    documentExpiryStorage.getDocuments()
+  );
+
+  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  // Real-Time Cross-Module Metrics synchronized via Firestore
+  const pendingApprovalsCount = useMemo(() => {
+    return (hrLeaveRequests || []).filter((l) => l.status === 'Pending').length;
+  }, [hrLeaveRequests]);
+
+  const activeLeavesCount = useMemo(() => {
+    const onLeaveAttendance = (hrAttendance || []).filter(
+      (a) => a.date === todayDateStr && a.status === 'On Leave'
+    ).length;
+    const approvedCoveringToday = (hrLeaveRequests || []).filter(
+      (l) => l.status === 'Approved' && l.startDate <= todayDateStr && l.endDate >= todayDateStr
+    ).length;
+    return Math.max(onLeaveAttendance, approvedCoveringToday);
+  }, [hrAttendance, hrLeaveRequests, todayDateStr]);
+
+  const { expiredDocsCount, expiringSoonDocsCount, documentExpiryAlertsCount } = useMemo(() => {
+    let expired = 0;
+    let expiringSoon = 0;
+    (documentsList || []).forEach((doc) => {
+      const days = calculateDaysRemaining(doc.expiryDate, todayDateStr);
+      if (days <= 0) expired++;
+      else if (days <= 30) expiringSoon++;
+    });
+    return {
+      expiredDocsCount: expired,
+      expiringSoonDocsCount: expiringSoon,
+      documentExpiryAlertsCount: expired + expiringSoon,
+    };
+  }, [documentsList, todayDateStr]);
 
   const refreshHrData = () => {
     setHrPositions(hrStorage.getPositions());
@@ -278,6 +313,7 @@ export default function App() {
     const loadedUsers = storage.getUsers();
     const loadedSettings = storage.getSettings();
     const loadedMetrics = storage.getDashboardMetrics();
+    const loadedDocs = documentExpiryStorage.getDocuments();
 
     setLeads(loadedLeads);
     setProposals(loadedProposals);
@@ -285,6 +321,7 @@ export default function App() {
     setUsers(loadedUsers);
     setSettings(loadedSettings);
     setMetrics(loadedMetrics);
+    setDocumentsList(loadedDocs);
     refreshHrData();
 
     // Keep currentUser reference in sync
@@ -309,7 +346,12 @@ export default function App() {
       },
       onUsersUpdate: (cloudUsers) => {
         storage.syncFromCloudUsers(cloudUsers);
-        setUsers(storage.getUsers());
+        const updatedUsers = storage.getUsers();
+        setUsers(updatedUsers);
+        if (currentUser) {
+          const fresh = updatedUsers.find((u) => u.id === currentUser.id);
+          if (fresh) setCurrentUser(fresh);
+        }
       },
       onFollowUpsUpdate: (cloudFollowUps) => {
         storage.syncFromCloudFollowUps(cloudFollowUps);
@@ -324,21 +366,39 @@ export default function App() {
       onStaffUpdate: (cloudStaff) => {
         hrStorage.syncFromCloudStaff(cloudStaff);
         setHrStaff(hrStorage.getStaff());
+        setStaffAuthVersion((v) => v + 1);
       },
       onAttendanceUpdate: (cloudAttendance) => {
         hrStorage.syncFromCloudAttendance(cloudAttendance);
+        setHrAttendance(hrStorage.getAttendanceRecords());
       },
       onLeavesUpdate: (cloudLeaves) => {
         hrStorage.syncFromCloudLeaveRequests(cloudLeaves);
+        setHrLeaveRequests(hrStorage.getLeaveRequests());
+      },
+      onDepartmentsUpdate: (cloudDepts) => {
+        hrStorage.syncFromCloudDepartments(cloudDepts);
+        setDepartmentsList(hrStorage.getDepartmentsMaster());
+        setStaffAuthVersion((v) => v + 1);
+      },
+      onBranchesUpdate: (cloudBranches) => {
+        hrStorage.syncFromCloudBranches(cloudBranches);
       },
       onDocsUpdate: (cloudDocs) => {
         documentExpiryStorage.syncFromCloudDocuments(cloudDocs);
+        setDocumentsList(documentExpiryStorage.getDocuments());
       },
       onTasksUpdate: (cloudTasks) => {
         taskAllocationStorage.syncFromCloudTasks(cloudTasks);
       },
       onAssetsUpdate: (cloudAssets) => {
         assetStorage.syncFromCloudAssets(cloudAssets);
+      },
+      onSettingsUpdate: (cloudSettings) => {
+        setSettings(cloudSettings);
+      },
+      onUserPermissionsUpdate: () => {
+        setStaffAuthVersion((v) => v + 1);
       },
     });
 
@@ -351,6 +411,8 @@ export default function App() {
       staff: hrStorage.getStaff(),
       attendance: hrStorage.getAttendanceRecords(),
       leaves: hrStorage.getLeaveRequests(),
+      departments: hrStorage.getDepartmentsMaster(),
+      branches: hrStorage.getBranchesMaster(),
       documents: documentExpiryStorage.getDocuments(),
       tasks: taskAllocationStorage.getTasks(),
       assets: assetStorage.getAssets(),
@@ -983,6 +1045,10 @@ export default function App() {
             <ErpManagementDashboard
               currentUser={currentUser}
               allowedNavTabs={allowedUserNavTabs}
+              staff={hrStaff}
+              attendance={hrAttendance}
+              leaveRequests={hrLeaveRequests}
+              documents={documentsList}
               onNavigateToTab={(tab) => {
                 if (tab === 'gashub') {
                   setIsGasHubOpen(true);
@@ -1033,6 +1099,12 @@ export default function App() {
                 setIsNewLeadOpen(true);
               }}
               onOpenNotifications={() => setIsNotificationModalOpen(true)}
+              pendingApprovalsCount={pendingApprovalsCount}
+              activeLeavesCount={activeLeavesCount}
+              documentExpiryAlertsCount={documentExpiryAlertsCount}
+              expiredDocsCount={expiredDocsCount}
+              expiringSoonDocsCount={expiringSoonDocsCount}
+              onNavigateToTab={(tab) => setActiveTab(tab as NavTab)}
             />
           )}
 
@@ -1304,6 +1376,7 @@ export default function App() {
               attendance={hrAttendance}
               leaveRequests={hrLeaveRequests}
               leaveBalances={hrLeaveBalances}
+              currentUser={currentUser}
               onMarkAttendance={handleMarkAttendance}
               onBulkMarkAttendance={handleBulkMarkAttendance}
               onSubmitLeaveRequest={handleSubmitLeaveRequest}

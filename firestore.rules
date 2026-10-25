@@ -32,11 +32,49 @@ service cloud.firestore {
     match /hr_leave_requests/{leaveId} {
       allow read, write: if isValidId(leaveId);
     }
+    match /hr_departments/{deptId} {
+      allow read, write: if isValidId(deptId);
+    }
+    match /hr_branches/{branchId} {
+      allow read, write: if isValidId(branchId);
+    }
     match /hr_positions/{positionId} {
       allow read, write: if isValidId(positionId);
     }
     match /hr_applicants/{applicantId} {
       allow read, write: if isValidId(applicantId);
+    }
+    match /hr_department_roles/{roleId} {
+      allow read, write: if isValidId(roleId);
+    }
+    match /user_menu_permissions/{permId} {
+      allow read, write: if isValidId(permId);
+    }
+
+    // ERP Core Modules (Parties, Items, Orders, Invoices, Finance)
+    match /erp_parties/{partyId} {
+      allow read, write: if isValidId(partyId);
+    }
+    match /erp_items/{itemId} {
+      allow read, write: if isValidId(itemId);
+    }
+    match /erp_sales_orders/{orderId} {
+      allow read, write: if isValidId(orderId);
+    }
+    match /erp_sales_invoices/{invoiceId} {
+      allow read, write: if isValidId(invoiceId);
+    }
+    match /erp_purchase_orders/{poId} {
+      allow read, write: if isValidId(poId);
+    }
+    match /erp_purchase_invoices/{piId} {
+      allow read, write: if isValidId(piId);
+    }
+    match /erp_stock_movements/{stockId} {
+      allow read, write: if isValidId(stockId);
+    }
+    match /finance_journals/{journalId} {
+      allow read, write: if isValidId(journalId);
     }
 
     // Document Expiry & Compliance Registry
@@ -52,6 +90,11 @@ service cloud.firestore {
     // Asset Management
     match /assets/{assetId} {
       allow read, write: if isValidId(assetId);
+    }
+
+    // Connection testing
+    match /test/{testId} {
+      allow read, write: if true;
     }
 
     // Default deny for unmapped paths

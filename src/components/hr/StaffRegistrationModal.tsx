@@ -37,6 +37,7 @@ import {
   Edit2,
   FilePlus,
   Paperclip,
+  Clock,
 } from 'lucide-react';
 import {
   StaffMember,
@@ -113,13 +114,19 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
 
   // Department Master table integration & continuous ID generation: CB/{DeptCode}/{ContinuesNumber}
-  const [departmentsList] = useState<DepartmentMaster[]>(() => hrStorage.getDepartmentsMaster());
-  const [branchesList, setBranchesList] = useState<BranchMaster[]>(() => hrStorage.getBranchesMaster());
+  const [departmentsList] = useState<DepartmentMaster[]>(() => {
+    const d = hrStorage.getDepartmentsMaster();
+    return Array.isArray(d) ? d : [];
+  });
+  const [branchesList, setBranchesList] = useState<BranchMaster[]>(() => {
+    const b = hrStorage.getBranchesMaster();
+    return Array.isArray(b) ? b : [];
+  });
   const [isQuickAddBranchOpen, setIsQuickAddBranchOpen] = useState(false);
   const [newBranchNameInput, setNewBranchNameInput] = useState('');
   const [newBranchCodeInput, setNewBranchCodeInput] = useState('');
   const [newBranchCityInput, setNewBranchCityInput] = useState('');
-  const initialDept = departmentsList[0] || { departmentCode: '101', departmentName: 'Operations', reporting: 'Ramesh Nambiar' };
+  const initialDept = (Array.isArray(departmentsList) && departmentsList[0]) || { departmentCode: '101', departmentName: 'Operations', reporting: 'Ramesh Nambiar' };
   const [departmentCode, setDepartmentCode] = useState(initialDept.departmentCode);
 
   // Auto-generate next employee ID in required format: CB/Department ID/Continues Number
@@ -331,8 +338,9 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     if (!isOpen) return;
 
     const latestBranches = hrStorage.getBranchesMaster();
-    setBranchesList(latestBranches);
-    const defaultBranchName = latestBranches[0]?.branchName || 'Kochi Corporate HQ';
+    const safeBranches = Array.isArray(latestBranches) ? latestBranches : [];
+    setBranchesList(safeBranches);
+    const defaultBranchName = safeBranches[0]?.branchName || 'Kochi Corporate HQ';
 
     setActiveTab('personal');
     const sourceData = staffToEdit || prefillStaffData;
@@ -1667,7 +1675,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     onChange={(e) => handleDepartmentChange(e.target.value)}
                     className="w-full mt-1 border border-emerald-300 bg-emerald-50/30 rounded-xl px-3 py-2 text-slate-900 font-semibold focus:ring-2 focus:ring-emerald-500"
                   >
-                    {departmentsList.map((d) => (
+                    {(Array.isArray(departmentsList) ? departmentsList : []).map((d) => (
                       <option key={d.id} value={d.departmentCode}>
                         [{d.departmentCode}] {d.departmentName}
                       </option>
@@ -1753,17 +1761,17 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                     <option value="" disabled>
                       Select Branch / Location *
                     </option>
-                    {branchesList.map((b) => (
+                    {(Array.isArray(branchesList) ? branchesList : []).map((b) => (
                       <option key={b.id} value={b.branchName}>
                         [{b.branchCode}] {b.branchName}{b.city ? ` — ${b.city}` : ''}
                       </option>
                     ))}
-                    {!branchesList.some((b) => b.branchName === branchLocation) && branchLocation && (
+                    {!(Array.isArray(branchesList) ? branchesList : []).some((b) => b.branchName === branchLocation) && branchLocation && (
                       <option value={branchLocation}>{branchLocation}</option>
                     )}
                   </select>
                   {(() => {
-                    const selectedBranchObj = branchesList.find((b) => b.branchName === branchLocation);
+                    const selectedBranchObj = (Array.isArray(branchesList) ? branchesList : []).find((b) => b.branchName === branchLocation);
                     return selectedBranchObj ? (
                       <p className="text-[10px] text-slate-500 mt-1">
                         Branch Code: <span className="font-mono font-bold text-slate-800">{selectedBranchObj.branchCode}</span> • City: <span className="font-medium text-slate-700">{selectedBranchObj.city || 'Kerala'}</span>
@@ -1801,9 +1809,10 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                           type="button"
                           onClick={() => {
                             if (!newBranchNameInput.trim()) return;
-                            const nextNum = branchesList.length + 1;
+                            const currentList = Array.isArray(branchesList) ? branchesList : [];
+                            const nextNum = currentList.length + 1;
                             const code = newBranchCodeInput.trim() || `BR-0${nextNum}`;
-                            const updated = hrStorage.saveBranch({
+                            hrStorage.saveBranch({
                               id: `BR-00${nextNum}-${Date.now().toString().slice(-3)}`,
                               branchCode: code,
                               branchName: newBranchNameInput.trim(),
@@ -1813,8 +1822,11 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                               contactPhone: '+91 98460 00000',
                               status: 'Active',
                             });
-                            setBranchesList(updated);
+                            const refreshed = hrStorage.getBranchesMaster();
+                            const safeRefreshed = Array.isArray(refreshed) ? refreshed : [];
+                            setBranchesList(safeRefreshed);
                             setBranchLocation(newBranchNameInput.trim());
+                            setSystemBranchAccess(newBranchNameInput.trim());
                             setNewBranchNameInput('');
                             setNewBranchCodeInput('');
                             setNewBranchCityInput('');
@@ -3282,12 +3294,12 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         required
                         className="w-full mt-1 border border-emerald-300 bg-emerald-50/30 rounded-xl px-3 py-2 text-slate-900 font-semibold"
                       >
-                        {branchesList.map((b) => (
+                        {(Array.isArray(branchesList) ? branchesList : []).map((b) => (
                           <option key={b.id} value={b.branchName}>
                             [{b.branchCode}] {b.branchName}
                           </option>
                         ))}
-                        {!branchesList.some((b) => b.branchName === (systemBranchAccess || branchLocation)) &&
+                        {!(Array.isArray(branchesList) ? branchesList : []).some((b) => b.branchName === (systemBranchAccess || branchLocation)) &&
                           (systemBranchAccess || branchLocation) && (
                             <option value={systemBranchAccess || branchLocation}>
                               {systemBranchAccess || branchLocation}
@@ -3298,6 +3310,53 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Dedicated Attendance Marking & Leave Request Access */}
+              <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-start space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[#168A45] text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                      <span>Attendance Marking & Leave Request Access</span>
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.2 rounded-full ${
+                          assignedModules.includes('Attendance & Leave')
+                            ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                            : 'bg-slate-200 text-slate-700 border border-slate-300'
+                        }`}
+                      >
+                        {assignedModules.includes('Attendance & Leave') ? 'ENABLED' : 'DISABLED'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800/80 mt-0.5 leading-relaxed">
+                      Allows staff to punch in/out daily (Check-In & Check-Out) and apply for leaves directly through their self-service portal.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isCurrentlyEnabled = assignedModules.includes('Attendance & Leave');
+                    if (isCurrentlyEnabled) {
+                      setAssignedModules(assignedModules.filter((m) => m !== 'Attendance & Leave'));
+                    } else {
+                      setAssignedModules([...new Set([...assignedModules, 'Attendance & Leave', 'Dashboard'])]);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs ${
+                    assignedModules.includes('Attendance & Leave')
+                      ? 'bg-white hover:bg-rose-50 text-rose-700 border border-rose-300'
+                      : 'bg-[#168A45] hover:bg-[#0B5D2A] text-white active:scale-98'
+                  }`}
+                >
+                  {assignedModules.includes('Attendance & Leave')
+                    ? 'Revoke Access'
+                    : '+ Enable Attendance & Leaves'}
+                </button>
+              </div>
 
               {/* Assigned Modules Multi-Select */}
               <div className="space-y-2.5">

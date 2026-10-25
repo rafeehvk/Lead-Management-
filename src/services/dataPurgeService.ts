@@ -59,8 +59,11 @@ export class DataPurgeService {
   public ensureLiveProductionState(): void {
     try {
       if (!this.isProductionLiveActive()) {
-        console.log('[MYSAR Live Engine] Initializing clean production live database...');
-        this.purgeAllDummyData({ silent: true, actorName: 'System Go-Live' });
+        // Mark production live active for this browser/device session
+        // Note: Do NOT call purgeAllDummyData here, as doing so wipes data when opening the app on a second device/laptop
+        localStorage.setItem(PRODUCTION_FLAG_KEY, 'active');
+        localStorage.setItem(PRODUCTION_DATE_KEY, new Date().toISOString().split('T')[0]);
+        console.log('[MYSAR Live Engine] Production live environment verified for this device session.');
       }
     } catch (e) {
       console.error('[MYSAR Live Engine] Error during initial live state verification:', e);

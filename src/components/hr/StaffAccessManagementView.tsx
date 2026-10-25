@@ -24,6 +24,7 @@ import {
   Edit3,
   Trash2,
   CheckCheck,
+  Clock,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -949,20 +950,26 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
 
                   {/* Quick Assigned Modules Pills */}
                   <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                    <div className="flex flex-wrap gap-1">
-                      {mods.slice(0, 3).map((m) => (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {mods.includes('Attendance & Leave') ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                          Punch &amp; Leaves
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-medium">
+                          <X className="w-2.5 h-2.5 text-slate-400" />
+                          No Leaves/Punch
+                        </span>
+                      )}
+                      {mods.filter((m) => m !== 'Attendance & Leave').slice(0, 2).map((m) => (
                         <span
                           key={m}
-                          className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[10px] font-semibold"
+                          className="px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[10px] font-semibold"
                         >
                           {m}
                         </span>
                       ))}
-                      {mods.length > 3 && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                          +{mods.length - 3} more
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex items-center space-x-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1183,6 +1190,57 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
                     <option value="Suspended">Suspended / Restricted</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Feature: Dedicated Attendance Marking & Leave Request Access */}
+              <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-start space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#168A45] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                      <span>Attendance Marking & Leave Request Access</span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          assignedModules.includes('Attendance & Leave')
+                            ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                            : 'bg-slate-200 text-slate-700 border border-slate-300'
+                        }`}
+                      >
+                        {assignedModules.includes('Attendance & Leave') ? 'ACCESS GRANTED' : 'ACCESS OFF'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800/80 mt-0.5 leading-relaxed">
+                      Allows <b>{selectedStaff.fullName}</b> to punch in/out daily (Check-In & Check-Out) and submit staff Leave Requests directly from their self-service account.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isCurrentlyEnabled = assignedModules.includes('Attendance & Leave');
+                    if (isCurrentlyEnabled) {
+                      setAssignedModules(assignedModules.filter((m) => m !== 'Attendance & Leave'));
+                    } else {
+                      setAssignedModules([...new Set([...assignedModules, 'Attendance & Leave', 'Dashboard'])]);
+                      setSideMenuPerms((prev) => ({
+                        ...prev,
+                        'hr-attendance': { viewOnly: true, entry: true, edit: true, delete: false },
+                      }));
+                    }
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs ${
+                    assignedModules.includes('Attendance & Leave')
+                      ? 'bg-white hover:bg-rose-50 text-rose-700 border border-rose-300'
+                      : 'bg-[#168A45] hover:bg-[#0B5D2A] text-white active:scale-98'
+                  }`}
+                >
+                  {assignedModules.includes('Attendance & Leave')
+                    ? 'Revoke Attendance & Leave'
+                    : '+ Grant Attendance & Leave Access'}
+                </button>
               </div>
 
               {/* Assigned Corporate Modules Selector */}

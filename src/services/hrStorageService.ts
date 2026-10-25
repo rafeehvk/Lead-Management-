@@ -29,6 +29,7 @@ import {
   DeductionItem,
 } from '../types/hr';
 import { validateLeaveRequest } from '../utils/leaveValidation';
+import { cloudSync } from './cloudSyncService';
 import {
   initialPositions,
   initialApplicants,
@@ -75,7 +76,11 @@ class HrStorageService {
     try {
       const item = localStorage.getItem(key);
       if (!item) return defaultVal;
-      return JSON.parse(item) as T;
+      const parsed = JSON.parse(item);
+      if (Array.isArray(defaultVal) && !Array.isArray(parsed)) {
+        return defaultVal;
+      }
+      return parsed as T;
     } catch {
       return defaultVal;
     }
@@ -1449,6 +1454,7 @@ class HrStorageService {
         depts[idx] = updated;
         this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, depts);
         this.addActivity(actorName, 'HR Admin', 'Updated Department Master', 'Settings', `${updated.departmentCode} - ${updated.departmentName}`);
+        cloudSync.syncDepartment(updated);
         return updated;
       }
     }
@@ -1470,6 +1476,7 @@ class HrStorageService {
     depts.push(newDept);
     this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, depts);
     this.addActivity(actorName, 'HR Admin', 'Created Department Master Record', 'Settings', `${newDept.departmentCode} - ${newDept.departmentName}`);
+    cloudSync.syncDepartment(newDept);
     return newDept;
   }
 
@@ -1490,12 +1497,14 @@ class HrStorageService {
       target.status = 'Inactive';
       this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, depts);
       this.addActivity(actorName, 'HR Admin', 'Deactivated Department (Staff Assigned)', 'Settings', target.departmentCode);
+      cloudSync.syncDepartment(target);
       return false;
     }
 
     const filtered = depts.filter((d) => d.id !== id);
     this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, filtered);
     this.addActivity(actorName, 'HR Admin', 'Deleted Department Master', 'Settings', target.departmentCode);
+    cloudSync.deleteDepartment(id);
     return true;
   }
 
@@ -1547,7 +1556,12 @@ class HrStorageService {
         createdDate: '2026-01-01',
       },
     ];
-    return this.getStorage<BranchMaster[]>(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
+    const result = this.getStorage<BranchMaster[]>(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
+    if (!Array.isArray(result)) {
+      this.setStorage(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
+      return defaultBranches;
+    }
+    return result;
   }
 
   public saveBranch(data: Partial<BranchMaster>, actorName = 'Admin'): BranchMaster {
@@ -1564,6 +1578,7 @@ class HrStorageService {
         branches[idx] = updated;
         this.setStorage(HR_STORAGE_KEYS.BRANCHES, branches);
         this.addActivity(actorName, 'HR Admin', 'Updated Branch / Location Master', 'Settings', `${updated.branchCode} - ${updated.branchName}`);
+        cloudSync.syncBranch(updated);
         return updated;
       }
     }
@@ -1596,6 +1611,7 @@ class HrStorageService {
     }
 
     this.addActivity(actorName, 'HR Admin', 'Created Branch / Location Master', 'Settings', `${newBranch.branchCode} - ${newBranch.branchName}`);
+    cloudSync.syncBranch(newBranch);
     return newBranch;
   }
 
@@ -1607,6 +1623,7 @@ class HrStorageService {
     const filtered = branches.filter((b) => b.id !== id);
     this.setStorage(HR_STORAGE_KEYS.BRANCHES, filtered);
     this.addActivity(actorName, 'HR Admin', 'Deleted Branch / Location Master', 'Settings', `${target.branchCode} - ${target.branchName}`);
+    cloudSync.deleteBranch(id);
     return true;
   }
 
@@ -1813,6 +1830,7 @@ class HrStorageService {
         this.setStorage(HR_STORAGE_KEYS.STAFF, staffList);
         this.addActivity(actorName, 'HR Admin', 'Updated Staff Record', 'Staff', `${updated.id} - ${updated.fullName}`);
         this.syncStaffToUserAccount(updated);
+        cloudSync.syncStaff(updated);
         return updated;
       }
     }
@@ -1905,6 +1923,7 @@ class HrStorageService {
     this.setStorage(HR_STORAGE_KEYS.STAFF, staffList);
     this.addActivity(actorName, 'HR Admin', 'Onboarded New Staff', 'Staff', `${newStaff.id} - ${newStaff.fullName}`);
     this.syncStaffToUserAccount(newStaff);
+    cloudSync.syncStaff(newStaff);
     return newStaff;
   }
 
@@ -1912,6 +1931,7 @@ class HrStorageService {
     const list = this.getStaff().filter((s) => s.id !== id);
     this.setStorage(HR_STORAGE_KEYS.STAFF, list);
     this.addActivity(actorName, 'HR Admin', 'Removed Staff Member', 'Staff', id);
+    cloudSync.deleteStaff(id);
 
     // Deactivate linked user in system
     try {
@@ -2065,6 +2085,7 @@ class HrStorageService {
       records.unshift(newRecord);
     }
     this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, records);
+    cloudSync.syncAttendance(newRecord);
 
     // Update staff member's today attendance status if date is today
     const today = new Date().toISOString().split('T')[0];
@@ -2074,6 +2095,7 @@ class HrStorageService {
       if (s) {
         s.todayAttendanceStatus = status === 'Leave' ? 'On Leave' : status;
         this.setStorage(HR_STORAGE_KEYS.STAFF, staffList);
+        cloudSync.syncStaff(s);
       }
     }
 
@@ -2135,6 +2157,7 @@ class HrStorageService {
 
     requests.unshift(newReq);
     this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, requests);
+    cloudSync.syncLeaveRequest(newReq);
     this.addActivity(actorName, 'Staff', 'Applied for Leave', 'Leave', `${newReq.staffName} (${newReq.leaveType}, ${newReq.numberOfDays} days)`);
     return newReq;
   }
@@ -2149,6 +2172,7 @@ class HrStorageService {
     req.approvedBy = approverName;
     req.actionDate = new Date().toISOString().split('T')[0];
     this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, requests);
+    cloudSync.syncLeaveRequest(req);
 
     // If approved, deduct leave balance
     if (status === 'Approved') {
@@ -2550,6 +2574,9 @@ class HrStorageService {
     cloudStaff.forEach((cs) => map.set(cs.id, cs));
     const merged = Array.from(map.values());
     this.setStorage(HR_STORAGE_KEYS.STAFF, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    } catch {}
   }
 
   public syncFromCloudAttendance(cloudAttendance: DailyAttendanceRecord[]): void {
@@ -2560,6 +2587,9 @@ class HrStorageService {
     cloudAttendance.forEach((ca) => map.set(ca.id, ca));
     const merged = Array.from(map.values());
     this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    } catch {}
   }
 
   public syncFromCloudLeaveRequests(cloudLeaves: LeaveRequest[]): void {
@@ -2570,6 +2600,35 @@ class HrStorageService {
     cloudLeaves.forEach((cl) => map.set(cl.id, cl));
     const merged = Array.from(map.values());
     this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    } catch {}
+  }
+
+  public syncFromCloudDepartments(cloudDepts: DepartmentMaster[]): void {
+    if (!cloudDepts || cloudDepts.length === 0) return;
+    const local = this.getDepartmentsMaster();
+    const map = new Map<string, DepartmentMaster>();
+    local.forEach((d) => map.set(d.id, d));
+    cloudDepts.forEach((cd) => map.set(cd.id, cd));
+    const merged = Array.from(map.values());
+    this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+    } catch {}
+  }
+
+  public syncFromCloudBranches(cloudBranches: BranchMaster[]): void {
+    if (!cloudBranches || cloudBranches.length === 0) return;
+    const local = this.getBranchesMaster();
+    const map = new Map<string, BranchMaster>();
+    local.forEach((b) => map.set(b.id, b));
+    cloudBranches.forEach((cb) => map.set(cb.id, cb));
+    const merged = Array.from(map.values());
+    this.setStorage(HR_STORAGE_KEYS.BRANCHES, merged);
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    } catch {}
   }
 }
 
