@@ -28,6 +28,7 @@ import {
   AllowanceItem,
   DeductionItem,
 } from '../types/hr';
+import { initialUsers } from '../mockData';
 import { validateLeaveRequest } from '../utils/leaveValidation';
 import { cloudSync } from './cloudSyncService';
 import {
@@ -69,6 +70,8 @@ const HR_STORAGE_KEYS = {
   SETTINGS: 'mysar_hr_settings_v1',
   LOGS: 'mysar_hr_activity_logs_v1',
   ID_CARD_TEMPLATE: 'mysar_hr_id_card_template_v1',
+  DELETED_STAFF: 'mysar_deleted_staff_ids_v1',
+  DELETED_DEPTS: 'mysar_deleted_dept_ids_v1',
 };
 
 class HrStorageService {
@@ -104,6 +107,49 @@ class HrStorageService {
   }
 
   private activityCounter = 0;
+
+  // Tombstone management for permanent deletions across devices and cloud sync
+  public getDeletedStaffIds(): Set<string> {
+    try {
+      const item = localStorage.getItem(HR_STORAGE_KEYS.DELETED_STAFF);
+      if (!item) return new Set();
+      const arr = JSON.parse(item);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  public addDeletedStaffId(id: string): void {
+    if (!id) return;
+    const set = this.getDeletedStaffIds();
+    set.add(id);
+    set.add(id.toLowerCase());
+    set.add(id.toUpperCase());
+    try {
+      localStorage.setItem(HR_STORAGE_KEYS.DELETED_STAFF, JSON.stringify(Array.from(set)));
+    } catch {}
+  }
+
+  public getDeletedDeptIds(): Set<string> {
+    try {
+      const item = localStorage.getItem(HR_STORAGE_KEYS.DELETED_DEPTS);
+      if (!item) return new Set();
+      const arr = JSON.parse(item);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  public addDeletedDeptId(id: string): void {
+    if (!id) return;
+    const set = this.getDeletedDeptIds();
+    set.add(id);
+    try {
+      localStorage.setItem(HR_STORAGE_KEYS.DELETED_DEPTS, JSON.stringify(Array.from(set)));
+    } catch {}
+  }
 
   // Activity Log
   public addActivity(
@@ -1419,9 +1465,12 @@ class HrStorageService {
   // --- DEPARTMENT MASTER ---
   public getDepartmentsMaster(): DepartmentMaster[] {
     const list = this.getStorage<DepartmentMaster[]>(HR_STORAGE_KEYS.DEPARTMENTS, initialDepartmentsMaster);
+    const deletedDeptIds = this.getDeletedDeptIds();
+    const activeList = list.filter((d) => d && d.id && !deletedDeptIds.has(d.id));
+
     // Ensure all departments have allowedMenuIds populated
-    let modified = false;
-    const sanitized = list.map((d) => {
+    let modified = activeList.length !== list.length;
+    const sanitized = activeList.map((d) => {
       if (!d.allowedMenuIds || d.allowedMenuIds.length === 0) {
         const foundInitial = initialDepartmentsMaster.find(
           (init) => init.departmentCode === d.departmentCode || init.id === d.id
@@ -1438,6 +1487,36 @@ class HrStorageService {
       this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, sanitized);
     }
     return sanitized;
+  }
+
+  public deduplicateDepartments(actorName = 'Admin'): number {
+    const depts = this.getDepartmentsMaster();
+    const seen = new Set<string>();
+    const unique: DepartmentMaster[] = [];
+    let removedCount = 0;
+
+    for (const d of depts) {
+      const key = `${d.departmentCode.toUpperCase()}___${d.departmentName.trim().toLowerCase()}`;
+      if (seen.has(key)) {
+        removedCount++;
+        this.addDeletedDeptId(d.id);
+        cloudSync.deleteDepartment(d.id);
+      } else {
+        seen.add(key);
+        unique.push(d);
+      }
+    }
+
+    if (removedCount > 0) {
+      this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, unique);
+      this.addActivity(actorName, 'HR Admin', `Deduplicated ${removedCount} duplicate master departments`, 'Settings', 'Department Master Table');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_departments_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+        window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+      }
+    }
+    return removedCount;
   }
 
   public saveDepartment(data: Partial<DepartmentMaster>, actorName = 'Admin'): DepartmentMaster {
@@ -1462,7 +1541,7 @@ class HrStorageService {
     const count = depts.length + 1;
     const newCode = (data.departmentCode || `DEP${count}`).toUpperCase().trim();
     const newDept: DepartmentMaster = {
-      id: data.id || `DEPT-${String(count).padStart(3, '0')}`,
+      id: data.id || `DEPT-${String(count).padStart(3, '0')}-${Date.now().toString(36).slice(-3)}`,
       departmentCode: newCode,
       departmentName: data.departmentName || 'New Department',
       reporting: data.reporting || 'Managing Director',
@@ -1480,82 +1559,108 @@ class HrStorageService {
     return newDept;
   }
 
-  public deleteDepartment(id: string, actorName = 'Admin'): boolean {
+  public deleteDepartment(
+    id: string,
+    actorName = 'Admin',
+    options?: { forceDelete?: boolean; reassignToDeptCode?: string }
+  ): boolean {
     const depts = this.getDepartmentsMaster();
-    const target = depts.find((d) => d.id === id);
+    const target = depts.find((d) => d.id === id || d.departmentCode === id);
     if (!target) return false;
 
-    // Check if staff exists in department
+    const targetCode = target.departmentCode.toUpperCase();
+    const targetName = target.departmentName.toLowerCase();
+
+    // Mark as deleted tombstone so cloud snapshots do not resurrect it
+    this.addDeletedDeptId(target.id);
+
+    // Check staff assigned to this department
     const staff = this.getStaff();
-    const hasStaff = staff.some(
-      (s) => (s.departmentCode && s.departmentCode.toUpperCase() === target.departmentCode.toUpperCase()) ||
-             (s.department && s.department.toLowerCase() === target.departmentName.toLowerCase())
+    const assignedStaff = staff.filter(
+      (s) =>
+        (s.departmentCode && s.departmentCode.toUpperCase() === targetCode) ||
+        (s.department && s.department.toLowerCase() === targetName)
     );
 
-    if (hasStaff) {
-      // Soft-deactivate if staff exists
-      target.status = 'Inactive';
-      this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, depts);
-      this.addActivity(actorName, 'HR Admin', 'Deactivated Department (Staff Assigned)', 'Settings', target.departmentCode);
-      cloudSync.syncDepartment(target);
-      return false;
+    // If reassign department code was provided, reassign staff
+    if (options?.reassignToDeptCode && assignedStaff.length > 0) {
+      const reassignTarget = depts.find(
+        (d) => d.departmentCode.toUpperCase() === options.reassignToDeptCode?.toUpperCase()
+      );
+      if (reassignTarget) {
+        const updatedStaff = staff.map((s) => {
+          const match =
+            (s.departmentCode && s.departmentCode.toUpperCase() === targetCode) ||
+            (s.department && s.department.toLowerCase() === targetName);
+          if (match) {
+            return {
+              ...s,
+              department: reassignTarget.departmentName,
+              departmentCode: reassignTarget.departmentCode,
+            };
+          }
+          return s;
+        });
+        this.setStorage(HR_STORAGE_KEYS.STAFF, updatedStaff);
+      }
     }
 
-    const filtered = depts.filter((d) => d.id !== id);
+    // Filter strictly by target id to safely remove duplicate records
+    const filtered = depts.filter((d) => d.id !== target.id);
     this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, filtered);
-    this.addActivity(actorName, 'HR Admin', 'Deleted Department Master', 'Settings', target.departmentCode);
-    cloudSync.deleteDepartment(id);
+    this.addActivity(actorName, 'HR Admin', 'Deleted Department Master', 'Settings', `${target.departmentCode} - ${target.departmentName}`);
+    cloudSync.deleteDepartment(target.id);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_departments_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    }
+
     return true;
   }
 
+  public clearAllDepartmentsMaster(actorName = 'Admin'): void {
+    const current = this.getDepartmentsMaster();
+    current.forEach((d) => {
+      this.addDeletedDeptId(d.id);
+      cloudSync.deleteDepartment(d.id);
+    });
+    this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, []);
+    try {
+      localStorage.removeItem(HR_STORAGE_KEYS.DELETED_DEPTS);
+      localStorage.removeItem('mysar_hr_departments_v1');
+    } catch {}
+    this.addActivity(actorName, 'HR Admin', 'Deleted All Department Master Records', 'Settings', 'Reset to clean slate');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_departments_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    }
+  }
+
   // --- BRANCH / LOCATION MASTER ---
+  public clearAllBranchesMaster(actorName = 'Admin'): void {
+    const current = this.getBranchesMaster();
+    current.forEach((b) => {
+      cloudSync.deleteBranch(b.id);
+    });
+    this.setStorage(HR_STORAGE_KEYS.BRANCHES, []);
+    try {
+      localStorage.removeItem('mysar_hr_branches_v1');
+    } catch {}
+    this.addActivity(actorName, 'HR Admin', 'Deleted All Branch Master Records', 'Settings', 'Reset to clean slate');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_branches_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+    }
+  }
+
   public getBranchesMaster(): BranchMaster[] {
-    const defaultBranches: BranchMaster[] = [
-      {
-        id: 'BR-001',
-        branchCode: 'KCH-01',
-        branchName: 'Kochi Corporate HQ',
-        city: 'Kochi',
-        address: 'Valamkattil Tower, Judgemukku, Kakkanad, Kochi, Kerala – 682021',
-        contactPerson: 'Ramesh Nambiar',
-        contactPhone: '+91 7994 807 907',
-        status: 'Active',
-        createdDate: '2026-01-01',
-      },
-      {
-        id: 'BR-002',
-        branchCode: 'CLT-02',
-        branchName: 'Calicut Regional Office',
-        city: 'Calicut',
-        address: 'Mavoor Road, Kozhikode, Kerala – 673004',
-        contactPerson: 'Sri. Ananthan K.',
-        contactPhone: '+91 94471 22334',
-        status: 'Active',
-        createdDate: '2026-01-01',
-      },
-      {
-        id: 'BR-003',
-        branchCode: 'TVM-03',
-        branchName: 'Trivandrum Regional Office',
-        city: 'Trivandrum',
-        address: 'Technopark Phase 1 Rd, Kazhakkoottam, Trivandrum – 695581',
-        contactPerson: 'Smt. Deepa Nair',
-        contactPhone: '+91 98460 55667',
-        status: 'Active',
-        createdDate: '2026-01-01',
-      },
-      {
-        id: 'BR-004',
-        branchCode: 'WYD-04',
-        branchName: 'Wayanad Branch Office',
-        city: 'Kalpetta',
-        address: 'Civil Station Road, Kalpetta North, Wayanad – 673122',
-        contactPerson: 'Sri. Vijayan P.',
-        contactPhone: '+91 94462 88990',
-        status: 'Active',
-        createdDate: '2026-01-01',
-      },
-    ];
+    const defaultBranches: BranchMaster[] = [];
     const result = this.getStorage<BranchMaster[]>(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
     if (!Array.isArray(result)) {
       this.setStorage(HR_STORAGE_KEYS.BRANCHES, defaultBranches);
@@ -1727,14 +1832,27 @@ class HrStorageService {
   // --- STAFF MANAGEMENT ---
   public getStaff(): StaffMember[] {
     const rawList = this.getStorage<StaffMember[]>(HR_STORAGE_KEYS.STAFF, initialStaffMembers);
+    const deletedStaffIds = this.getDeletedStaffIds();
+    const cleanList = rawList.filter(
+      (s) =>
+        s &&
+        s.id &&
+        !deletedStaffIds.has(s.id) &&
+        !deletedStaffIds.has(s.id.toLowerCase()) &&
+        !deletedStaffIds.has(s.id.toUpperCase()) &&
+        (!s.staffCode ||
+          (!deletedStaffIds.has(s.staffCode) &&
+            !deletedStaffIds.has(s.staffCode.toLowerCase()) &&
+            !deletedStaffIds.has(s.staffCode.toUpperCase())))
+    );
     
     // Automatically migrate/standardize any legacy IDs to CB/{DeptCode}/{GlobalContinuousNumber}
     // Ensures global continuous numbering without department-wise reset (e.g. CB/101/001, CB101/002, CB/102/003, CB/103/004)
-    let hasChanges = false;
+    let hasChanges = cleanList.length !== rawList.length;
     const seenNumbers = new Set<number>();
     let hasDuplicateNumbersOrLegacy = false;
 
-    for (const s of rawList) {
+    for (const s of cleanList) {
       const sId = (s.id || s.staffCode || '').trim();
       const match = sId.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
       if (match) {
@@ -1753,7 +1871,7 @@ class HrStorageService {
     }
 
     let runningSeq = 0;
-    const validatedList = rawList.map((s) => {
+    const validatedList = cleanList.map((s) => {
       const deptCode = this.getDepartmentCodeByNameOrCode(s.departmentCode || s.department || 'Operations');
       let id = (s.id || s.staffCode || '').trim();
       const match = id.match(/^CB\/?([A-Za-z0-9_-]+)\/(\d+)$/i);
@@ -1825,6 +1943,12 @@ class HrStorageService {
           staffCode: finalId,
           departmentCode: deptCode,
           updatedDate: new Date().toISOString().split('T')[0],
+          systemAccess: {
+            ...current.systemAccess,
+            ...staffData.systemAccess,
+            username: staffData.systemAccess?.username || current.systemAccess?.username || '',
+            password: staffData.systemAccess?.password || current.systemAccess?.password || (current.systemAccess as any)?.initialPassword || '',
+          },
         };
         staffList[idx] = updated;
         this.setStorage(HR_STORAGE_KEYS.STAFF, staffList);
@@ -1836,17 +1960,17 @@ class HrStorageService {
     }
 
     const newId = this.formatOrValidateEmployeeId(staffData.id || staffData.staffCode, deptCode, staffList);
-    const basic = staffData.salary?.basicSalary || 30000;
-    const hra = staffData.salary?.hra || Math.round(basic * 0.4);
-    const allowances = staffData.salary?.allowances || 8000;
-    const special = staffData.salary?.specialAllowance || 2000;
-    const bonus = staffData.salary?.bonus || 0;
-    const gross = basic + hra + allowances + special + bonus;
-    const pf = staffData.salary?.pfDeduction ?? 1800;
-    const tax = staffData.salary?.taxDeduction ?? 1000;
-    const otherDed = staffData.salary?.otherDeductions ?? 0;
-    const totalDeductions = pf + tax + otherDed;
-    const net = gross - totalDeductions;
+    const basic = Number(staffData.salary?.basicSalary ?? 0);
+    const hra = Number(staffData.salary?.hra ?? 0);
+    const allowances = Number(staffData.salary?.allowances ?? 0);
+    const special = Number(staffData.salary?.specialAllowance ?? 0);
+    const bonus = Number(staffData.salary?.bonus ?? 0);
+    const gross = Number(staffData.salary?.grossSalary ?? (basic + hra + allowances + special + bonus));
+    const pf = Number(staffData.salary?.pfDeduction ?? 0);
+    const tax = Number(staffData.salary?.taxDeduction ?? 0);
+    const otherDed = Number(staffData.salary?.otherDeductions ?? 0);
+    const totalDeductions = Number(staffData.salary?.totalDeductions ?? (pf + tax + otherDed));
+    const net = Number(staffData.salary?.netSalary ?? Math.max(0, gross - totalDeductions));
 
     const newStaff: StaffMember = {
       ...staffData,
@@ -1855,39 +1979,39 @@ class HrStorageService {
       departmentCode: deptCode,
       reportingTo: staffData.reportingTo || staffData.reportingManager,
       fullName: staffData.fullName || 'New Staff',
-      dateOfBirth: staffData.dateOfBirth || '1990-01-01',
+      dateOfBirth: staffData.dateOfBirth || '',
       gender: staffData.gender || 'Male',
       email: staffData.email || '',
       contactNumber: staffData.contactNumber || '',
       whatsappNumber: staffData.whatsappNumber || staffData.contactNumber || '',
       emergencyContact: staffData.emergencyContact || {
-        name: 'Emergency Contact',
+        name: '',
         relationship: 'Family',
         phone: '',
       },
       permanentAddress: staffData.permanentAddress || {
-        addressLine1: 'Address Line 1',
-        city: 'Kochi',
-        state: 'Kerala',
+        addressLine1: '',
+        city: '',
+        state: '',
         country: 'India',
-        pinCode: '682001',
+        pinCode: '',
       },
       communicationAddress: staffData.communicationAddress || {
         sameAsPermanent: true,
-        addressLine1: 'Address Line 1',
-        city: 'Kochi',
-        state: 'Kerala',
+        addressLine1: '',
+        city: '',
+        state: '',
         country: 'India',
-        pinCode: '682001',
+        pinCode: '',
       },
       joiningDate: staffData.joiningDate || new Date().toISOString().split('T')[0],
-      division: staffData.division || 'Operations Division',
+      division: staffData.division || `${staffData.department || 'Operations'} Division`,
       department: staffData.department || 'Operations',
-      position: staffData.position || 'Executive',
+      position: staffData.position || '',
       employeeCategory: staffData.employeeCategory || 'Staff',
       employmentType: staffData.employmentType || 'Full Time',
-      reportingManager: staffData.reportingManager || 'Ramesh Nambiar',
-      workLocation: staffData.workLocation || 'Kochi Corporate HQ',
+      reportingManager: staffData.reportingManager || '',
+      workLocation: staffData.workLocation || '',
       probationPeriod: staffData.probationPeriod || '6 Months',
       employmentStatus: staffData.employmentStatus || 'Active',
       documents: staffData.documents || [],
@@ -1906,12 +2030,17 @@ class HrStorageService {
         netSalary: net,
         salaryFrequency: 'Monthly',
         paymentMethod: staffData.salary?.paymentMethod || 'Bank Transfer',
-        bankDetails: staffData.salary?.bankDetails || {
-          bankName: 'State Bank of India',
-          accountNo: '••••••••1234',
-          ifscCode: 'SBIN0001234',
-          branch: 'Kochi',
-        },
+        bankDetails: staffData.salary?.bankDetails || (staffData.bankPayroll ? {
+          bankName: staffData.bankPayroll.bankName || '',
+          accountNo: staffData.bankPayroll.accountNo || '',
+          ifscCode: staffData.bankPayroll.ifscCode || '',
+          branch: staffData.bankPayroll.branch || '',
+        } : {
+          bankName: '',
+          accountNo: '',
+          ifscCode: '',
+          branch: '',
+        }),
       },
       todayAttendanceStatus: staffData.todayAttendanceStatus || 'Present',
       overallKpiScore: staffData.overallKpiScore || 90,
@@ -1928,26 +2057,63 @@ class HrStorageService {
   }
 
   public deleteStaff(id: string, actorName = 'Admin'): void {
-    const list = this.getStaff().filter((s) => s.id !== id);
-    this.setStorage(HR_STORAGE_KEYS.STAFF, list);
-    this.addActivity(actorName, 'HR Admin', 'Removed Staff Member', 'Staff', id);
-    cloudSync.deleteStaff(id);
+    if (!id) return;
+    const allStaff = this.getStaff();
+    const targetStaff = allStaff.find((s) => s.id === id || s.staffCode === id);
 
-    // Deactivate linked user in system
+    // Register tombstones immediately so no cloud snapshot can resurrect this staff member
+    this.addDeletedStaffId(id);
+    if (targetStaff?.staffCode && targetStaff.staffCode !== id) {
+      this.addDeletedStaffId(targetStaff.staffCode);
+    }
+    if (targetStaff?.email) {
+      this.addDeletedStaffId(targetStaff.email);
+    }
+
+    const list = allStaff.filter((s) => s.id !== id && s.staffCode !== id);
+    this.setStorage(HR_STORAGE_KEYS.STAFF, list);
+    this.addActivity(
+      actorName,
+      'HR Admin',
+      'Removed Staff Member',
+      'Staff',
+      `${targetStaff?.fullName || id} (${id})`
+    );
+
+    // Remove from Firestore
+    cloudSync.deleteStaff(id);
+    if (targetStaff?.staffCode && targetStaff.staffCode !== id) {
+      cloudSync.deleteStaff(targetStaff.staffCode);
+    }
+
+    // Remove / Deactivate linked user in system
     try {
       const rawUsers = localStorage.getItem('mysar_users_data_v1');
       if (rawUsers) {
         const users = JSON.parse(rawUsers);
-        const updatedUsers = users.map((u: any) => {
-          if (u.staffId === id) {
-            return { ...u, status: 'Inactive' };
+        const updatedUsers = users.filter((u: any) => {
+          if (
+            u.staffId === id ||
+            (targetStaff?.staffCode && u.staffId === targetStaff.staffCode) ||
+            (targetStaff?.email && u.email && u.email.toLowerCase() === targetStaff.email.toLowerCase())
+          ) {
+            if (u.id) cloudSync.deleteUser(u.id);
+            return false; // Permanently remove from active users
           }
-          return u;
+          return true;
         });
         localStorage.setItem('mysar_users_data_v1', JSON.stringify(updatedUsers));
       }
     } catch {
       // ignore
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mysar_staff_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_users_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_staff_access_changed'));
     }
   }
 
@@ -1959,19 +2125,41 @@ class HrStorageService {
     try {
       const rawUsers = localStorage.getItem('mysar_users_data_v1');
       let users: any[] = rawUsers ? JSON.parse(rawUsers) : [];
+      if (!Array.isArray(users) || users.length === 0) {
+        users = [...initialUsers];
+      }
 
       const sId = staff.id;
+      const cleanName = (staff.fullName || 'staff').trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+
+      // Check for existing user account first to preserve credentials
+      const existingIdx = users.findIndex(
+        (u) =>
+          u.staffId === sId ||
+          (staff.staffCode && u.staffId === staff.staffCode) ||
+          (staff.systemAccess?.username && u.userId && u.userId.toLowerCase() === staff.systemAccess.username.trim().toLowerCase()) ||
+          (u.email && staff.email && u.email.toLowerCase() === staff.email.toLowerCase()) ||
+          (staff.personalEmail && u.email && u.email.toLowerCase() === staff.personalEmail.toLowerCase())
+      );
+      const existingUser = existingIdx !== -1 ? users[existingIdx] : null;
+
       const sUsername =
         staff.systemAccess?.username?.trim().toLowerCase() ||
-        (staff.email ? staff.email.split('@')[0].toLowerCase() : staff.fullName.toLowerCase().replace(/\s+/g, '.'));
-      const sPassword = staff.systemAccess?.password?.trim() || 'Password@123';
+        (existingUser?.userId ? existingUser.userId.toLowerCase() : '') ||
+        (staff.email ? staff.email.split('@')[0].toLowerCase() : cleanName);
+
+      const sPassword =
+        staff.systemAccess?.password?.trim() ||
+        (staff.systemAccess as any)?.initialPassword?.trim() ||
+        (existingUser?.password ? existingUser.password : 'Password@123');
+
       const sEmail = staff.email || staff.personalEmail || `${sUsername}@casbiro.com`;
       const isStaffActive = staff.employmentStatus === 'Active';
       const isLoginEnabled = staff.systemAccess?.enableLogin !== false;
 
       // Determine User Role
       let userRole: 'Admin' | 'Manager' | 'Salesperson' | 'Staff' = 'Staff';
-      const userTypeStr = (staff.systemAccess?.userType || staff.systemAccess?.role || staff.position || '').toLowerCase();
+      const userTypeStr = (staff.systemAccess?.role || staff.systemAccess?.userType || staff.employeeCategory || staff.position || '').toLowerCase();
       if (userTypeStr.includes('admin') || userTypeStr.includes('principal') || userTypeStr.includes('director')) {
         userRole = 'Admin';
       } else if (userTypeStr.includes('manager') || userTypeStr.includes('coordinator') || userTypeStr.includes('lead')) {
@@ -1982,47 +2170,42 @@ class HrStorageService {
         userRole = 'Staff';
       }
 
-      // Check for existing user account
-      const existingIdx = users.findIndex(
-        (u) =>
-          u.staffId === sId ||
-          (staff.staffCode && u.staffId === staff.staffCode) ||
-          (u.userId && u.userId.toLowerCase() === sUsername) ||
-          (u.email && u.email.toLowerCase() === sEmail.toLowerCase())
-      );
-
+      let targetUser: any;
       if (existingIdx !== -1) {
-        // Update existing user account
+        // Update existing user account - fully link userId and password
         users[existingIdx] = {
           ...users[existingIdx],
+          userId: sUsername,
+          password: sPassword,
           staffId: sId,
           department: staff.department,
           departmentCode: staff.departmentCode,
           name: staff.fullName,
           email: sEmail,
+          personalEmail: staff.personalEmail || users[existingIdx].personalEmail,
           mobile: staff.contactNumber || users[existingIdx].mobile,
           role: userRole,
-          userType: staff.systemAccess?.userType || users[existingIdx].userType || 'Staff',
-          assignedModules: staff.systemAccess?.assignedModules || users[existingIdx].assignedModules || ['Dashboard'],
+          userType: staff.systemAccess?.userType || staff.systemAccess?.role || users[existingIdx].userType || 'Staff',
+          assignedModules: staff.systemAccess?.assignedModules || users[existingIdx].assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
           branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || users[existingIdx].branchAccess,
           accessLevel: staff.systemAccess?.accessLevel || users[existingIdx].accessLevel || 'Standard',
-          // Access restricted if staff is Inactive!
           status: isStaffActive && isLoginEnabled ? 'Active' : 'Inactive',
-          password: sPassword || users[existingIdx].password || 'Password@123',
           avatar: staff.profilePhoto || users[existingIdx].avatar,
         };
+        targetUser = users[existingIdx];
       } else if (isLoginEnabled) {
         // Create new user account automatically during onboarding
         const cleanStaffIdPart = sId.replace(/[^a-zA-Z0-9]/g, '-');
-        const newUser = {
+        targetUser = {
           id: `USR-${cleanStaffIdPart}`,
           userId: sUsername,
           password: sPassword,
           name: staff.fullName,
           email: sEmail,
+          personalEmail: staff.personalEmail,
           mobile: staff.contactNumber || '+91 98470 00000',
           role: userRole,
-          userType: staff.systemAccess?.userType || 'Staff',
+          userType: staff.systemAccess?.userType || staff.systemAccess?.role || 'Staff',
           assignedModules: staff.systemAccess?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
           branchAccess: staff.systemAccess?.branchAccess || staff.branchLocation || 'Kochi Corporate HQ',
           accessLevel: staff.systemAccess?.accessLevel || 'Standard',
@@ -2032,12 +2215,16 @@ class HrStorageService {
           department: staff.department,
           departmentCode: staff.departmentCode,
         };
-        users.push(newUser);
+        users.push(targetUser);
       }
 
       localStorage.setItem('mysar_users_data_v1', JSON.stringify(users));
+      if (targetUser) {
+        cloudSync.syncUser(targetUser);
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('mysar_staff_access_changed'));
+        window.dispatchEvent(new CustomEvent('mysar_users_updated'));
       }
     } catch (e) {
       console.error('Failed to sync staff to user account', e);
@@ -2108,6 +2295,53 @@ class HrStorageService {
       this.markAttendance(s.id, date, status, undefined, undefined, 'Bulk Marked by HR', actorName);
     });
     this.addActivity(actorName, 'HR Admin', `Bulk Marked All Staff as ${status}`, 'Attendance', `Date: ${date}`);
+  }
+
+  public getTodayAttendance(staffId: string): DailyAttendanceRecord | undefined {
+    const today = new Date().toISOString().split('T')[0];
+    const records = this.getAttendanceRecords();
+    return records.find((r) => r.staffId === staffId && r.date === today);
+  }
+
+  public checkInStaff(staffId: string, locationOrNotes?: string): DailyAttendanceRecord | null {
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const staff = this.getStaff().find((s) => s.id === staffId);
+    if (!staff) return null;
+
+    this.markAttendance(
+      staffId,
+      today,
+      'Present',
+      nowTime,
+      undefined,
+      locationOrNotes || 'Self Check-In via Staff Dashboard',
+      staff.fullName
+    );
+
+    return this.getTodayAttendance(staffId) || null;
+  }
+
+  public checkOutStaff(staffId: string, remarks?: string): DailyAttendanceRecord | null {
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const staff = this.getStaff().find((s) => s.id === staffId);
+    if (!staff) return null;
+
+    const existing = this.getTodayAttendance(staffId);
+    const checkInTime = existing?.checkIn || '09:00 AM';
+
+    this.markAttendance(
+      staffId,
+      today,
+      existing?.status || 'Present',
+      checkInTime,
+      nowTime,
+      remarks || existing?.remarks || 'Self Check-Out via Staff Dashboard',
+      staff.fullName
+    );
+
+    return this.getTodayAttendance(staffId) || null;
   }
 
   // --- LEAVE MANAGEMENT ---
@@ -2568,65 +2802,75 @@ class HrStorageService {
   // --- CLOUD SYNC RECEIVERS (Real-time Firestore synchronization) ---
   public syncFromCloudStaff(cloudStaff: StaffMember[]): void {
     if (!cloudStaff || cloudStaff.length === 0) return;
-    const local = this.getStaff();
-    const map = new Map<string, StaffMember>();
-    local.forEach((s) => map.set(s.id, s));
-    cloudStaff.forEach((cs) => map.set(cs.id, cs));
-    const merged = Array.from(map.values());
-    this.setStorage(HR_STORAGE_KEYS.STAFF, merged);
+    const deletedStaffIds = this.getDeletedStaffIds();
+
+    // Discard any staff that has been deleted
+    const sanitizedCloud = cloudStaff.filter((cs) => {
+      if (!cs || !cs.id) return false;
+      if (
+        deletedStaffIds.has(cs.id) ||
+        deletedStaffIds.has(cs.id.toLowerCase()) ||
+        deletedStaffIds.has(cs.id.toUpperCase()) ||
+        (cs.staffCode &&
+          (deletedStaffIds.has(cs.staffCode) ||
+            deletedStaffIds.has(cs.staffCode.toLowerCase()) ||
+            deletedStaffIds.has(cs.staffCode.toUpperCase())))
+      ) {
+        cloudSync.deleteStaff(cs.id).catch(() => {});
+        return false;
+      }
+      return true;
+    });
+
+    this.setStorage(HR_STORAGE_KEYS.STAFF, sanitizedCloud);
     try {
+      window.dispatchEvent(new CustomEvent('mysar_staff_updated'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
       window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
     } catch {}
   }
 
   public syncFromCloudAttendance(cloudAttendance: DailyAttendanceRecord[]): void {
-    if (!cloudAttendance) return;
-    const local = this.getAttendanceRecords();
-    const map = new Map<string, DailyAttendanceRecord>();
-    local.forEach((a) => map.set(a.id, a));
-    cloudAttendance.forEach((ca) => map.set(ca.id, ca));
-    const merged = Array.from(map.values());
-    this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, merged);
+    if (!Array.isArray(cloudAttendance)) return;
+    this.setStorage(HR_STORAGE_KEYS.ATTENDANCE, cloudAttendance);
     try {
       window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
     } catch {}
   }
 
   public syncFromCloudLeaveRequests(cloudLeaves: LeaveRequest[]): void {
-    if (!cloudLeaves) return;
-    const local = this.getLeaveRequests();
-    const map = new Map<string, LeaveRequest>();
-    local.forEach((l) => map.set(l.id, l));
-    cloudLeaves.forEach((cl) => map.set(cl.id, cl));
-    const merged = Array.from(map.values());
-    this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, merged);
+    if (!Array.isArray(cloudLeaves)) return;
+    this.setStorage(HR_STORAGE_KEYS.LEAVE_REQUESTS, cloudLeaves);
     try {
       window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
     } catch {}
   }
 
   public syncFromCloudDepartments(cloudDepts: DepartmentMaster[]): void {
-    if (!cloudDepts || cloudDepts.length === 0) return;
-    const local = this.getDepartmentsMaster();
-    const map = new Map<string, DepartmentMaster>();
-    local.forEach((d) => map.set(d.id, d));
-    cloudDepts.forEach((cd) => map.set(cd.id, cd));
-    const merged = Array.from(map.values());
-    this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, merged);
+    if (!Array.isArray(cloudDepts)) return;
+    const deletedDeptIds = this.getDeletedDeptIds();
+    const sanitizedCloud = cloudDepts.filter((cd) => {
+      if (!cd || !cd.id) return false;
+      if (deletedDeptIds.has(cd.id)) {
+        cloudSync.deleteDepartment(cd.id).catch(() => {});
+        return false;
+      }
+      return true;
+    });
+
+    this.setStorage(HR_STORAGE_KEYS.DEPARTMENTS, sanitizedCloud);
     try {
+      window.dispatchEvent(new CustomEvent('mysar_departments_updated'));
       window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+      window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
     } catch {}
   }
 
   public syncFromCloudBranches(cloudBranches: BranchMaster[]): void {
-    if (!cloudBranches || cloudBranches.length === 0) return;
-    const local = this.getBranchesMaster();
-    const map = new Map<string, BranchMaster>();
-    local.forEach((b) => map.set(b.id, b));
-    cloudBranches.forEach((cb) => map.set(cb.id, cb));
-    const merged = Array.from(map.values());
-    this.setStorage(HR_STORAGE_KEYS.BRANCHES, merged);
+    if (!Array.isArray(cloudBranches)) return;
+    this.setStorage(HR_STORAGE_KEYS.BRANCHES, cloudBranches);
     try {
+      window.dispatchEvent(new CustomEvent('mysar_branches_updated'));
       window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
     } catch {}
   }

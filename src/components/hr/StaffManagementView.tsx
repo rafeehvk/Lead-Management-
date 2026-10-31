@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Key,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   StaffMember,
@@ -108,6 +109,22 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     'profile' | 'experience' | 'qualifications' | 'family' | 'documents' | 'compensation' | 'attendance' | 'performance' | 'systemAccess'
   >('profile');
 
+  // Delete Staff Confirmation Modal State
+  const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
+  const [editValidationErrors, setEditValidationErrors] = useState<string[] | null>(null);
+  const [saveSuccessFeedback, setSaveSuccessFeedback] = useState<string | null>(null);
+
+  const handleConfirmDeleteStaff = () => {
+    if (!staffToDelete) return;
+    const name = staffToDelete.fullName;
+    const id = staffToDelete.id;
+    onDeleteStaff(id);
+    setStaffToDelete(null);
+    setDeleteFeedback(`Staff member "${name}" (${id}) was successfully and permanently removed.`);
+    setTimeout(() => setDeleteFeedback(null), 3500);
+  };
+
   // Department Master handlers
   const handleOpenDeptMaster = () => {
     setDepartmentsList(hrStorage.getDepartmentsMaster());
@@ -177,6 +194,339 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     if (onClearPrefillStaffData) onClearPrefillStaffData();
     setStaffToEdit(staffMember);
     setIsAddStaffOpen(true);
+  };
+
+  /**
+   * Explicit null-check handler for Edit Mode:
+   * Reconciles incoming staff payload with existing record to ensure that empty,
+   * null, or incomplete fields do NOT overwrite existing data with default fallbacks.
+   */
+  const reconcileStaffEditData = (
+    existing: StaffMember,
+    incoming: Partial<StaffMember>
+  ): Partial<StaffMember> => {
+    // 1. Reconcile Emergency Contact with explicit null/empty checks
+    const safeEmergencyContact = {
+      name: (incoming.emergencyContact?.name !== undefined && incoming.emergencyContact.name.trim() !== '')
+        ? incoming.emergencyContact.name.trim()
+        : (existing.emergencyContact?.name || ''),
+      relationship: (incoming.emergencyContact?.relationship !== undefined && incoming.emergencyContact.relationship.trim() !== '')
+        ? incoming.emergencyContact.relationship.trim()
+        : (existing.emergencyContact?.relationship || ''),
+      phone: (incoming.emergencyContact?.phone !== undefined && incoming.emergencyContact.phone.trim() !== '')
+        ? incoming.emergencyContact.phone.trim()
+        : (existing.emergencyContact?.phone || ''),
+    };
+
+    // 2. Reconcile Permanent Address with explicit null/empty checks
+    const safePermanentAddress = {
+      addressLine1: (incoming.permanentAddress?.addressLine1 !== undefined && incoming.permanentAddress.addressLine1.trim() !== '')
+        ? incoming.permanentAddress.addressLine1.trim()
+        : (existing.permanentAddress?.addressLine1 || ''),
+      addressLine2: (incoming.permanentAddress?.addressLine2 !== undefined && incoming.permanentAddress.addressLine2.trim() !== '')
+        ? incoming.permanentAddress.addressLine2.trim()
+        : (existing.permanentAddress?.addressLine2 || ''),
+      city: (incoming.permanentAddress?.city !== undefined && incoming.permanentAddress.city.trim() !== '')
+        ? incoming.permanentAddress.city.trim()
+        : (existing.permanentAddress?.city || ''),
+      district: (incoming.permanentAddress?.district !== undefined && incoming.permanentAddress.district.trim() !== '')
+        ? incoming.permanentAddress.district.trim()
+        : (existing.permanentAddress?.district || ''),
+      state: (incoming.permanentAddress?.state !== undefined && incoming.permanentAddress.state.trim() !== '')
+        ? incoming.permanentAddress.state.trim()
+        : (existing.permanentAddress?.state || ''),
+      country: incoming.permanentAddress?.country || existing.permanentAddress?.country || 'India',
+      pinCode: (incoming.permanentAddress?.pinCode !== undefined && incoming.permanentAddress.pinCode.trim() !== '')
+        ? incoming.permanentAddress.pinCode.trim()
+        : (existing.permanentAddress?.pinCode || ''),
+    };
+
+    // 3. Reconcile Communication Address
+    const safeCommunicationAddress = {
+      sameAsPermanent: incoming.communicationAddress?.sameAsPermanent ?? existing.communicationAddress?.sameAsPermanent ?? true,
+      addressLine1: (incoming.communicationAddress?.addressLine1 !== undefined && incoming.communicationAddress.addressLine1.trim() !== '')
+        ? incoming.communicationAddress.addressLine1.trim()
+        : (existing.communicationAddress?.addressLine1 || ''),
+      addressLine2: (incoming.communicationAddress?.addressLine2 !== undefined && incoming.communicationAddress.addressLine2.trim() !== '')
+        ? incoming.communicationAddress.addressLine2.trim()
+        : (existing.communicationAddress?.addressLine2 || ''),
+      city: (incoming.communicationAddress?.city !== undefined && incoming.communicationAddress.city.trim() !== '')
+        ? incoming.communicationAddress.city.trim()
+        : (existing.communicationAddress?.city || ''),
+      district: (incoming.communicationAddress?.district !== undefined && incoming.communicationAddress.district.trim() !== '')
+        ? incoming.communicationAddress.district.trim()
+        : (existing.communicationAddress?.district || ''),
+      state: (incoming.communicationAddress?.state !== undefined && incoming.communicationAddress.state.trim() !== '')
+        ? incoming.communicationAddress.state.trim()
+        : (existing.communicationAddress?.state || ''),
+      country: incoming.communicationAddress?.country || existing.communicationAddress?.country || 'India',
+      pinCode: (incoming.communicationAddress?.pinCode !== undefined && incoming.communicationAddress.pinCode.trim() !== '')
+        ? incoming.communicationAddress.pinCode.trim()
+        : (existing.communicationAddress?.pinCode || ''),
+    };
+
+    // 4. Reconcile Bank & Compensation Details
+    const existingSal = existing.salary;
+    const incomingSal = incoming.salary;
+    const safeSalary = {
+      ...existingSal,
+      ...incomingSal,
+      basicSalary: (incomingSal?.basicSalary !== undefined && incomingSal.basicSalary > 0)
+        ? incomingSal.basicSalary
+        : (existingSal?.basicSalary || 0),
+      hra: (incomingSal?.hra !== undefined && incomingSal.hra > 0)
+        ? incomingSal.hra
+        : (existingSal?.hra || 0),
+      allowances: (incomingSal?.allowances !== undefined && incomingSal.allowances > 0)
+        ? incomingSal.allowances
+        : (existingSal?.allowances || 0),
+      specialAllowance: (incomingSal?.specialAllowance !== undefined && incomingSal.specialAllowance > 0)
+        ? incomingSal.specialAllowance
+        : (existingSal?.specialAllowance || 0),
+      grossSalary: (incomingSal?.grossSalary !== undefined && incomingSal.grossSalary > 0)
+        ? incomingSal.grossSalary
+        : (existingSal?.grossSalary || 0),
+      allowanceItems: (incomingSal?.allowanceItems && incomingSal.allowanceItems.length > 0)
+        ? incomingSal.allowanceItems
+        : (existingSal?.allowanceItems || []),
+      deductionItems: (incomingSal?.deductionItems && incomingSal.deductionItems.length > 0)
+        ? incomingSal.deductionItems
+        : (existingSal?.deductionItems || []),
+      bankDetails: {
+        bankName: (incomingSal?.bankDetails?.bankName && incomingSal.bankDetails.bankName.trim() !== '')
+          ? incomingSal.bankDetails.bankName.trim()
+          : (existingSal?.bankDetails?.bankName || existing.bankPayroll?.bankName || ''),
+        accountNo: (incomingSal?.bankDetails?.accountNo && incomingSal.bankDetails.accountNo.trim() !== '')
+          ? incomingSal.bankDetails.accountNo.trim()
+          : (existingSal?.bankDetails?.accountNo || existing.bankPayroll?.accountNo || ''),
+        ifscCode: (incomingSal?.bankDetails?.ifscCode && incomingSal.bankDetails.ifscCode.trim() !== '')
+          ? incomingSal.bankDetails.ifscCode.trim()
+          : (existingSal?.bankDetails?.ifscCode || existing.bankPayroll?.ifscCode || ''),
+        branch: (incomingSal?.bankDetails?.branch && incomingSal.bankDetails.branch.trim() !== '')
+          ? incomingSal.bankDetails.branch.trim()
+          : (existingSal?.bankDetails?.branch || existing.bankPayroll?.branch || ''),
+      },
+    };
+
+    const safeBankPayroll = {
+      ...existing.bankPayroll,
+      ...incoming.bankPayroll,
+      bankName: incoming.bankPayroll?.bankName?.trim() || safeSalary.bankDetails.bankName || existing.bankPayroll?.bankName || '',
+      accountHolderName: incoming.bankPayroll?.accountHolderName?.trim() || existing.bankPayroll?.accountHolderName || existing.fullName,
+      accountNo: incoming.bankPayroll?.accountNo?.trim() || safeSalary.bankDetails.accountNo || existing.bankPayroll?.accountNo || '',
+      ifscCode: incoming.bankPayroll?.ifscCode?.trim() || safeSalary.bankDetails.ifscCode || existing.bankPayroll?.ifscCode || '',
+      branch: incoming.bankPayroll?.branch?.trim() || safeSalary.bankDetails.branch || existing.bankPayroll?.branch || '',
+      uan: incoming.bankPayroll?.uan?.trim() || existing.bankPayroll?.uan || '',
+      pfNumber: incoming.bankPayroll?.pfNumber?.trim() || existing.bankPayroll?.pfNumber || '',
+      esiNumber: incoming.bankPayroll?.esiNumber?.trim() || existing.bankPayroll?.esiNumber || '',
+    };
+
+    // 5. Reconcile System Access & Credentials (Never let password or username reset to defaults)
+    const existingSys = existing.systemAccess;
+    const incomingSys = incoming.systemAccess;
+
+    const safeUsername = (incomingSys?.username && incomingSys.username.trim() !== '' && incomingSys.username.trim() !== 'staff.user')
+      ? incomingSys.username.trim().toLowerCase()
+      : (existingSys?.username || existing.email.split('@')[0].toLowerCase());
+
+    const safePassword = (incomingSys?.password && incomingSys.password.trim() !== '' && incomingSys.password.trim() !== 'Password@123')
+      ? incomingSys.password.trim()
+      : (existingSys?.password || (existingSys as any)?.initialPassword || 'Password@123');
+
+    const safeSystemAccess = {
+      ...existingSys,
+      ...incomingSys,
+      enableLogin: incomingSys?.enableLogin ?? existingSys?.enableLogin ?? true,
+      userType: incomingSys?.userType || existingSys?.userType || 'Staff',
+      username: safeUsername,
+      password: safePassword,
+      role: incomingSys?.role || existingSys?.role || 'Staff',
+      accessLevel: incomingSys?.accessLevel || existingSys?.accessLevel || 'Standard',
+      assignedModules: (incomingSys?.assignedModules && incomingSys.assignedModules.length > 0)
+        ? incomingSys.assignedModules
+        : (existingSys?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave']),
+      branchAccess: incomingSys?.branchAccess?.trim() || existingSys?.branchAccess || incoming.branchLocation || existing.branchLocation || 'Kochi Corporate HQ',
+      accountStatus: incomingSys?.accountStatus || existingSys?.accountStatus || 'Active',
+    };
+
+    // 6. Reconcile Audit & Verification
+    const safeVerification = {
+      registrationDate: incoming.verification?.registrationDate || existing.verification?.registrationDate || existing.createdDate || '',
+      registeredBy: incoming.verification?.registeredBy?.trim() || existing.verification?.registeredBy || '',
+      verificationStatus: incoming.verification?.verificationStatus || existing.verification?.verificationStatus || 'Pending',
+      verifiedBy: incoming.verification?.verifiedBy?.trim() || existing.verification?.verifiedBy || '',
+      verificationDate: incoming.verification?.verificationDate || existing.verification?.verificationDate || '',
+      remarks: incoming.verification?.remarks?.trim() || existing.verification?.remarks || existing.notes || '',
+    };
+
+    // 7. Reconcile Documents & References
+    const safeDocs = (incoming.documents && incoming.documents.length > 0)
+      ? incoming.documents
+      : (existing.documents || []);
+
+    const safeDocRefs = (incoming.documentReferences && incoming.documentReferences.length > 0)
+      ? incoming.documentReferences
+      : (existing.documentReferences || []);
+
+    // 8. Reconcile Records
+    const safeExperiences = (incoming.experiences && incoming.experiences.length > 0)
+      ? incoming.experiences
+      : (existing.experiences || []);
+
+    const safeQualifications = (incoming.qualifications && incoming.qualifications.length > 0)
+      ? incoming.qualifications
+      : (existing.qualifications || []);
+
+    const safeFamilyMembers = (incoming.familyMembers && incoming.familyMembers.length > 0)
+      ? incoming.familyMembers
+      : (existing.familyMembers || []);
+
+    return {
+      ...existing,
+      ...incoming,
+      id: existing.id,
+      staffCode: existing.staffCode || existing.id,
+      fullName: incoming.fullName?.trim() || existing.fullName,
+      email: incoming.email?.trim() || existing.email,
+      personalEmail: (incoming.personalEmail !== undefined && incoming.personalEmail.trim() !== '')
+        ? incoming.personalEmail.trim()
+        : (existing.personalEmail || ''),
+      contactNumber: incoming.contactNumber?.trim() || existing.contactNumber,
+      whatsappNumber: (incoming.whatsappNumber !== undefined && incoming.whatsappNumber.trim() !== '')
+        ? incoming.whatsappNumber.trim()
+        : (existing.whatsappNumber || ''),
+      gender: incoming.gender || existing.gender,
+      dateOfBirth: incoming.dateOfBirth?.trim() || existing.dateOfBirth,
+      bloodGroup: incoming.bloodGroup?.trim() || existing.bloodGroup,
+      nationality: (incoming.nationality !== undefined && incoming.nationality.trim() !== '')
+        ? incoming.nationality.trim()
+        : (existing.nationality || ''),
+      maritalStatus: incoming.maritalStatus || existing.maritalStatus,
+      joiningDate: incoming.joiningDate || existing.joiningDate,
+      department: incoming.department || existing.department,
+      departmentCode: incoming.departmentCode || existing.departmentCode,
+      position: incoming.position?.trim() || existing.position,
+      employeeCategory: incoming.employeeCategory || existing.employeeCategory,
+      employmentType: incoming.employmentType || existing.employmentType,
+      reportingManager: incoming.reportingManager?.trim() || incoming.reportingTo?.trim() || existing.reportingManager || existing.reportingTo || '',
+      reportingTo: incoming.reportingTo?.trim() || incoming.reportingManager?.trim() || existing.reportingTo || existing.reportingManager || '',
+      branchLocation: incoming.branchLocation?.trim() || existing.branchLocation,
+      workLocation: (incoming.workLocation !== undefined && incoming.workLocation.trim() !== '')
+        ? incoming.workLocation.trim()
+        : (existing.workLocation || ''),
+      probationPeriod: (incoming.probationPeriod !== undefined && incoming.probationPeriod.trim() !== '')
+        ? incoming.probationPeriod.trim()
+        : (existing.probationPeriod || ''),
+      previousEmployeeId: (incoming.previousEmployeeId !== undefined && incoming.previousEmployeeId.trim() !== '')
+        ? incoming.previousEmployeeId.trim()
+        : (existing.previousEmployeeId || ''),
+      aadhaarNumber: (incoming.aadhaarNumber !== undefined && incoming.aadhaarNumber.trim() !== '')
+        ? incoming.aadhaarNumber.trim()
+        : (existing.aadhaarNumber || ''),
+      panNumber: (incoming.panNumber !== undefined && incoming.panNumber.trim() !== '')
+        ? incoming.panNumber.trim()
+        : (existing.panNumber || ''),
+      notes: (incoming.notes !== undefined && incoming.notes.trim() !== '')
+        ? incoming.notes.trim()
+        : (existing.notes || ''),
+      emergencyContact: safeEmergencyContact,
+      permanentAddress: safePermanentAddress,
+      communicationAddress: safeCommunicationAddress,
+      salary: safeSalary,
+      bankPayroll: safeBankPayroll,
+      systemAccess: safeSystemAccess,
+      verification: safeVerification,
+      documents: safeDocs,
+      documentReferences: safeDocRefs,
+      experiences: safeExperiences,
+      qualifications: safeQualifications,
+      familyMembers: safeFamilyMembers,
+      profilePhoto: incoming.profilePhoto || existing.profilePhoto,
+      updatedDate: new Date().toISOString().split('T')[0],
+    };
+  };
+
+  /**
+   * Explicit form validation handler for Staff Save:
+   * Validates required data points before allowing a save operation.
+   */
+  const validateStaffFormData = (
+    staffData: Partial<StaffMember>,
+    isEdit: boolean
+  ): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!staffData.fullName || !staffData.fullName.trim()) {
+      errors.push('Full Name is required and cannot be empty.');
+    }
+    if (!staffData.id && !staffData.staffCode) {
+      errors.push('Employee ID is required.');
+    }
+    if (!staffData.department || !staffData.department.trim()) {
+      errors.push('Department selection is required.');
+    }
+    if (!staffData.branchLocation || !staffData.branchLocation.trim()) {
+      errors.push('Branch Location is required.');
+    }
+
+    if (staffData.email && staffData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(staffData.email.trim())) {
+        errors.push('Official Email format is invalid.');
+      }
+    }
+
+    if (staffData.personalEmail && staffData.personalEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(staffData.personalEmail.trim())) {
+        errors.push('Personal Email format is invalid.');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
+  /**
+   * Main save handler for Staff Edit & Add:
+   * Performs explicit validation, null-checks, and safely invokes onSaveStaff.
+   */
+  const handleSaveStaffFromModal = (staffData: Partial<StaffMember>) => {
+    const isEdit = !!staffToEdit || staff.some((s) => s.id === staffData.id || s.staffCode === staffData.staffCode);
+    const existing = staffToEdit || staff.find((s) => s.id === staffData.id || s.staffCode === staffData.staffCode);
+
+    // 1. Explicit Form Validation
+    const validation = validateStaffFormData(staffData, isEdit);
+    if (!validation.isValid) {
+      setEditValidationErrors(validation.errors);
+      setTimeout(() => setEditValidationErrors(null), 6000);
+      return false;
+    }
+
+    // 2. Explicit Null-Check & Default Fallback Guard for Edit Mode
+    let finalPayload: Partial<StaffMember> = staffData;
+    if (isEdit && existing) {
+      finalPayload = reconcileStaffEditData(existing, staffData);
+    }
+
+    // 3. Clear errors, save and provide positive feedback
+    setEditValidationErrors(null);
+    onSaveStaff(finalPayload);
+    setIsAddStaffOpen(false);
+    setStaffToEdit(null);
+    if (onClearPrefillStaffData) onClearPrefillStaffData();
+
+    if (selectedStaffForView && (selectedStaffForView.id === finalPayload.id || selectedStaffForView.staffCode === finalPayload.staffCode)) {
+      setSelectedStaffForView(finalPayload as StaffMember);
+    }
+
+    setSaveSuccessFeedback(
+      `Staff profile for "${finalPayload.fullName}" (${finalPayload.staffCode || finalPayload.id}) was successfully ${isEdit ? 'updated' : 'created'} with verified data integrity.`
+    );
+    setTimeout(() => setSaveSuccessFeedback(null), 4000);
+    return true;
   };
 
   // Clear Dummy Data Handler
@@ -305,6 +655,37 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
+      {/* FEEDBACK NOTICE */}
+      {deleteFeedback && (
+        <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-xs font-bold text-rose-900 flex items-center space-x-2 animate-in fade-in">
+          <CheckCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{deleteFeedback}</span>
+        </div>
+      )}
+
+      {/* FORM VALIDATION ERRORS BANNER */}
+      {editValidationErrors && editValidationErrors.length > 0 && (
+        <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-900 animate-in fade-in space-y-1.5 shadow-xs">
+          <div className="flex items-center space-x-2 font-bold text-rose-800">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>Staff Form Validation Failed: Please correct the following issues before saving</span>
+          </div>
+          <ul className="list-disc pl-6 space-y-0.5 text-[11px] text-rose-700 font-medium">
+            {editValidationErrors.map((err, i) => (
+              <li key={i}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* SAVE SUCCESS NOTICE */}
+      {saveSuccessFeedback && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center space-x-2 animate-in fade-in shadow-xs">
+          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{saveSuccessFeedback}</span>
+        </div>
+      )}
+
       {/* Top Filter & Action Bar */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-2 flex-1 min-w-[260px]">
@@ -422,6 +803,17 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {filteredStaff.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 px-4 text-slate-500">
+                    <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-700">No staff members in directory</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Click "+ Add New / Onboard Staff" to add staff members to your organization.
+                    </p>
+                  </td>
+                </tr>
+              )}
               {filteredStaff.map((staffMember) => (
                 <tr key={staffMember.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-4 py-3">
@@ -560,7 +952,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       </button>
                       {canDeleteOption && (
                         <button
-                          onClick={() => onDeleteStaff(staffMember.id)}
+                          onClick={() => setStaffToDelete(staffMember)}
                           title="Delete Staff"
                           className="px-2 py-1 hover:bg-rose-50 text-rose-600 border border-rose-200/70 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 font-bold text-[11px]"
                         >
@@ -1107,24 +1499,37 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       </div>
 
                       <div className="pt-2 border-t border-slate-200">
-                        <div className="font-bold text-slate-800 mb-2">Bank & Statutory Details</div>
+                        <div className="font-bold text-slate-800 mb-2">Bank &amp; Statutory Details</div>
                         <div className="space-y-1.5">
                           <div className="flex justify-between">
                             <span className="text-slate-500">Bank:</span>
                             <span className="font-semibold text-slate-800">
-                              {selectedStaffForView.salary.bankDetails.bankName}
+                              {selectedStaffForView.salary?.bankDetails?.bankName || selectedStaffForView.bankPayroll?.bankName || '—'}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Account:</span>
-                            <span className="font-semibold text-slate-800">
-                              {selectedStaffForView.salary.bankDetails.accountNo}
+                            <span className="font-semibold text-slate-800 font-mono">
+                              {selectedStaffForView.salary?.bankDetails?.accountNo || selectedStaffForView.bankPayroll?.accountNo || '—'}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500">IFSC:</span>
+                            <span className="text-slate-500">IFSC &amp; Branch:</span>
                             <span className="font-semibold text-slate-800">
-                              {selectedStaffForView.salary.bankDetails.ifscCode}
+                              {selectedStaffForView.salary?.bankDetails?.ifscCode || selectedStaffForView.bankPayroll?.ifscCode || '—'}
+                              {selectedStaffForView.salary?.bankDetails?.branch || selectedStaffForView.bankPayroll?.branch ? ` (${selectedStaffForView.salary?.bankDetails?.branch || selectedStaffForView.bankPayroll?.branch})` : ''}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">UAN / PF:</span>
+                            <span className="font-semibold text-slate-800 font-mono text-[10px]">
+                              {selectedStaffForView.bankPayroll?.uan || '—'} / {selectedStaffForView.bankPayroll?.pfNumber || '—'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">ESI / PAN:</span>
+                            <span className="font-semibold text-slate-800 font-mono text-[10px]">
+                              {selectedStaffForView.bankPayroll?.esiNumber || '—'} / {selectedStaffForView.panNumber || '—'}
                             </span>
                           </div>
                         </div>
@@ -1487,14 +1892,80 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           if (onClearPrefillStaffData) onClearPrefillStaffData();
         }}
         onSave={(staffData) => {
-          onSaveStaff(staffData);
-          setStaffToEdit(null);
-          if (onClearPrefillStaffData) onClearPrefillStaffData();
+          handleSaveStaffFromModal(staffData);
         }}
         existingStaffCount={staff.length}
         staffToEdit={staffToEdit}
         prefillStaffData={prefillStaffData}
       />
+      {/* MODAL: IN-APP CONFIRMATION DIALOG FOR STAFF DELETION */}
+      {staffToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-rose-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-rose-600 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-extrabold text-base">Confirm Staff Deletion</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStaffToDelete(null)}
+                className="text-white hover:bg-white/20 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              <div className="flex items-center space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="w-10 h-10 rounded-xl bg-[#0B5D2A] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  {staffToDelete.fullName.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{staffToDelete.fullName}</h4>
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    ID: <b>{staffToDelete.staffCode || staffToDelete.id}</b> • {staffToDelete.department} ({staffToDelete.position})
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 space-y-1">
+                <div className="font-bold text-xs flex items-center space-x-1.5">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Permanent Record Removal</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Are you sure you want to delete this staff member? This will permanently remove them from the Staff Directory, revoke their ERP system access login credentials, and clean up their cloud records.
+                </p>
+              </div>
+
+              <p className="text-[11px] text-slate-400">
+                This action cannot be undone. Active employee ID sequence continuity will be preserved.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setStaffToDelete(null)}
+                className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStaff}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-xs flex items-center space-x-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Permanently Delete Staff</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

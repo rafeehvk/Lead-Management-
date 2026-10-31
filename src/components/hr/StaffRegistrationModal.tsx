@@ -58,6 +58,7 @@ import { PrintableStaffOnboarding } from './PrintableStaffOnboarding';
 import { ProfilePhotoUploader } from '../ProfilePhotoUploader';
 import { generateHrPdfFromElement, printHrDocument } from '../../utils/hrPdfGenerator';
 import { hrStorage } from '../../services/hrStorageService';
+import { storage } from '../../services/storageService';
 import { ONBOARDING_ASSIGNABLE_MODULES } from '../../utils/menuPermissions';
 
 export interface StaffRegistrationModalProps {
@@ -135,27 +136,27 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   // 1. Personal Information State
   const [staffId, setStaffId] = useState(nextId);
   const [fullName, setFullName] = useState('');
-  const [profilePhoto, setProfilePhoto] = useState('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Female');
-  const [dateOfBirth, setDateOfBirth] = useState('1994-06-15');
-  const [bloodGroup, setBloodGroup] = useState('O+');
-  const [nationality, setNationality] = useState('Indian');
-  const [maritalStatus, setMaritalStatus] = useState<'Single' | 'Married' | 'Divorced' | 'Widowed'>('Married');
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState<'Single' | 'Married' | 'Divorced' | 'Widowed'>('Single');
   const [personalEmail, setPersonalEmail] = useState('');
   const [officialEmail, setOfficialEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
-  const [emergencyRelationship, setEmergencyRelationship] = useState('Spouse');
+  const [emergencyRelationship, setEmergencyRelationship] = useState('');
 
   // 2. Address Information State
   const [permanentAddress, setPermanentAddress] = useState({
     addressLine1: '',
     addressLine2: '',
     city: '',
-    district: 'Ernakulam',
-    state: 'Kerala',
+    district: '',
+    state: '',
     country: 'India',
     pinCode: '',
   });
@@ -165,8 +166,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     addressLine1: '',
     addressLine2: '',
     city: '',
-    district: 'Ernakulam',
-    state: 'Kerala',
+    district: '',
+    state: '',
     country: 'India',
     pinCode: '',
   });
@@ -178,132 +179,53 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [employeeCategory, setEmployeeCategory] = useState<'Manager' | 'Executive' | 'Staff' | string>('Staff');
   const [employmentType, setEmploymentType] = useState<EmploymentType>('Full Time');
   const [branchLocation, setBranchLocation] = useState('Kochi Corporate HQ');
-  const [reportingManager, setReportingManager] = useState('Ramesh Nambiar');
-  const [workLocation, setWorkLocation] = useState('On-site (Corporate HQ)');
+  const [reportingManager, setReportingManager] = useState('');
+  const [workLocation, setWorkLocation] = useState('On-site');
   const [previousEmployeeId, setPreviousEmployeeId] = useState('');
   const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus>('Active');
   const [probationPeriod, setProbationPeriod] = useState('6 Months');
 
   // 4. Experience Information State (Multiple Records)
-  const [experiences, setExperiences] = useState<StaffExperienceRecord[]>([
-    {
-      id: 'exp-1',
-      organization: 'Apex Enterprise Solutions Pvt Ltd',
-      designation: 'Senior Operations Executive & Team Coordinator',
-      department: 'Operations',
-      employmentType: 'Full Time',
-      dateOfJoining: '2021-06-01',
-      dateOfLeaving: '2024-04-30',
-      totalExperience: '2 Years 11 Months',
-      reasonForLeaving: 'Career Growth & Corporate Leadership',
-      certificateDoc: 'Experience_Certificate_Apex.pdf',
-      remarks: 'Exemplary service record with strong client delivery ratings.',
-    },
-  ]);
+  const [experiences, setExperiences] = useState<StaffExperienceRecord[]>([]);
 
   // 5. Qualifications State (Multiple Records)
-  const [qualifications, setQualifications] = useState<StaffQualificationRecord[]>([
-    {
-      id: 'qual-1',
-      level: 'Postgraduate',
-      courseName: 'M.Sc. Mathematics & Statistics',
-      specialization: 'Applied Statistics',
-      institution: 'University of Kerala',
-      yearOfPassing: '2019',
-      grade: 'Distinction (86.4%)',
-      certificateDoc: 'MSc_Certificate_KeralaUniv.pdf',
-      remarks: 'First class with university ranking.',
-    },
-    {
-      id: 'qual-2',
-      level: 'Undergraduate',
-      courseName: 'B.Sc. Mathematics',
-      specialization: 'Pure Mathematics',
-      institution: 'Mahatma Gandhi University',
-      yearOfPassing: '2016',
-      grade: '82%',
-      certificateDoc: 'BSc_Degree_Certificate.pdf',
-      remarks: 'Major in Real Analysis and Algebra.',
-    },
-  ]);
+  const [qualifications, setQualifications] = useState<StaffQualificationRecord[]>([]);
 
   // 6. Family Contact Information (Multiple Records)
-  const [familyMembers, setFamilyMembers] = useState<StaffFamilyContact[]>([
-    {
-      id: 'fam-1',
-      name: 'Dr. Suresh Varma',
-      relationship: 'Spouse',
-      dateOfBirth: '1992-03-22',
-      contactNumber: '+91 98460 11223',
-      whatsappNumber: '+91 98460 11223',
-      email: 'suresh.varma@gmail.com',
-      occupation: 'Medical Practitioner',
-      address: 'Near Civil Station, Kakkanad, Kochi',
-      isEmergencyContact: true,
-      isDependent: false,
-    },
-  ]);
+  const [familyMembers, setFamilyMembers] = useState<StaffFamilyContact[]>([]);
 
   // 7. Bank & Payroll State
-  const [bankName, setBankName] = useState('State Bank of India');
+  const [bankName, setBankName] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [accountNo, setAccountNo] = useState('');
-  const [ifscCode, setIfscCode] = useState('SBIN0002144');
-  const [bankBranch, setBankBranch] = useState('Edappally, Kochi');
-  const [uan, setUan] = useState('100984712093');
-  const [pfNumber, setPfNumber] = useState('KR/KCH/0048192/000/1209');
-  const [esiNumber, setEsiNumber] = useState('4800918234001');
-  const [basicSalary, setBasicSalary] = useState(38000);
+  const [ifscCode, setIfscCode] = useState('');
+  const [bankBranch, setBankBranch] = useState('');
+  const [uan, setUan] = useState('');
+  const [pfNumber, setPfNumber] = useState('');
+  const [esiNumber, setEsiNumber] = useState('');
+  const [basicSalary, setBasicSalary] = useState(0);
   const [hra, setHra] = useState(0);
-  const [allowanceItems, setAllowanceItems] = useState<AllowanceItem[]>([
-    { id: 'all-room', name: 'Room Allowance', amount: 3000 },
-    { id: 'all-trans', name: 'Transportation', amount: 2000 },
-    { id: 'all-ot', name: 'Over time', amount: 1000 },
-    { id: 'all-med', name: 'Medical Allowance', amount: 800 },
-  ]);
-  const [allowances, setAllowances] = useState(6800);
+  const [allowanceItems, setAllowanceItems] = useState<AllowanceItem[]>([]);
+  const [allowances, setAllowances] = useState(0);
   const [specialAllowance, setSpecialAllowance] = useState(0);
   const [deductionItems, setDeductionItems] = useState<DeductionItem[]>([]);
-  const [pfDeduction, setPfDeduction] = useState(1800);
-  const [taxDeduction, setTaxDeduction] = useState(1500);
+  const [pfDeduction, setPfDeduction] = useState(0);
+  const [taxDeduction, setTaxDeduction] = useState(0);
 
   // 8. Documents & Attachments State
-  const [aadhaarNumber, setAadhaarNumber] = useState('•••• •••• 9812');
-  const [panNumber, setPanNumber] = useState('ABCDE1234F');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
   const [uploadedDocs, setUploadedDocs] = useState<{ [key: string]: boolean }>({
-    aadhaar: true,
-    pan: true,
-    passportPhoto: true,
-    resume: true,
-    experienceCert: true,
-    qualificationCert: true,
-    joiningDocs: true,
+    aadhaar: false,
+    pan: false,
+    passportPhoto: false,
+    resume: false,
+    experienceCert: false,
+    qualificationCert: false,
+    joiningDocs: false,
   });
 
-  const [docReferences, setDocReferences] = useState<StaffDocumentReference[]>([
-    {
-      id: 'doc-ref-1',
-      name: 'Employment Contract & Appointment Order',
-      category: 'Appointment Letter',
-      fileName: 'Employment_Contract_Executed.pdf',
-      fileSize: '1.4 MB',
-      verificationStatus: 'Verified',
-      uploadDate: '2026-08-01',
-      documentNumber: 'CAS-APPT-2026-001',
-      notes: 'Signed corporate employment agreement with probation terms',
-    },
-    {
-      id: 'doc-ref-2',
-      name: 'Highest Educational Degree Certificate',
-      category: 'Educational Certificate',
-      fileName: 'Post_Graduate_Degree_Certificate.pdf',
-      fileSize: '2.1 MB',
-      verificationStatus: 'Verified',
-      uploadDate: '2026-08-01',
-      documentNumber: 'DEG-78912',
-      notes: 'Original verified by HR & Compliance Division',
-    },
-  ]);
+  const [docReferences, setDocReferences] = useState<StaffDocumentReference[]>([]);
 
   const [isAddingDocModal, setIsAddingDocModal] = useState(false);
   const [newDocName, setNewDocName] = useState('');
@@ -320,7 +242,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [enableLogin, setEnableLogin] = useState(true);
   const [systemUserType, setSystemUserType] = useState('Staff');
   const [systemUsername, setSystemUsername] = useState('');
-  const [systemPassword, setSystemPassword] = useState('Password@123');
+  const [systemPassword, setSystemPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [systemRole, setSystemRole] = useState('Staff');
   const [accessLevel, setAccessLevel] = useState<'Read-Only' | 'Standard' | 'Manager' | 'Administrator' | 'Super Admin'>('Standard');
@@ -332,6 +254,14 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
   const [systemBranchAccess, setSystemBranchAccess] = useState('Kochi Corporate HQ');
   const [accountStatus, setAccountStatus] = useState<'Active' | 'Pending' | 'Suspended'>('Active');
   const [copiedPass, setCopiedPass] = useState(false);
+  const [createdCredentialsModal, setCreatedCredentialsModal] = useState<{
+    staffName: string;
+    username: string;
+    staffId: string;
+    email: string;
+    role: string;
+    password: string;
+  } | null>(null);
 
   // Synchronize state when opening in Edit mode, Prefill mode (from Appointment Letter), or Resetting for Add mode
   useEffect(() => {
@@ -350,22 +280,18 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       const existingId = sourceData.staffCode || sourceData.id || hrStorage.generateNextEmployeeId(code);
       setStaffId(existingId);
       setFullName(sourceData.fullName || '');
-      setProfilePhoto(
-        sourceData.profilePhoto !== undefined
-          ? sourceData.profilePhoto
-          : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-      );
-      setGender(sourceData.gender || 'Female');
-      setDateOfBirth(sourceData.dateOfBirth || '1994-06-15');
-      setBloodGroup(sourceData.bloodGroup || 'O+');
-      setNationality(sourceData.nationality || 'Indian');
-      setMaritalStatus(sourceData.maritalStatus || 'Married');
-      setPersonalEmail(sourceData.personalEmail || sourceData.email || '');
+      setProfilePhoto(sourceData.profilePhoto || '');
+      setGender(sourceData.gender || 'Male');
+      setDateOfBirth(sourceData.dateOfBirth || '');
+      setBloodGroup(sourceData.bloodGroup || '');
+      setNationality(sourceData.nationality || '');
+      setMaritalStatus(sourceData.maritalStatus || 'Single');
+      setPersonalEmail(sourceData.personalEmail || '');
       setOfficialEmail(sourceData.email || '');
       setContactNumber(sourceData.contactNumber || '');
-      setWhatsappNumber(sourceData.whatsappNumber || sourceData.contactNumber || '');
+      setWhatsappNumber(sourceData.whatsappNumber || '');
       setEmergencyContactName(sourceData.emergencyContact?.name || '');
-      setEmergencyRelationship(sourceData.emergencyContact?.relationship || 'Spouse');
+      setEmergencyRelationship(sourceData.emergencyContact?.relationship || '');
       setEmergencyPhone(sourceData.emergencyContact?.phone || '');
 
       // Address
@@ -374,23 +300,43 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
           addressLine1: sourceData.permanentAddress.addressLine1 || '',
           addressLine2: sourceData.permanentAddress.addressLine2 || '',
           city: sourceData.permanentAddress.city || '',
-          district: sourceData.permanentAddress.district || 'Ernakulam',
-          state: sourceData.permanentAddress.state || 'Kerala',
+          district: sourceData.permanentAddress.district || '',
+          state: sourceData.permanentAddress.state || '',
           country: sourceData.permanentAddress.country || 'India',
           pinCode: sourceData.permanentAddress.pinCode || '',
         });
+      } else {
+        setPermanentAddress({
+          addressLine1: '',
+          addressLine2: '',
+          city: '',
+          district: '',
+          state: '',
+          country: 'India',
+          pinCode: '',
+        });
       }
-      const same = sourceData.communicationAddress?.sameAsPermanent ?? true;
+      const same = sourceData.communicationAddress?.sameAsPermanent ?? (sourceData.communicationAddress ? false : true);
       setSameAsPermanent(same);
       if (sourceData.communicationAddress) {
         setCommunicationAddress({
           addressLine1: sourceData.communicationAddress.addressLine1 || '',
           addressLine2: sourceData.communicationAddress.addressLine2 || '',
           city: sourceData.communicationAddress.city || '',
-          district: sourceData.communicationAddress.district || 'Ernakulam',
-          state: sourceData.communicationAddress.state || 'Kerala',
+          district: sourceData.communicationAddress.district || '',
+          state: sourceData.communicationAddress.state || '',
           country: sourceData.communicationAddress.country || 'India',
           pinCode: sourceData.communicationAddress.pinCode || '',
+        });
+      } else {
+        setCommunicationAddress({
+          addressLine1: '',
+          addressLine2: '',
+          city: '',
+          district: '',
+          state: '',
+          country: 'India',
+          pinCode: '',
         });
       }
 
@@ -402,36 +348,42 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       setEmployeeCategory(sourceData.employeeCategory || 'Staff');
       setEmploymentType(sourceData.employmentType || 'Full Time');
       setBranchLocation(sourceData.branchLocation || defaultBranchName);
-      setReportingManager(sourceData.reportingTo || sourceData.reportingManager || 'Ramesh Nambiar');
-      setWorkLocation(sourceData.workLocation || 'On-site (Corporate HQ)');
+      setReportingManager(sourceData.reportingTo || sourceData.reportingManager || '');
+      setWorkLocation(sourceData.workLocation || '');
       setPreviousEmployeeId(sourceData.previousEmployeeId || '');
       setEmploymentStatus(sourceData.employmentStatus || 'Active');
-      setProbationPeriod(sourceData.probationPeriod || '6 Months');
+      setProbationPeriod(sourceData.probationPeriod || '');
 
       // Records
       if (sourceData.experiences !== undefined) {
         setExperiences(sourceData.experiences);
+      } else {
+        setExperiences([]);
       }
       if (sourceData.qualifications !== undefined && sourceData.qualifications.length > 0) {
         setQualifications(sourceData.qualifications);
+      } else {
+        setQualifications([]);
       }
       if (sourceData.familyMembers !== undefined && sourceData.familyMembers.length > 0) {
         setFamilyMembers(sourceData.familyMembers);
+      } else {
+        setFamilyMembers([]);
       }
 
       // Bank & Salary
       const sal = sourceData.salary;
       const bp = sourceData.bankPayroll;
-      setBankName(sal?.bankDetails?.bankName || bp?.bankName || 'State Bank of India');
+      setBankName(sal?.bankDetails?.bankName || bp?.bankName || '');
       setAccountHolderName(bp?.accountHolderName || sourceData.fullName || '');
       setAccountNo(sal?.bankDetails?.accountNo || bp?.accountNo || '');
-      setIfscCode(sal?.bankDetails?.ifscCode || bp?.ifscCode || 'SBIN0002144');
-      setBankBranch(sal?.bankDetails?.branch || bp?.branch || 'Edappally, Kochi');
-      setUan(bp?.uan || '100984712093');
-      setPfNumber(bp?.pfNumber || 'KR/KCH/0048192/000/1209');
-      setEsiNumber(bp?.esiNumber || '4800918234001');
+      setIfscCode(sal?.bankDetails?.ifscCode || bp?.ifscCode || '');
+      setBankBranch(sal?.bankDetails?.branch || bp?.branch || '');
+      setUan(bp?.uan || '');
+      setPfNumber(bp?.pfNumber || '');
+      setEsiNumber(bp?.esiNumber || '');
 
-      setBasicSalary(sal?.basicSalary ?? 38000);
+      setBasicSalary(sal?.basicSalary ?? 0);
       setHra(sal?.hra ?? 0);
       if (sal?.allowanceItems && sal.allowanceItems.length > 0) {
         setAllowanceItems(sal.allowanceItems);
@@ -463,8 +415,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       }
 
       // Documents
-      setAadhaarNumber(sourceData.aadhaarNumber || '•••• •••• 9812');
-      setPanNumber(sourceData.panNumber || 'ABCDE1234F');
+      setAadhaarNumber(sourceData.aadhaarNumber || '');
+      setPanNumber(sourceData.panNumber || '');
 
       // Populate document references
       if (sourceData.documentReferences && sourceData.documentReferences.length > 0) {
@@ -482,70 +434,176 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
             documentNumber: d.documentNumber,
             issueDate: d.issueDate,
             expiryDate: d.expiryDate,
-            notes: d.notes || 'Official corporate record',
+            notes: d.notes || '',
           }))
         );
+      } else {
+        setDocReferences([]);
       }
+
+      // Look up linked user account if exists to strictly preserve real credentials
+      let linkedUser: any = null;
+      try {
+        const allUsers = storage.getUsers();
+        linkedUser = allUsers.find(
+          (u) =>
+            (sourceData.id && (u.staffId === sourceData.id || (sourceData.staffCode && u.staffId === sourceData.staffCode))) ||
+            (sourceData.email && u.email && u.email.toLowerCase() === sourceData.email.toLowerCase()) ||
+            (sourceData.personalEmail && u.email && u.email.toLowerCase() === sourceData.personalEmail.toLowerCase()) ||
+            (sourceData.systemAccess?.username && u.userId && u.userId.toLowerCase() === sourceData.systemAccess.username.trim().toLowerCase())
+        );
+      } catch {
+        // ignore
+      }
+
+      const existingUsername =
+        sourceData.systemAccess?.username ||
+        linkedUser?.userId ||
+        '';
+
+      const existingPassword =
+        sourceData.systemAccess?.password ||
+        (sourceData.systemAccess as any)?.initialPassword ||
+        linkedUser?.password ||
+        '';
 
       // System Access
       if (sourceData.systemAccess) {
         setEnableLogin(sourceData.systemAccess.enableLogin ?? true);
-        setSystemUserType(sourceData.systemAccess.userType || 'Staff');
-        setSystemUsername(sourceData.systemAccess.username || '');
-        setSystemRole(sourceData.systemAccess.role || 'Staff');
-        setAccessLevel(sourceData.systemAccess.accessLevel || 'Standard');
+        setSystemUserType(sourceData.systemAccess.userType || linkedUser?.userType || 'Staff');
+        setSystemUsername(existingUsername);
+        setSystemPassword(existingPassword);
+        setSystemRole(sourceData.systemAccess.role || linkedUser?.role || 'Staff');
+        setAccessLevel(sourceData.systemAccess.accessLevel || linkedUser?.accessLevel || 'Standard');
         if (sourceData.systemAccess.assignedModules) {
           setAssignedModules(sourceData.systemAccess.assignedModules);
+        } else if (linkedUser?.assignedModules) {
+          setAssignedModules(linkedUser.assignedModules);
         }
         setSystemBranchAccess(sourceData.systemAccess.branchAccess || sourceData.branchLocation || defaultBranchName);
-        setAccountStatus(sourceData.systemAccess.accountStatus || 'Active');
+        setAccountStatus(sourceData.systemAccess.accountStatus || (linkedUser?.status === 'Active' ? 'Active' : 'Suspended'));
       } else {
         setSystemBranchAccess(sourceData.branchLocation || defaultBranchName);
+        setSystemUsername(existingUsername);
+        setSystemPassword(existingPassword);
+        if (linkedUser) {
+          setEnableLogin(linkedUser.status !== 'Inactive');
+          setSystemUserType(linkedUser.userType || 'Staff');
+          setSystemRole(linkedUser.role || 'Staff');
+          setAccessLevel(linkedUser.accessLevel || 'Standard');
+          if (linkedUser.assignedModules) {
+            setAssignedModules(linkedUser.assignedModules);
+          }
+        }
       }
 
-      // Verification
+      // Verification - Do NOT fill with dummy/demo names or remarks
       if (sourceData.verification) {
         setRegistrationDate(sourceData.verification.registrationDate || sourceData.createdDate || new Date().toISOString().split('T')[0]);
-        setRegisteredBy(sourceData.verification.registeredBy || 'HR Admin');
-        setVerificationStatus(sourceData.verification.verificationStatus || 'Verified');
-        setVerifiedBy(sourceData.verification.verifiedBy || 'Ramesh Nambiar');
-        setVerificationDate(sourceData.verification.verificationDate || new Date().toISOString().split('T')[0]);
+        setRegisteredBy(sourceData.verification.registeredBy || '');
+        setVerificationStatus(sourceData.verification.verificationStatus || 'Pending');
+        setVerifiedBy(sourceData.verification.verifiedBy || '');
+        setVerificationDate(sourceData.verification.verificationDate || '');
         setRegistrationRemarks(sourceData.verification.remarks || sourceData.notes || '');
-      } else if (sourceData.notes) {
-        setRegistrationRemarks(sourceData.notes);
+      } else {
+        setRegistrationDate(sourceData.createdDate || new Date().toISOString().split('T')[0]);
+        setRegisteredBy('');
+        setVerificationStatus('Pending');
+        setVerifiedBy('');
+        setVerificationDate('');
+        setRegistrationRemarks(sourceData.notes || '');
       }
     } else {
-      // New Onboard Mode
+      // New Onboard Mode - Absolutely zero prefilled mock data
       const freshId = hrStorage.generateNextEmployeeId(departmentCode);
       setStaffId(freshId);
       setBranchLocation(defaultBranchName);
       setSystemBranchAccess(defaultBranchName);
       setFullName('');
       setProfilePhoto('');
-      setPosition('');
-      setEmployeeCategory('Staff');
+      setGender('Male');
+      setDateOfBirth('');
+      setBloodGroup('');
+      setNationality('');
+      setMaritalStatus('Single');
       setPersonalEmail('');
       setOfficialEmail('');
       setContactNumber('');
       setWhatsappNumber('');
-      setAccountNo('');
+      setEmergencyPhone('');
+      setEmergencyContactName('');
+      setEmergencyRelationship('');
+      setPermanentAddress({
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        district: '',
+        state: '',
+        country: 'India',
+        pinCode: '',
+      });
+      setSameAsPermanent(true);
+      setCommunicationAddress({
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        district: '',
+        state: '',
+        country: 'India',
+        pinCode: '',
+      });
+      setPosition('');
+      setEmployeeCategory('Staff');
+      setEmploymentType('Full Time');
+      setReportingManager('');
+      setWorkLocation('');
+      setPreviousEmployeeId('');
+      setEmploymentStatus('Active');
+      setProbationPeriod('');
+      setExperiences([]);
+      setQualifications([]);
+      setFamilyMembers([]);
+      setBankName('');
       setAccountHolderName('');
-      setBasicSalary(30000);
+      setAccountNo('');
+      setIfscCode('');
+      setBankBranch('');
+      setUan('');
+      setPfNumber('');
+      setEsiNumber('');
+      setBasicSalary(0);
       setHra(0);
       setSpecialAllowance(0);
-      setAllowanceItems([
-        { id: 'all-room', name: 'Room Allowance', amount: 3000 },
-        { id: 'all-trans', name: 'Transportation', amount: 2000 },
-        { id: 'all-ot', name: 'Over time', amount: 1000 },
-        { id: 'all-med', name: 'Medical Allowance', amount: 800 },
-      ]);
-      setAllowances(6800);
-      setDeductionItems([
-        { id: 'ded-pf', name: 'Employee PF Contribution', amount: 1800 },
-        { id: 'ded-pt', name: 'Professional Tax', amount: 200 },
-      ]);
-      setPfDeduction(1800);
-      setTaxDeduction(200);
+      setAllowanceItems([]);
+      setAllowances(0);
+      setDeductionItems([]);
+      setPfDeduction(0);
+      setTaxDeduction(0);
+      setAadhaarNumber('');
+      setPanNumber('');
+      setUploadedDocs({
+        aadhaar: false,
+        pan: false,
+        passportPhoto: false,
+        resume: false,
+        experienceCert: false,
+        qualificationCert: false,
+        joiningDocs: false,
+      });
+      setDocReferences([]);
+      setEnableLogin(true);
+      setSystemUserType('Staff');
+      setSystemUsername('');
+      setSystemPassword('');
+      setSystemRole('Staff');
+      setAccessLevel('Standard');
+      setAssignedModules(['Dashboard', 'HR & Staff Directory', 'Attendance & Leave']);
+      setAccountStatus('Active');
+      setRegistrationRemarks('');
+      setRegisteredBy('');
+      setVerifiedBy('');
+      setVerificationDate('');
+      setVerificationStatus('Pending');
     }
   }, [isOpen, staffToEdit, prefillStaffData]);
 
@@ -695,13 +753,11 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
   // 10. Registration & Verification State
   const [registrationDate, setRegistrationDate] = useState(new Date().toISOString().split('T')[0]);
-  const [registeredBy, setRegisteredBy] = useState('HR Admin - Sri. Ananthan K.');
-  const [verificationStatus, setVerificationStatus] = useState<'Pending' | 'Verified' | 'Under Review' | 'Rejected'>('Verified');
-  const [verifiedBy, setVerifiedBy] = useState('Ramesh Nambiar (Managing Director)');
-  const [verificationDate, setVerificationDate] = useState(new Date().toISOString().split('T')[0]);
-  const [registrationRemarks, setRegistrationRemarks] = useState(
-    'All original credentials, certificates and background clearances thoroughly cross-checked and approved.'
-  );
+  const [registeredBy, setRegisteredBy] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState<'Pending' | 'Verified' | 'Under Review' | 'Rejected'>('Pending');
+  const [verifiedBy, setVerifiedBy] = useState('');
+  const [verificationDate, setVerificationDate] = useState('');
+  const [registrationRemarks, setRegistrationRemarks] = useState('');
 
   // Pre-fill quick demo data for easy testing
   const handlePreloadDemo = () => {
@@ -832,72 +888,82 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
 
     const commAddr = sameAsPermanent ? permanentAddress : communicationAddress;
 
-    const initialDocs: StaffDocument[] = [
-      {
-        id: `doc-aadhaar-${Date.now()}`,
-        category: 'ID Proof',
-        documentNumber: aadhaarNumber,
-        fileName: 'Aadhaar_Government_ID.pdf',
-        verificationStatus: verificationStatus === 'Verified' ? 'Verified' : 'Pending',
-        uploadDate: registrationDate,
-      },
-      {
-        id: `doc-pan-${Date.now()}`,
-        category: 'ID Proof',
-        documentNumber: panNumber,
-        fileName: 'PAN_Card_Copy.pdf',
-        verificationStatus: verificationStatus === 'Verified' ? 'Verified' : 'Pending',
-        uploadDate: registrationDate,
-      },
-      {
-        id: `doc-resume-${Date.now()}`,
-        category: 'Resume',
-        fileName: 'Curriculum_Vitae_Updated.pdf',
-        verificationStatus: 'Verified',
-        uploadDate: registrationDate,
-      },
-    ];
+    // Look up existing linked user or existing password if editing to prevent credential overwrite
+    let existingSavedPassword = '';
+    let existingSavedUsername = '';
+    if (isEditMode && staffToEdit) {
+      existingSavedPassword =
+        staffToEdit.systemAccess?.password ||
+        (staffToEdit.systemAccess as any)?.initialPassword ||
+        '';
+      existingSavedUsername = staffToEdit.systemAccess?.username || '';
+    }
+    if (!existingSavedPassword || !existingSavedUsername) {
+      try {
+        const allUsers = storage.getUsers();
+        const targetId = staffId || staffToEdit?.id;
+        const linked = allUsers.find(
+          (u) =>
+            (targetId && (u.staffId === targetId || (staffToEdit?.staffCode && u.staffId === staffToEdit.staffCode))) ||
+            (officialEmail && u.email && u.email.toLowerCase() === officialEmail.toLowerCase()) ||
+            (personalEmail && u.email && u.email.toLowerCase() === personalEmail.toLowerCase()) ||
+            (systemUsername && u.userId && u.userId.toLowerCase() === systemUsername.toLowerCase())
+        );
+        if (linked) {
+          if (!existingSavedPassword && linked.password) existingSavedPassword = linked.password;
+          if (!existingSavedUsername && linked.userId) existingSavedUsername = linked.userId;
+        }
+      } catch {}
+    }
+
+    const effectiveUsername = (
+      systemUsername ||
+      existingSavedUsername ||
+      (officialEmail ? officialEmail.split('@')[0] : fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, ''))
+    ).trim().toLowerCase() || 'staff.user';
+
+    const effectivePassword = (
+      systemPassword ||
+      existingSavedPassword ||
+      'Password@123'
+    ).trim();
 
     const staffPayload: Partial<StaffMember> = {
-      id: staffId || staffToEdit?.id || nextId,
-      staffId: staffId || staffToEdit?.staffId || staffToEdit?.id || nextId,
-      staffCode: staffId || staffToEdit?.staffCode || staffToEdit?.id || nextId,
-      fullName: fullName.trim(),
+      id: staffId,
+      staffCode: staffId,
+      departmentCode,
+      reportingTo: reportingManager,
+      fullName,
       profilePhoto,
       gender,
       dateOfBirth,
       bloodGroup,
       nationality,
       maritalStatus,
-      email: officialEmail || personalEmail || `${fullName.toLowerCase().replace(/\s+/g, '.')}@mysar.org`,
       personalEmail,
+      email: officialEmail,
       contactNumber,
-      whatsappNumber: whatsappNumber || contactNumber,
+      whatsappNumber: whatsappNumber || '',
       emergencyContact: {
-        name: emergencyContactName || 'Family Member',
-        relationship: emergencyRelationship,
-        phone: emergencyPhone || contactNumber,
+        name: emergencyContactName || '',
+        relationship: emergencyRelationship || '',
+        phone: emergencyPhone || '',
       },
       permanentAddress,
-      communicationAddress: {
-        ...commAddr,
-        sameAsPermanent,
-      },
+      communicationAddress: commAddr,
       joiningDate: dateOfJoining,
-      departmentCode: departmentCode,
-      reportingTo: reportingManager,
-      division: `${department} Wing`,
+      division: `${department} Division`,
       department,
-      position: position || 'Staff Specialist',
+      position,
       employeeCategory,
       employmentType,
-      branchLocation,
       reportingManager,
       workLocation,
+      branchLocation: branchLocation || systemBranchAccess,
+      probationPeriod,
       previousEmployeeId,
       employmentStatus,
-      probationPeriod,
-      documents: initialDocs,
+      documents: staffToEdit?.documents || [],
       documentReferences: docReferences,
       salary: {
         basicSalary,
@@ -918,15 +984,15 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
         paymentMethod: 'Bank Transfer',
         bankDetails: {
           bankName,
-          accountNo: accountNo || '••••••••4819',
+          accountNo,
           ifscCode,
           branch: bankBranch,
         },
       },
       bankPayroll: {
         bankName,
-        accountHolderName: accountHolderName || fullName,
         accountNo,
+        accountHolderName: accountHolderName || fullName,
         ifscCode,
         branch: bankBranch,
         uan,
@@ -940,8 +1006,8 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       systemAccess: {
         enableLogin,
         userType: systemUserType,
-        username: systemUsername || (officialEmail ? officialEmail.split('@')[0] : fullName.toLowerCase().replace(/[^a-z0-9]/g, '.')),
-        password: systemPassword || 'Password@123',
+        username: effectiveUsername,
+        password: effectivePassword,
         role: systemRole,
         accessLevel,
         assignedModules,
@@ -966,7 +1032,19 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
     };
 
     onSave(staffPayload);
-    onClose();
+
+    if (!isEditMode) {
+      setCreatedCredentialsModal({
+        staffName: fullName || 'Staff Member',
+        username: effectiveUsername,
+        staffId: staffId || 'CB/STAFF',
+        email: officialEmail || personalEmail || '',
+        role: systemRole,
+        password: effectivePassword,
+      });
+    } else {
+      onClose();
+    }
   };
 
   // Next / Previous Navigation Helpers
@@ -1042,7 +1120,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
       paymentMethod: 'Bank Transfer',
       bankDetails: {
         bankName,
-        accountNo: accountNo || '••••••••4819',
+        accountNo: accountNo || '',
         ifscCode,
         branch: bankBranch,
       },
@@ -1271,7 +1349,17 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                   <input
                     type="text"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setFullName(newName);
+                      if (!accountHolderName || accountHolderName === fullName) {
+                        setAccountHolderName(newName);
+                      }
+                      const cleanSlug = newName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+                      if (!systemUsername || systemUsername === fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '')) {
+                        setSystemUsername(cleanSlug);
+                      }
+                    }}
                     placeholder="e.g. Smt. Meera Gopikrishnan"
                     required
                     className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-emerald-600"
@@ -3187,9 +3275,15 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                       </div>
                       <input
                         type="text"
-                        value={systemUsername || (officialEmail ? officialEmail.split('@')[0] : fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, ''))}
+                        value={systemUsername}
                         onChange={(e) => setSystemUsername(e.target.value)}
-                        placeholder="e.g. rafeeh.vk or meera.g"
+                        placeholder={
+                          officialEmail
+                            ? officialEmail.split('@')[0]
+                            : fullName
+                            ? fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/^\.+|\.+$/g, '')
+                            : 'e.g. rafeeh.vk or meera.g'
+                        }
                         className="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono font-semibold"
                       />
                       <p className="text-[10px] text-slate-500 mt-1">
@@ -3215,7 +3309,7 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                           type={showPassword ? 'text' : 'password'}
                           value={systemPassword}
                           onChange={(e) => setSystemPassword(e.target.value)}
-                          placeholder="Password@123"
+                          placeholder={isEditMode ? 'Leave blank to preserve existing password' : 'Enter password or click Generate'}
                           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white font-mono pr-16"
                         />
                         <div className="absolute right-1.5 top-1.5 flex items-center space-x-0.5">
@@ -3238,7 +3332,13 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        {copiedPass ? <span className="text-emerald-700 font-semibold">Credentials copied!</span> : 'Default: Password@123'}
+                        {copiedPass ? (
+                          <span className="text-emerald-700 font-semibold">Credentials copied!</span>
+                        ) : isEditMode ? (
+                          'Existing password is fully preserved unless modified here'
+                        ) : (
+                          'Enter a password or click "Generate" to create one'
+                        )}
                       </p>
                     </div>
 
@@ -3611,6 +3711,98 @@ export const StaffRegistrationModal: React.FC<StaffRegistrationModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Onboarding Success & Login Credentials Dialog */}
+      {createdCredentialsModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-emerald-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white text-center">
+              <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <CheckCircle2 className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-lg font-black tracking-tight">Staff Successfully Onboarded!</h3>
+              <p className="text-xs text-emerald-100 mt-1">
+                ERP Login Account has been created and activated automatically.
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200/80 text-xs">
+                <div className="font-bold text-emerald-950 flex items-center justify-between">
+                  <span>{createdCredentialsModal.staffName}</span>
+                  <span className="font-mono text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                    {createdCredentialsModal.staffId}
+                  </span>
+                </div>
+                <div className="text-[11px] text-emerald-800 mt-0.5">Role: {createdCredentialsModal.role}</div>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  ERP Login Credentials
+                </div>
+
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Username / Login ID:</span>
+                  <span className="font-mono font-bold text-slate-900">{createdCredentialsModal.username}</span>
+                </div>
+
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Employee ID:</span>
+                  <span className="font-mono font-bold text-slate-900">{createdCredentialsModal.staffId}</span>
+                </div>
+
+                {createdCredentialsModal.email && (
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">Email:</span>
+                    <span className="font-medium text-slate-900 truncate max-w-[200px]">{createdCredentialsModal.email}</span>
+                  </div>
+                )}
+
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Initial Password:</span>
+                  <span className="font-mono font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">
+                    {createdCredentialsModal.password}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 flex items-start space-x-2">
+                <Key className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  The staff member can log in to the ERP app immediately using either their <b>Username</b>, <b>Employee ID</b>, or <b>Email</b> with password <b>{createdCredentialsModal.password}</b>.
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `MYSAR ERP Login Credentials\nName: ${createdCredentialsModal.staffName}\nEmployee ID: ${createdCredentialsModal.staffId}\nUsername: ${createdCredentialsModal.username}\nEmail: ${createdCredentialsModal.email}\nPassword: ${createdCredentialsModal.password}`;
+                    navigator.clipboard.writeText(text);
+                    setCopiedPass(true);
+                    setTimeout(() => setCopiedPass(false), 3000);
+                  }}
+                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                >
+                  {copiedPass ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedPass ? 'Copied!' : 'Copy Credentials'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatedCredentialsModal(null);
+                    onClose();
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-[#168A45] hover:bg-[#0B5D2A] text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1 shadow-sm transition-colors cursor-pointer"
+                >
+                  <span>Done &amp; Close</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Off-screen Printable Document for PDF Generation and Print */}
       <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none opacity-0">

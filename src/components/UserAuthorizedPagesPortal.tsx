@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Lock,
   CheckCircle2,
+  CheckSquare,
   Eye,
   PlusCircle,
   Edit3,
@@ -329,6 +330,15 @@ export const UserAuthorizedPagesPortal: React.FC<UserAuthorizedPagesPortalProps>
                   <span>Configure Allowed Menus</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => onNavigateTab('dashboard')}
+                className="px-3.5 py-2 rounded-xl bg-white text-[#0B5D2A] hover:bg-emerald-50 font-bold text-xs transition-all cursor-pointer shadow-xs flex items-center space-x-1.5"
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-[#168A45]" />
+                <span>Staff Dashboard & Attendance</span>
+              </button>
             </div>
           </div>
         </div>

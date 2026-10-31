@@ -7,89 +7,114 @@ service cloud.firestore {
 
     // CRM Modules
     match /leads/{leadId} {
-      allow read, write: if isValidId(leadId);
+      allow get, create, update, delete: if isValidId(leadId);
+      allow list: if true;
     }
     match /followups/{followUpId} {
-      allow read, write: if isValidId(followUpId);
+      allow get, create, update, delete: if isValidId(followUpId);
+      allow list: if true;
     }
     match /proposals/{proposalId} {
-      allow read, write: if isValidId(proposalId);
+      allow get, create, update, delete: if isValidId(proposalId);
+      allow list: if true;
     }
     match /users/{userId} {
-      allow read, write: if isValidId(userId);
+      allow get, create, update, delete: if isValidId(userId);
+      allow list: if true;
     }
     match /settings/{settingId} {
-      allow read, write: if isValidId(settingId);
+      allow get, create, update, delete: if isValidId(settingId);
+      allow list: if true;
     }
 
     // HR Management Modules
     match /hr_staff/{staffId} {
-      allow read, write: if isValidId(staffId);
+      allow get, create, update, delete: if isValidId(staffId);
+      allow list: if true;
     }
     match /hr_attendance/{attendanceId} {
-      allow read, write: if isValidId(attendanceId);
+      allow get, create, update, delete: if isValidId(attendanceId);
+      allow list: if true;
     }
     match /hr_leave_requests/{leaveId} {
-      allow read, write: if isValidId(leaveId);
+      allow get, create, update, delete: if isValidId(leaveId);
+      allow list: if true;
     }
     match /hr_departments/{deptId} {
-      allow read, write: if isValidId(deptId);
+      allow get, create, update, delete: if isValidId(deptId);
+      allow list: if true;
     }
     match /hr_branches/{branchId} {
-      allow read, write: if isValidId(branchId);
+      allow get, create, update, delete: if isValidId(branchId);
+      allow list: if true;
     }
     match /hr_positions/{positionId} {
-      allow read, write: if isValidId(positionId);
+      allow get, create, update, delete: if isValidId(positionId);
+      allow list: if true;
     }
     match /hr_applicants/{applicantId} {
-      allow read, write: if isValidId(applicantId);
+      allow get, create, update, delete: if isValidId(applicantId);
+      allow list: if true;
     }
     match /hr_department_roles/{roleId} {
-      allow read, write: if isValidId(roleId);
+      allow get, create, update, delete: if isValidId(roleId);
+      allow list: if true;
     }
     match /user_menu_permissions/{permId} {
-      allow read, write: if isValidId(permId);
+      allow get, create, update, delete: if isValidId(permId);
+      allow list: if true;
     }
 
     // ERP Core Modules (Parties, Items, Orders, Invoices, Finance)
     match /erp_parties/{partyId} {
-      allow read, write: if isValidId(partyId);
+      allow get, create, update, delete: if isValidId(partyId);
+      allow list: if true;
     }
     match /erp_items/{itemId} {
-      allow read, write: if isValidId(itemId);
+      allow get, create, update, delete: if isValidId(itemId);
+      allow list: if true;
     }
     match /erp_sales_orders/{orderId} {
-      allow read, write: if isValidId(orderId);
+      allow get, create, update, delete: if isValidId(orderId);
+      allow list: if true;
     }
     match /erp_sales_invoices/{invoiceId} {
-      allow read, write: if isValidId(invoiceId);
+      allow get, create, update, delete: if isValidId(invoiceId);
+      allow list: if true;
     }
     match /erp_purchase_orders/{poId} {
-      allow read, write: if isValidId(poId);
+      allow get, create, update, delete: if isValidId(poId);
+      allow list: if true;
     }
     match /erp_purchase_invoices/{piId} {
-      allow read, write: if isValidId(piId);
+      allow get, create, update, delete: if isValidId(piId);
+      allow list: if true;
     }
     match /erp_stock_movements/{stockId} {
-      allow read, write: if isValidId(stockId);
+      allow get, create, update, delete: if isValidId(stockId);
+      allow list: if true;
     }
     match /finance_journals/{journalId} {
-      allow read, write: if isValidId(journalId);
+      allow get, create, update, delete: if isValidId(journalId);
+      allow list: if true;
     }
 
     // Document Expiry & Compliance Registry
     match /documents/{docId} {
-      allow read, write: if isValidId(docId);
+      allow get, create, update, delete: if isValidId(docId);
+      allow list: if true;
     }
 
     // Task Allocation
     match /tasks/{taskId} {
-      allow read, write: if isValidId(taskId);
+      allow get, create, update, delete: if isValidId(taskId);
+      allow list: if true;
     }
 
     // Asset Management
     match /assets/{assetId} {
-      allow read, write: if isValidId(assetId);
+      allow get, create, update, delete: if isValidId(assetId);
+      allow list: if true;
     }
 
     // Connection testing

@@ -31,12 +31,12 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
 
   const staffId = onboardingData.id || onboardingData.staffId || 'EMP-2026-NEW';
   const fullName = onboardingData.fullName || 'Candidate Full Name';
-  const basicSalary = onboardingData.salary?.basicSalary || 38000;
-  const hra = onboardingData.salary?.hra || 0;
-  const allowances = onboardingData.salary?.allowances || 6800;
-  const grossSalary = onboardingData.salary?.grossSalary || basicSalary + hra + allowances;
-  const totalDeductions = onboardingData.salary?.totalDeductions || 2000;
-  const netSalary = onboardingData.salary?.netSalary || Math.max(0, grossSalary - totalDeductions);
+  const basicSalary = Number(onboardingData.salary?.basicSalary ?? 0);
+  const hra = Number(onboardingData.salary?.hra ?? 0);
+  const allowances = Number(onboardingData.salary?.allowances ?? 0);
+  const grossSalary = Number(onboardingData.salary?.grossSalary ?? (basicSalary + hra + allowances));
+  const totalDeductions = Number(onboardingData.salary?.totalDeductions ?? 0);
+  const netSalary = Number(onboardingData.salary?.netSalary ?? Math.max(0, grossSalary - totalDeductions));
   const allowanceItems = onboardingData.salary?.allowanceItems || [];
   const deductionItems = onboardingData.salary?.deductionItems || [];
 
@@ -428,16 +428,21 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
             <div className="grid grid-cols-4 gap-2 text-[10px] mb-2.5">
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Bank Name</div>
-                <div className="font-bold text-slate-900 mt-0.5 truncate">{onboardingData.salary?.bankDetails?.bankName || onboardingData.bankPayroll?.bankName || 'State Bank of India'}</div>
+                <div className="font-bold text-slate-900 mt-0.5 truncate">
+                  {onboardingData.salary?.bankDetails?.bankName || onboardingData.bankPayroll?.bankName || '—'}
+                </div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">Account Number</div>
-                <div className="font-bold font-mono text-slate-900 mt-0.5">{onboardingData.salary?.bankDetails?.accountNo || onboardingData.bankPayroll?.accountNo || '••••••••4819'}</div>
+                <div className="font-bold font-mono text-slate-900 mt-0.5">
+                  {onboardingData.salary?.bankDetails?.accountNo || onboardingData.bankPayroll?.accountNo || '—'}
+                </div>
               </div>
               <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-slate-400">IFSC &amp; Branch</div>
                 <div className="font-bold text-slate-900 mt-0.5 truncate">
-                  {onboardingData.salary?.bankDetails?.ifscCode || 'SBIN0002144'} • {onboardingData.salary?.bankDetails?.branch || 'Kochi'}
+                  {onboardingData.salary?.bankDetails?.ifscCode || onboardingData.bankPayroll?.ifscCode || '—'}
+                  {onboardingData.salary?.bankDetails?.branch || onboardingData.bankPayroll?.branch ? ` • ${onboardingData.salary?.bankDetails?.branch || onboardingData.bankPayroll?.branch}` : ''}
                 </div>
               </div>
               <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
@@ -500,11 +505,11 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
                     <>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Employee PF Contribution</span>
-                        <span className="font-semibold font-mono text-rose-800">₹{(onboardingData.salary?.pfDeduction ?? 1800).toLocaleString('en-IN')}</span>
+                        <span className="font-semibold font-mono text-rose-800">₹{Number(onboardingData.salary?.pfDeduction ?? 0).toLocaleString('en-IN')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Professional Tax / TDS</span>
-                        <span className="font-semibold font-mono text-rose-800">₹{(onboardingData.salary?.taxDeduction ?? 200).toLocaleString('en-IN')}</span>
+                        <span className="font-semibold font-mono text-rose-800">₹{Number(onboardingData.salary?.taxDeduction ?? 0).toLocaleString('en-IN')}</span>
                       </div>
                     </>
                   )}
@@ -514,8 +519,9 @@ export const PrintableStaffOnboarding: React.FC<PrintableStaffOnboardingProps> =
                   </div>
                 </div>
                 <div className="pt-2 mt-2 border-t border-slate-200 text-[9px] text-slate-500 flex justify-between">
-                  <span>UAN: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.uan || '100984712093'}</b></span>
-                  <span>PF: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.pfNumber || 'KR/KCH/0048192'}</b></span>
+                  <span>UAN: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.uan || '—'}</b></span>
+                  <span>PF: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.pfNumber || '—'}</b></span>
+                  <span>ESI: <b className="text-slate-700 font-mono">{onboardingData.bankPayroll?.esiNumber || '—'}</b></span>
                 </div>
               </div>
             </div>

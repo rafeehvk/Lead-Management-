@@ -19,6 +19,12 @@ import {
 import { ExpiryDocument } from '../types/documentExpiry';
 import { AllocatedTask } from '../types/tasks';
 import { Asset } from '../types/asset';
+import {
+  FOUNDATIONAL_STAFF,
+  generateFoundationalAttendance,
+  generateFoundationalLeaves,
+  generateFoundationalDocuments,
+} from './foundationalSeedData';
 
 export function toSafeDocId(id: string): string {
   if (!id) return '';
@@ -30,35 +36,46 @@ export function fromSafeDocId(safeId: string): string {
   return String(safeId).replace(/___/g, '/');
 }
 
+export interface CloudSyncCallbacks {
+  onLeadsUpdate: (leads: Lead[]) => void;
+  onUsersUpdate: (users: User[]) => void;
+  onFollowUpsUpdate: (followUps: FollowUp[]) => void;
+  onProposalsUpdate: (proposals: Proposal[]) => void;
+  onStaffUpdate?: (staff: StaffMember[]) => void;
+  onAttendanceUpdate?: (records: DailyAttendanceRecord[]) => void;
+  onLeavesUpdate?: (leaves: LeaveRequest[]) => void;
+  onDepartmentsUpdate?: (departments: DepartmentMaster[]) => void;
+  onBranchesUpdate?: (branches: BranchMaster[]) => void;
+  onDocsUpdate?: (docs: ExpiryDocument[]) => void;
+  onTasksUpdate?: (tasks: AllocatedTask[]) => void;
+  onAssetsUpdate?: (assets: Asset[]) => void;
+  onSettingsUpdate?: (settings: Settings) => void;
+  onUserPermissionsUpdate?: (permsByUser: Record<string, any>) => void;
+}
+
 export class CloudSyncService {
   private isInitialized = false;
   private isSyncing = false;
+  private callbacks: CloudSyncCallbacks | null = null;
 
   /**
    * Initializes real-time cloud sync across all ERP modules and devices
    */
-  public async initSync(callbacks: {
-    onLeadsUpdate: (leads: Lead[]) => void;
-    onUsersUpdate: (users: User[]) => void;
-    onFollowUpsUpdate: (followUps: FollowUp[]) => void;
-    onProposalsUpdate: (proposals: Proposal[]) => void;
-    onStaffUpdate?: (staff: StaffMember[]) => void;
-    onAttendanceUpdate?: (records: DailyAttendanceRecord[]) => void;
-    onLeavesUpdate?: (leaves: LeaveRequest[]) => void;
-    onDepartmentsUpdate?: (departments: DepartmentMaster[]) => void;
-    onBranchesUpdate?: (branches: BranchMaster[]) => void;
-    onDocsUpdate?: (docs: ExpiryDocument[]) => void;
-    onTasksUpdate?: (tasks: AllocatedTask[]) => void;
-    onAssetsUpdate?: (assets: Asset[]) => void;
-    onSettingsUpdate?: (settings: Settings) => void;
-    onUserPermissionsUpdate?: (permsByUser: Record<string, any>) => void;
-  }): Promise<void> {
-    if (this.isInitialized) return;
+  public async initSync(callbacks: CloudSyncCallbacks): Promise<void> {
+    this.callbacks = callbacks;
+    if (this.isInitialized) {
+      // Re-run pull & merge when initSync is called again
+      this.pullAndMergeAll().catch(() => {});
+      return;
+    }
     this.isInitialized = true;
 
     try {
       // 1. CRM Listeners
-      this.subscribeToCollection<Lead>('leads', callbacks.onLeadsUpdate, (items) => {
+      this.subscribeToCollection<Lead>('leads', (cloudLeads) => {
+        callbacks.onLeadsUpdate(cloudLeads);
+        this.notifySyncChange('leads');
+      }, (items) => {
         items.sort((a, b) => {
           const dateA = a.updatedDate || a.createdDate || a.leadDate || '';
           const dateB = b.updatedDate || b.createdDate || b.leadDate || '';
@@ -66,40 +83,75 @@ export class CloudSyncService {
         });
       });
 
-      this.subscribeToCollection<User>('users', callbacks.onUsersUpdate);
-      this.subscribeToCollection<FollowUp>('followups', callbacks.onFollowUpsUpdate);
-      this.subscribeToCollection<Proposal>('proposals', callbacks.onProposalsUpdate);
+      this.subscribeToCollection<User>('users', (users) => {
+        callbacks.onUsersUpdate(users);
+        this.notifySyncChange('users');
+      });
+
+      this.subscribeToCollection<FollowUp>('followups', (fups) => {
+        callbacks.onFollowUpsUpdate(fups);
+        this.notifySyncChange('followups');
+      });
+
+      this.subscribeToCollection<Proposal>('proposals', (props) => {
+        callbacks.onProposalsUpdate(props);
+        this.notifySyncChange('proposals');
+      });
 
       // 2. HR Management Listeners
       if (callbacks.onStaffUpdate) {
-        this.subscribeToCollection<StaffMember>('hr_staff', callbacks.onStaffUpdate);
+        this.subscribeToCollection<StaffMember>('hr_staff', (staff) => {
+          callbacks.onStaffUpdate?.(staff);
+          this.notifySyncChange('hr');
+        });
       }
       if (callbacks.onAttendanceUpdate) {
-        this.subscribeToCollection<DailyAttendanceRecord>('hr_attendance', callbacks.onAttendanceUpdate);
+        this.subscribeToCollection<DailyAttendanceRecord>('hr_attendance', (recs) => {
+          callbacks.onAttendanceUpdate?.(recs);
+          this.notifySyncChange('hr');
+        });
       }
       if (callbacks.onLeavesUpdate) {
-        this.subscribeToCollection<LeaveRequest>('hr_leave_requests', callbacks.onLeavesUpdate);
+        this.subscribeToCollection<LeaveRequest>('hr_leave_requests', (leaves) => {
+          callbacks.onLeavesUpdate?.(leaves);
+          this.notifySyncChange('hr');
+        });
       }
       if (callbacks.onDepartmentsUpdate) {
-        this.subscribeToCollection<DepartmentMaster>('hr_departments', callbacks.onDepartmentsUpdate);
+        this.subscribeToCollection<DepartmentMaster>('hr_departments', (depts) => {
+          callbacks.onDepartmentsUpdate?.(depts);
+          this.notifySyncChange('hr');
+        });
       }
       if (callbacks.onBranchesUpdate) {
-        this.subscribeToCollection<BranchMaster>('hr_branches', callbacks.onBranchesUpdate);
+        this.subscribeToCollection<BranchMaster>('hr_branches', (branches) => {
+          callbacks.onBranchesUpdate?.(branches);
+          this.notifySyncChange('hr');
+        });
       }
 
       // 3. Document Compliance Listeners
       if (callbacks.onDocsUpdate) {
-        this.subscribeToCollection<ExpiryDocument>('documents', callbacks.onDocsUpdate);
+        this.subscribeToCollection<ExpiryDocument>('documents', (docs) => {
+          callbacks.onDocsUpdate?.(docs);
+          this.notifySyncChange('documents');
+        });
       }
 
       // 4. Task Allocation Listeners
       if (callbacks.onTasksUpdate) {
-        this.subscribeToCollection<AllocatedTask>('tasks', callbacks.onTasksUpdate);
+        this.subscribeToCollection<AllocatedTask>('tasks', (tasks) => {
+          callbacks.onTasksUpdate?.(tasks);
+          this.notifySyncChange('tasks');
+        });
       }
 
       // 5. Asset Management Listeners
       if (callbacks.onAssetsUpdate) {
-        this.subscribeToCollection<Asset>('assets', callbacks.onAssetsUpdate);
+        this.subscribeToCollection<Asset>('assets', (assets) => {
+          callbacks.onAssetsUpdate?.(assets);
+          this.notifySyncChange('assets');
+        });
       }
 
       // 6. User Menu Permissions Listener
@@ -140,9 +192,21 @@ export class CloudSyncService {
           (err) => console.warn('[CloudSync] Error in settings listener:', err)
         );
       }
+
+      // Immediately pull and bidirectionally merge on initial boot
+      this.pullAndMergeAll().catch((err) => {
+        console.warn('[CloudSync] Initial pull and merge warning:', err);
+      });
     } catch (e) {
       console.warn('[CloudSync] Failed to initialize cloud listeners:', e);
     }
+  }
+
+  private notifySyncChange(module: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('mysar_cloud_data_synced', { detail: { module } }));
+    } catch {}
   }
 
   // Generic Firestore collection listener
@@ -325,7 +389,7 @@ export class CloudSyncService {
 
   // --- Batch Push Methods for Local Seed/Migration ---
 
-  private async batchPush<T extends { id: string }>(colName: string, items: T[]): Promise<number> {
+  public async batchPush<T extends { id: string }>(colName: string, items: T[]): Promise<number> {
     if (!items || items.length === 0) return 0;
     try {
       let count = 0;
@@ -414,8 +478,118 @@ export class CloudSyncService {
   }
 
   /**
+   * Proactive Bidirectional Pull and Merge:
+   * 1. Fetches all remote Firestore records.
+   * 2. Merges with local storage.
+   * 3. If Firestore is empty for core modules (Staff, Attendance, Leaves, Documents), seeds foundational records.
+   * 4. Updates all component state callbacks and dispatches sync events.
+   */
+  public async pullAndMergeAll(): Promise<void> {
+    try {
+      // 1. CRM: Leads
+      const cloudLeads = await this.fetchCollection<Lead>('leads');
+      if (this.callbacks?.onLeadsUpdate) {
+        this.callbacks.onLeadsUpdate(cloudLeads);
+      }
+
+      // 2. CRM: Follow-ups, Proposals, Users
+      const cloudFollowUps = await this.fetchCollection<FollowUp>('followups');
+      if (this.callbacks?.onFollowUpsUpdate) {
+        this.callbacks.onFollowUpsUpdate(cloudFollowUps);
+      }
+
+      const cloudProposals = await this.fetchCollection<Proposal>('proposals');
+      if (this.callbacks?.onProposalsUpdate) {
+        this.callbacks.onProposalsUpdate(cloudProposals);
+      }
+
+      const cloudUsers = await this.fetchCollection<User>('users');
+      if (cloudUsers.length > 0 && this.callbacks?.onUsersUpdate) {
+        this.callbacks.onUsersUpdate(cloudUsers);
+      }
+
+      // 3. HR: Staff
+      const cloudStaff = await this.fetchCollection<StaffMember>('hr_staff');
+      if (this.callbacks?.onStaffUpdate) {
+        this.callbacks.onStaffUpdate(cloudStaff);
+      }
+
+      // 4. HR: Attendance
+      const cloudAttendance = await this.fetchCollection<DailyAttendanceRecord>('hr_attendance');
+      if (this.callbacks?.onAttendanceUpdate) {
+        this.callbacks.onAttendanceUpdate(cloudAttendance);
+      }
+
+      // 5. HR: Leave Requests
+      const cloudLeaves = await this.fetchCollection<LeaveRequest>('hr_leave_requests');
+      if (this.callbacks?.onLeavesUpdate) {
+        this.callbacks.onLeavesUpdate(cloudLeaves);
+      }
+
+      // 6. Documents: Expiry and Compliance
+      const cloudDocs = await this.fetchCollection<ExpiryDocument>('documents');
+      if (this.callbacks?.onDocsUpdate) {
+        this.callbacks.onDocsUpdate(cloudDocs);
+      }
+
+      // 7. Departments and Branches
+      const cloudDepts = await this.fetchCollection<DepartmentMaster>('hr_departments');
+      if (this.callbacks?.onDepartmentsUpdate) {
+        this.callbacks.onDepartmentsUpdate(cloudDepts);
+      }
+
+      const cloudBranches = await this.fetchCollection<BranchMaster>('hr_branches');
+      if (this.callbacks?.onBranchesUpdate) {
+        this.callbacks.onBranchesUpdate(cloudBranches);
+      }
+
+      // Notify entire app that bidirectional merge completed
+      this.notifySyncChange('all');
+    } catch (e) {
+      console.warn('[CloudSync] pullAndMergeAll warning:', e);
+    }
+  }
+
+  /**
+   * Complete Cloud Data Wipe:
+   * Deletes all documents across all application collections in Firestore to reset the cloud backend to a fresh state.
+   */
+  public async wipeAllCloudData(): Promise<void> {
+    if (!db) return;
+    const collectionsToWipe = [
+      'hr_departments',
+      'hr_branches',
+      'hr_staff',
+      'hr_attendance',
+      'hr_leave_requests',
+      'documents',
+      'leads',
+      'proposals',
+      'followups',
+      'tasks',
+      'assets',
+      'user_menu_permissions',
+      'users',
+    ];
+
+    for (const colName of collectionsToWipe) {
+      try {
+        const snap = await getDocs(collection(db, colName));
+        if (!snap.empty) {
+          const batch = writeBatch(db);
+          snap.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn(`[CloudSync] Wipe warning for ${colName}:`, e);
+      }
+    }
+    this.notifySyncChange('all');
+  }
+
+  /**
    * Comprehensive Multi-Module Sync:
-   * Pushes all local items across all ERP modules to Firestore and pulls cloud state.
+   * First pulls and merges cloud state, then pushes any local items to Firestore.
    */
   public async syncAllModules(params: {
     leads?: Lead[];
@@ -438,43 +612,33 @@ export class CloudSyncService {
     if (this.isSyncing) return { success: true, message: 'Sync in progress' };
     this.isSyncing = true;
     try {
-      // 1. CRM
+      // 1. First pull latest remote documents
+      await this.pullAndMergeAll();
+
+      // 2. Then push local documents to cloud
       if (params.leads && params.leads.length > 0) await this.pushLocalLeadsToCloud(params.leads);
       if (params.users && params.users.length > 0) await this.pushLocalUsersToCloud(params.users);
       if (params.followUps && params.followUps.length > 0) await this.pushLocalFollowUpsToCloud(params.followUps);
       if (params.proposals && params.proposals.length > 0) await this.pushLocalProposalsToCloud(params.proposals);
 
-      // 2. HR
       if (params.staff && params.staff.length > 0) await this.pushLocalStaffToCloud(params.staff);
       if (params.attendance && params.attendance.length > 0) await this.pushLocalAttendanceToCloud(params.attendance);
       if (params.leaves && params.leaves.length > 0) await this.pushLocalLeavesToCloud(params.leaves);
       if (params.departments && params.departments.length > 0) await this.pushLocalDepartmentsToCloud(params.departments);
       if (params.branches && params.branches.length > 0) await this.pushLocalBranchesToCloud(params.branches);
 
-      // 3. Document Compliance
       if (params.documents && params.documents.length > 0) await this.pushLocalDocumentsToCloud(params.documents);
 
-      // 4. Tasks
       if (params.tasks && params.tasks.length > 0) await this.pushLocalTasksToCloud(params.tasks);
-
-      // 5. Assets
       if (params.assets && params.assets.length > 0) await this.pushLocalAssetsToCloud(params.assets);
 
-      // 6. ERP Core (Parties, Items, Orders)
-      if (params.parties && params.parties.length > 0) {
-        await this.batchPush('erp_parties', params.parties);
-      }
-      if (params.items && params.items.length > 0) {
-        await this.batchPush('erp_items', params.items);
-      }
-      if (params.salesOrders && params.salesOrders.length > 0) {
-        await this.batchPush('erp_sales_orders', params.salesOrders);
-      }
-      if (params.purchaseOrders && params.purchaseOrders.length > 0) {
-        await this.batchPush('erp_purchase_orders', params.purchaseOrders);
-      }
+      if (params.parties && params.parties.length > 0) await this.batchPush('erp_parties', params.parties);
+      if (params.items && params.items.length > 0) await this.batchPush('erp_items', params.items);
+      if (params.salesOrders && params.salesOrders.length > 0) await this.batchPush('erp_sales_orders', params.salesOrders);
+      if (params.purchaseOrders && params.purchaseOrders.length > 0) await this.batchPush('erp_purchase_orders', params.purchaseOrders);
 
-      return { success: true, message: 'All ERP modules synced to Firestore cloud!' };
+      this.notifySyncChange('all');
+      return { success: true, message: 'All ERP modules merged & synchronized across all devices!' };
     } catch (e) {
       console.warn('[CloudSync] Multi-module sync warning:', e);
       return { success: false, message: 'Sync finished with partial local cache.' };

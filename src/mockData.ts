@@ -182,22 +182,10 @@ export const initialUsers: User[] = [
     userId: 'rafeeh.vk',
     password: 'Password@123',
     name: 'Rafeeh V K',
-    email: 'rafeeh.vk@casbiro.com',
+    email: 'rafeeh.vk@gmail.com',
     mobile: '+91 7994 807 907',
     role: 'Admin',
     status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'USR-002',
-    userId: 'sakeer',
-    password: 'Password@123',
-    name: 'Sakeer Ali V',
-    email: 'sakeer@casbiro.com',
-    mobile: '+91 7994 806 906',
-    role: 'Manager',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
   },
 ];
 

@@ -481,13 +481,8 @@ class DocumentExpiryStorageService {
 
   // --- CLOUD SYNC RECEIVER (Real-time Firestore synchronization) ---
   public syncFromCloudDocuments(cloudDocs: ExpiryDocument[]): void {
-    if (!cloudDocs) return;
-    const local = this.getDocuments();
-    const map = new Map<string, ExpiryDocument>();
-    local.forEach((d) => map.set(d.id, d));
-    cloudDocs.forEach((cd) => map.set(cd.id, cd));
-    const merged = Array.from(map.values());
-    this.setStorage(STORAGE_KEYS.DOCUMENTS, merged);
+    if (!Array.isArray(cloudDocs)) return;
+    this.setStorage(STORAGE_KEYS.DOCUMENTS, cloudDocs);
     this.notifyChange();
   }
 }

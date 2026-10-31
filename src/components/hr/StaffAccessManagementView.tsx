@@ -135,9 +135,23 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
   }, [propStaff]);
 
   const refreshLocalStaff = () => {
-    const fresh = hrStorage.getStaff();
+    const fresh = propStaff && propStaff.length > 0 ? propStaff : hrStorage.getStaff();
     setStaffList(fresh);
   };
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      refreshLocalStaff();
+    };
+    window.addEventListener('mysar_staff_access_changed', handleRefresh);
+    window.addEventListener('mysar_users_updated', handleRefresh);
+    window.addEventListener('mysar_hr_data_updated', handleRefresh);
+    return () => {
+      window.removeEventListener('mysar_staff_access_changed', handleRefresh);
+      window.removeEventListener('mysar_users_updated', handleRefresh);
+      window.removeEventListener('mysar_hr_data_updated', handleRefresh);
+    };
+  }, [propStaff]);
 
   const filteredStaff = useMemo(() => {
     return staffList.filter((s) => {
@@ -187,12 +201,31 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
     const sa = selectedStaff.systemAccess;
     setEnableLogin(sa?.enableLogin ?? true);
     const resolvedUname =
-      sa?.username ||
+      sa?.username?.trim() ||
       (selectedStaff.email
         ? selectedStaff.email.split('@')[0].toLowerCase()
         : selectedStaff.fullName.toLowerCase().replace(/[^a-z0-9]/g, '.'));
-    setUsername(resolvedUname);
-    setPassword(sa?.password || sa?.initialPassword || 'Password@123');
+
+    // Find linked user to cross-check credentials and ensure 100% two-way link
+    const allUsers = storage.getUsers();
+    const matchedUser = allUsers.find(
+      (u) =>
+        u.staffId === selectedStaff.id ||
+        (selectedStaff.staffCode && u.staffId === selectedStaff.staffCode) ||
+        (u.userId && u.userId.toLowerCase() === resolvedUname.toLowerCase()) ||
+        (u.email && selectedStaff.email && u.email.toLowerCase() === selectedStaff.email.toLowerCase()) ||
+        ((u as any).personalEmail && selectedStaff.personalEmail && (u as any).personalEmail.toLowerCase() === selectedStaff.personalEmail.toLowerCase())
+    );
+
+    const linkedUsername = sa?.username?.trim() || matchedUser?.userId?.trim() || resolvedUname;
+    const linkedPassword =
+      sa?.password?.trim() ||
+      matchedUser?.password?.trim() ||
+      (sa as any)?.initialPassword?.trim() ||
+      'Password@123';
+
+    setUsername(linkedUsername);
+    setPassword(linkedPassword);
     setUserType(sa?.userType || selectedStaff.employeeCategory || 'Staff');
     setSystemRole(sa?.role || 'Staff');
     const resolvedLevel = sa?.accessLevel || 'Standard';
@@ -208,14 +241,6 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
     setAssignedModules(resolvedMods);
 
     // Find or build linked user to load granular side menu permissions
-    const allUsers = storage.getUsers();
-    const matchedUser = allUsers.find(
-      (u) =>
-        u.staffId === selectedStaff.id ||
-        (u.userId && u.userId.toLowerCase() === resolvedUname.toLowerCase()) ||
-        (u.email && selectedStaff.email && u.email.toLowerCase() === selectedStaff.email.toLowerCase())
-    );
-
     const allowedTabSet = resolveAssignedModulesToNavTabs(resolvedMods, resolvedLevel);
     const existingPerms = matchedUser ? getUserMenuPermissions(matchedUser) : {};
     const initialMap: Record<string, UserSideMenuPermission> = {};
@@ -348,11 +373,15 @@ export const StaffAccessManagementView: React.FC<StaffAccessManagementViewProps>
         (u.email && selectedStaff.email && u.email.toLowerCase() === selectedStaff.email.toLowerCase())
     );
     if (matchedUser) {
+      matchedUser.userId = sUsername;
+      matchedUser.password = password.trim() || 'Password@123';
+      storage.updateUser(matchedUser);
       saveUserMenuPermissions(matchedUser.id, sideMenuPerms);
     }
 
     refreshLocalStaff();
     window.dispatchEvent(new CustomEvent('mysar_staff_access_changed'));
+    window.dispatchEvent(new CustomEvent('mysar_users_updated'));
     setFeedbackBanner(
       `Saved System Access, Assigned Modules (${assignedModules.length} modules), and Side Menu CRUD Permissions for ${selectedStaff.fullName} (${selectedStaff.id}).`
     );

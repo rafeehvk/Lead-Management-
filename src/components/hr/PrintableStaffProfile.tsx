@@ -219,35 +219,66 @@ export const PrintableStaffProfile: React.FC<PrintableStaffProfileProps> = ({
                 </div>
               </div>
               <div className="text-right text-[10px] space-y-0.5">
-                <div><span className="text-slate-500">Gross Earnings:</span> <b className="text-slate-800">₹{staff.salary.grossSalary.toLocaleString('en-IN')}</b></div>
-                <div><span className="text-slate-500">Total Deductions:</span> <b className="text-rose-700">₹{staff.salary.totalDeductions.toLocaleString('en-IN')}</b></div>
+                <div><span className="text-slate-500">Gross Earnings:</span> <b className="text-slate-800">₹{(staff.salary?.grossSalary ?? 0).toLocaleString('en-IN')}</b></div>
+                <div><span className="text-slate-500">Total Deductions:</span> <b className="text-rose-700">₹{(staff.salary?.totalDeductions ?? 0).toLocaleString('en-IN')}</b></div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-[10px]">
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/80 space-y-1">
                 <div className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-1">Earnings Structure</div>
-                <div className="flex justify-between"><span className="text-slate-500">Basic Salary:</span><span className="font-semibold">₹{staff.salary.basicSalary.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">House Rent Allowance (HRA):</span><span className="font-semibold">₹{staff.salary.hra.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Total Allowances:</span><span className="font-semibold">₹{(staff.salary.allowances + staff.salary.specialAllowance).toLocaleString()}</span></div>
-                {staff.salary.allowanceItems && staff.salary.allowanceItems.length > 0 && (
+                <div className="flex justify-between"><span className="text-slate-500">Basic Salary:</span><span className="font-semibold">₹{(staff.salary?.basicSalary ?? 0).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">House Rent Allowance (HRA):</span><span className="font-semibold">₹{(staff.salary?.hra ?? 0).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Total Allowances:</span><span className="font-semibold">₹{((staff.salary?.allowances ?? 0) + (staff.salary?.specialAllowance ?? 0)).toLocaleString()}</span></div>
+                {staff.salary?.allowanceItems && staff.salary.allowanceItems.length > 0 ? (
                   <div className="pt-1 border-t border-slate-200/60 text-[9px] text-slate-600 space-y-0.5">
                     {staff.salary.allowanceItems.map((item, idx) => (
                       <div key={idx} className="flex justify-between pl-1">
                         <span>• {item.name}:</span>
-                        <span className="font-mono">₹{item.amount.toLocaleString()}</span>
+                        <span className="font-mono">₹{Number(item.amount || 0).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
-                )}
+                ) : null}
+                <div className="pt-1 border-t border-slate-200/60 text-[9px] text-slate-500 flex justify-between">
+                  <span>PF Ded: ₹{Number(staff.salary?.pfDeduction ?? 0).toLocaleString()}</span>
+                  <span>Tax / TDS: ₹{Number(staff.salary?.taxDeduction ?? 0).toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/80 space-y-1">
                 <div className="font-bold text-slate-800 border-b border-slate-200 pb-1 mb-1">Bank & Statutory Accounts</div>
-                <div className="flex justify-between"><span className="text-slate-500">Bank:</span><span className="font-semibold truncate max-w-[140px]">{staff.salary.bankDetails.bankName}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Account No:</span><span className="font-semibold font-mono">{staff.salary.bankDetails.accountNo}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">IFSC / Branch:</span><span className="font-semibold">{staff.salary.bankDetails.ifscCode}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">PF / UAN:</span><span className="font-semibold font-mono text-[9px]">{staff.bankPayroll?.uan || '100984712093'}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Bank:</span>
+                  <span className="font-semibold truncate max-w-[140px]">
+                    {staff.salary?.bankDetails?.bankName || staff.bankPayroll?.bankName || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Account No:</span>
+                  <span className="font-semibold font-mono">
+                    {staff.salary?.bankDetails?.accountNo || staff.bankPayroll?.accountNo || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">IFSC / Branch:</span>
+                  <span className="font-semibold">
+                    {staff.salary?.bankDetails?.ifscCode || staff.bankPayroll?.ifscCode || '—'}
+                    {staff.salary?.bankDetails?.branch || staff.bankPayroll?.branch ? ` (${staff.salary?.bankDetails?.branch || staff.bankPayroll?.branch})` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">UAN / PF:</span>
+                  <span className="font-semibold font-mono text-[9px]">
+                    {staff.bankPayroll?.uan || '—'} / {staff.bankPayroll?.pfNumber || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">ESI / PAN:</span>
+                  <span className="font-semibold font-mono text-[9px]">
+                    {staff.bankPayroll?.esiNumber || '—'} / {staff.panNumber || '—'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

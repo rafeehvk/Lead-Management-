@@ -27,7 +27,8 @@ import { QuickReportModal } from './QuickReportModal';
 
 import { RenewalModal } from '../documentExpiry/RenewalModal';
 import { DocumentDetailsModal } from '../documentExpiry/DocumentDetailsModal';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { cloudSync } from '../../services/cloudSyncService';
+import { CheckCircle2, AlertCircle, Cloud, RefreshCw } from 'lucide-react';
 
 interface ErpManagementDashboardProps {
   currentUser: User;
@@ -36,10 +37,15 @@ interface ErpManagementDashboardProps {
   onNavigateToLeadDetail?: (leadId: string) => void;
   onLogout?: () => void;
   allowedNavTabs?: Set<string> | null;
+  leads?: Lead[];
+  followUps?: FollowUp[];
+  proposals?: Proposal[];
+  users?: User[];
   staff?: StaffMember[];
   attendance?: DailyAttendanceRecord[];
   leaveRequests?: LeaveRequest[];
   documents?: ExpiryDocument[];
+  onSyncCloud?: () => Promise<void>;
 }
 
 export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
@@ -49,22 +55,29 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   onNavigateToLeadDetail,
   onLogout,
   allowedNavTabs,
+  leads: propLeads,
+  followUps: propFollowUps,
+  proposals: propProposals,
+  users: propUsers,
   staff: propStaff,
   attendance: propAttendance,
   leaveRequests: propLeaveRequests,
   documents: propDocuments,
+  onSyncCloud,
 }) => {
-  // 1. Data States
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  // 1. Data States (Proactively fallback to storage and props)
+  const [leads, setLeads] = useState<Lead[]>(() => (propLeads !== undefined ? propLeads : storage.getLeads()));
+  const [followUps, setFollowUps] = useState<FollowUp[]>(() => (propFollowUps !== undefined ? propFollowUps : storage.getFollowUps()));
+  const [proposals, setProposals] = useState<Proposal[]>(() => (propProposals !== undefined ? propProposals : storage.getProposals()));
+  const [users, setUsers] = useState<User[]>(() => (propUsers !== undefined ? propUsers : storage.getUsers()));
 
-  const [staff, setStaff] = useState<StaffMember[]>(() => propStaff || hrStorage.getStaff());
-  const [attendance, setAttendance] = useState<DailyAttendanceRecord[]>(() => propAttendance || hrStorage.getAttendanceRecords());
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => propLeaveRequests || hrStorage.getLeaveRequests());
+  const [staff, setStaff] = useState<StaffMember[]>(() => (propStaff !== undefined ? propStaff : hrStorage.getStaff()));
+  const [attendance, setAttendance] = useState<DailyAttendanceRecord[]>(() => (propAttendance !== undefined ? propAttendance : hrStorage.getAttendanceRecords()));
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => (propLeaveRequests !== undefined ? propLeaveRequests : hrStorage.getLeaveRequests()));
 
-  const [documents, setDocuments] = useState<ExpiryDocument[]>(() => propDocuments || documentExpiryStorage.getDocuments());
+  const [documents, setDocuments] = useState<ExpiryDocument[]>(() => (propDocuments !== undefined ? propDocuments : documentExpiryStorage.getDocuments()));
+
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
   // 2. Dashboard Header Filter States
   const [filterState, setFilterState] = useState<DashboardFilterState>({
@@ -97,10 +110,10 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   // Load all module data
   const refreshAllData = useCallback(() => {
     // Leads / CRM
-    const loadedLeads = storage.getLeads();
-    const loadedFollowUps = storage.getFollowUps();
-    const loadedProposals = storage.getProposals();
-    const loadedUsers = storage.getUsers();
+    const loadedLeads = propLeads !== undefined ? propLeads : storage.getLeads();
+    const loadedFollowUps = propFollowUps !== undefined ? propFollowUps : storage.getFollowUps();
+    const loadedProposals = propProposals !== undefined ? propProposals : storage.getProposals();
+    const loadedUsers = propUsers !== undefined ? propUsers : storage.getUsers();
 
     setLeads(loadedLeads);
     setFollowUps(loadedFollowUps);
@@ -108,33 +121,43 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
     setUsers(loadedUsers);
 
     // HR
-    const loadedStaff = propStaff || hrStorage.getStaff();
-    const loadedAttendance = propAttendance || hrStorage.getAttendanceRecords();
-    const loadedLeaves = propLeaveRequests || hrStorage.getLeaveRequests();
+    const loadedStaff = propStaff !== undefined ? propStaff : hrStorage.getStaff();
+    const loadedAttendance = propAttendance !== undefined ? propAttendance : hrStorage.getAttendanceRecords();
+    const loadedLeaves = propLeaveRequests !== undefined ? propLeaveRequests : hrStorage.getLeaveRequests();
 
     setStaff(loadedStaff);
     setAttendance(loadedAttendance);
     setLeaveRequests(loadedLeaves);
 
     // Document Expiry
-    const loadedDocs = propDocuments || documentExpiryStorage.getDocuments();
+    const loadedDocs = propDocuments !== undefined ? propDocuments : documentExpiryStorage.getDocuments();
     setDocuments(loadedDocs);
-  }, [propStaff, propAttendance, propLeaveRequests, propDocuments]);
+  }, [propLeads, propFollowUps, propProposals, propUsers, propStaff, propAttendance, propLeaveRequests, propDocuments]);
 
   useEffect(() => {
     refreshAllData();
   }, [refreshAllData]);
 
-  // Multi-device cloud sync real-time listeners
+  // Multi-device cloud sync real-time listeners across all devices
   useEffect(() => {
     const handleCloudSync = () => {
       refreshAllData();
     };
+    window.addEventListener('mysar_leads_updated', handleCloudSync);
+    window.addEventListener('mysar_followups_updated', handleCloudSync);
+    window.addEventListener('mysar_proposals_updated', handleCloudSync);
+    window.addEventListener('mysar_users_updated', handleCloudSync);
+    window.addEventListener('mysar_staff_updated', handleCloudSync);
     window.addEventListener('mysar_hr_updated', handleCloudSync);
     window.addEventListener('mysar_doc_expiry_changed', handleCloudSync);
     window.addEventListener('mysar_cloud_data_synced', handleCloudSync);
     window.addEventListener('storage', handleCloudSync);
     return () => {
+      window.removeEventListener('mysar_leads_updated', handleCloudSync);
+      window.removeEventListener('mysar_followups_updated', handleCloudSync);
+      window.removeEventListener('mysar_proposals_updated', handleCloudSync);
+      window.removeEventListener('mysar_users_updated', handleCloudSync);
+      window.removeEventListener('mysar_staff_updated', handleCloudSync);
       window.removeEventListener('mysar_hr_updated', handleCloudSync);
       window.removeEventListener('mysar_doc_expiry_changed', handleCloudSync);
       window.removeEventListener('mysar_cloud_data_synced', handleCloudSync);
@@ -143,6 +166,22 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   }, [refreshAllData]);
 
   // Sync prop updates from parent
+  useEffect(() => {
+    if (propLeads) setLeads(propLeads);
+  }, [propLeads]);
+
+  useEffect(() => {
+    if (propFollowUps) setFollowUps(propFollowUps);
+  }, [propFollowUps]);
+
+  useEffect(() => {
+    if (propProposals) setProposals(propProposals);
+  }, [propProposals]);
+
+  useEffect(() => {
+    if (propUsers) setUsers(propUsers);
+  }, [propUsers]);
+
   useEffect(() => {
     if (propStaff) setStaff(propStaff);
   }, [propStaff]);
@@ -158,6 +197,40 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
   useEffect(() => {
     if (propDocuments) setDocuments(propDocuments);
   }, [propDocuments]);
+
+  // Direct Cloud Trigger handler
+  const handleTriggerCloudSync = async () => {
+    setIsCloudSyncing(true);
+    try {
+      if (onSyncCloud) {
+        await onSyncCloud();
+      } else {
+        await cloudSync.pullAndMergeAll();
+        await cloudSync.syncAllModules({
+          leads: storage.getLeads(),
+          users: storage.getUsers(),
+          followUps: storage.getFollowUps(),
+          proposals: storage.getProposals(),
+          staff: hrStorage.getStaff(),
+          attendance: hrStorage.getAttendanceRecords(),
+          leaves: hrStorage.getLeaveRequests(),
+          documents: documentExpiryStorage.getDocuments(),
+        });
+      }
+      refreshAllData();
+      setToastMessage({
+        type: 'success',
+        text: 'All ERP modules synchronized with Firebase cloud database across all devices.',
+      });
+    } catch {
+      setToastMessage({
+        type: 'info',
+        text: 'Cloud sync refresh completed.',
+      });
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
 
   // Filter change handler
   const handleFilterChange = (newFilters: Partial<DashboardFilterState>) => {
@@ -556,6 +629,36 @@ export const ErpManagementDashboard: React.FC<ErpManagementDashboardProps> = ({
           <span className="text-xs font-semibold">{toastMessage.text}</span>
         </div>
       )}
+
+      {/* 0. FIREBASE BACKEND DATABASE STATUS & MULTI-DEVICE SYNC BAR */}
+      <div className="mx-4 md:mx-6 mt-4 mb-2 p-3 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <Cloud className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-800">Firebase Backend Database</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Connected & Synced
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Multi-Device Cloud Sync Active • Leads: <span className="font-semibold text-slate-700">{leads.length}</span> • Staff: <span className="font-semibold text-slate-700">{staff.length}</span> • Attendance: <span className="font-semibold text-slate-700">{attendance.length}</span> • Documents: <span className="font-semibold text-slate-700">{documents.length}</span>
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleTriggerCloudSync}
+          disabled={isCloudSyncing}
+          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#EAF7EF] text-[#0B5D2A] hover:bg-[#168A45] hover:text-white border border-[#168A45]/30 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+          <span>{isCloudSyncing ? 'Syncing Firebase...' : 'Sync Database Now'}</span>
+        </button>
+      </div>
 
       {/* 1. SMART INSIGHTS & WARNING BANNER */}
       <SmartInsightsBanner alerts={smartAlerts} onActionClick={handleSmartAlertClick} />

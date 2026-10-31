@@ -58,6 +58,7 @@ import { getAllowedNavTabsForUser } from '../utils/menuPermissions';
 
 export type NavTab =
   | 'dashboard'
+  | 'staff-dashboard'
   | 'my-allowed-pages'
   | 'operations-dashboard'
   | 'lead-overview'
@@ -1905,7 +1906,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   activeTab === 'dashboard' ? 'text-[#168A45]' : 'text-slate-400 group-hover:text-[#168A45]'
                 }`}
               />
-              <span>Executive Dashboard</span>
+              <span>
+                {currentUser.role === 'Staff' || currentUser.userType === 'Staff'
+                  ? 'Staff Dashboard & Tasks'
+                  : 'Executive Dashboard'}
+              </span>
             </div>
           </button>
         )}

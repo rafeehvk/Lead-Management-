@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ErpManagementDashboard } from './components/dashboard/ErpManagementDashboard';
+import { StaffDashboardView } from './components/dashboard/StaffDashboardView';
 import { OperationsDashboardView } from './components/dashboard/OperationsDashboardView';
 import { LeadsView } from './components/LeadsView';
 import { FollowUpsView } from './components/FollowUpsView';
@@ -134,13 +135,18 @@ export default function App() {
     const handleDeptChange = () => {
       setDepartmentsList(hrStorage.getDepartmentsMaster());
       setUsers(storage.getUsers());
+      setHrStaff(hrStorage.getStaff());
       setStaffAuthVersion((v) => v + 1);
     };
+    window.addEventListener('mysar_departments_updated', handleDeptChange);
     window.addEventListener('mysar_department_permissions_changed', handleDeptChange);
     window.addEventListener('mysar_user_menu_permissions_changed', handleDeptChange);
+    window.addEventListener('mysar_staff_updated', handleDeptChange);
     return () => {
+      window.removeEventListener('mysar_departments_updated', handleDeptChange);
       window.removeEventListener('mysar_department_permissions_changed', handleDeptChange);
       window.removeEventListener('mysar_user_menu_permissions_changed', handleDeptChange);
+      window.removeEventListener('mysar_staff_updated', handleDeptChange);
     };
   }, []);
 
@@ -432,10 +438,20 @@ export default function App() {
       setUsers(storage.getUsers());
     };
 
+    const handleSyncAll = () => {
+      refreshAllData();
+      refreshHrData();
+    };
+
     window.addEventListener('mysar_company_logo_changed', handleLogoOrSettingsChange);
     window.addEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
     window.addEventListener('mysar_leads_updated', handleLeadsUpdated);
     window.addEventListener('mysar_users_updated', handleUsersUpdated);
+    window.addEventListener('mysar_followups_updated', handleSyncAll);
+    window.addEventListener('mysar_proposals_updated', handleSyncAll);
+    window.addEventListener('mysar_hr_updated', handleSyncAll);
+    window.addEventListener('mysar_doc_expiry_changed', handleSyncAll);
+    window.addEventListener('mysar_cloud_data_synced', handleSyncAll);
     window.addEventListener('storage', handleLogoOrSettingsChange);
 
     return () => {
@@ -443,12 +459,18 @@ export default function App() {
       window.removeEventListener('mysar_settings_updated', handleLogoOrSettingsChange);
       window.removeEventListener('mysar_leads_updated', handleLeadsUpdated);
       window.removeEventListener('mysar_users_updated', handleUsersUpdated);
+      window.removeEventListener('mysar_followups_updated', handleSyncAll);
+      window.removeEventListener('mysar_proposals_updated', handleSyncAll);
+      window.removeEventListener('mysar_hr_updated', handleSyncAll);
+      window.removeEventListener('mysar_doc_expiry_changed', handleSyncAll);
+      window.removeEventListener('mysar_cloud_data_synced', handleSyncAll);
       window.removeEventListener('storage', handleLogoOrSettingsChange);
     };
   }, []);
 
   const handleManualRefresh = async () => {
     try {
+      await cloudSync.pullAndMergeAll();
       await cloudSync.syncAllModules({
         leads: storage.getLeads(),
         users: storage.getUsers(),
@@ -1042,26 +1064,63 @@ export default function App() {
           )}
 
           {activeTab === 'dashboard' && (
-            <ErpManagementDashboard
+            currentUser.role === 'Staff' || currentUser.userType === 'Staff' ? (
+              <StaffDashboardView
+                currentUser={currentUser}
+                allStaff={hrStaff}
+                attendance={hrAttendance}
+                onNavigateToTab={(tab) => {
+                  if (tab === 'gashub') {
+                    setIsGasHubOpen(true);
+                  } else {
+                    setActiveTab(tab as NavTab);
+                  }
+                }}
+                onLogout={handleLogout}
+              />
+            ) : (
+              <ErpManagementDashboard
+                currentUser={currentUser}
+                allowedNavTabs={allowedUserNavTabs}
+                leads={leads}
+                followUps={followUps}
+                proposals={proposals}
+                users={users}
+                staff={hrStaff}
+                attendance={hrAttendance}
+                leaveRequests={hrLeaveRequests}
+                documents={documentsList}
+                onSyncCloud={handleManualRefresh}
+                onNavigateToTab={(tab) => {
+                  if (tab === 'gashub') {
+                    setIsGasHubOpen(true);
+                  } else {
+                    setActiveTab(tab);
+                  }
+                }}
+                onOpenNewLeadModal={() => {
+                  setEditingLead(null);
+                  setIsNewLeadOpen(true);
+                }}
+                onNavigateToLeadDetail={(leadId) => {
+                  setActiveTab('leads');
+                }}
+                onLogout={handleLogout}
+              />
+            )
+          )}
+
+          {activeTab === 'staff-dashboard' && (
+            <StaffDashboardView
               currentUser={currentUser}
-              allowedNavTabs={allowedUserNavTabs}
-              staff={hrStaff}
+              allStaff={hrStaff}
               attendance={hrAttendance}
-              leaveRequests={hrLeaveRequests}
-              documents={documentsList}
               onNavigateToTab={(tab) => {
                 if (tab === 'gashub') {
                   setIsGasHubOpen(true);
                 } else {
-                  setActiveTab(tab);
+                  setActiveTab(tab as NavTab);
                 }
-              }}
-              onOpenNewLeadModal={() => {
-                setEditingLead(null);
-                setIsNewLeadOpen(true);
-              }}
-              onNavigateToLeadDetail={(leadId) => {
-                setActiveTab('leads');
               }}
               onLogout={handleLogout}
             />
@@ -1364,6 +1423,9 @@ export default function App() {
 
           {activeTab === 'hr-staff-access' && (
             <StaffAccessManagementView
+              staff={hrStaff}
+              currentUser={currentUser}
+              onSaveStaff={handleSaveStaff}
               onSwitchUser={(staffUser) => {
                 handleSwitchUser(staffUser);
               }}

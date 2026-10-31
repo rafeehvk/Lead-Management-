@@ -28,8 +28,9 @@ import {
   Laptop,
   Settings,
   RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
-import { DepartmentMaster } from '../../types/hr';
+import { DepartmentMaster, StaffMember } from '../../types/hr';
 import { hrStorage } from '../../services/hrStorageService';
 import {
   SIDE_MENU_DEFINITIONS,
@@ -225,7 +226,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
   const [departmentsList, setDepartmentsList] = useState<DepartmentMaster[]>(() =>
     hrStorage.getDepartmentsMaster()
   );
-  const staff = useMemo(() => hrStorage.getStaff(), []);
+  const [staffList, setStaffList] = useState<StaffMember[]>(() => hrStorage.getStaff());
 
   // Form State
   const [editingDept, setEditingDept] = useState<DepartmentMaster | null>(null);
@@ -246,9 +247,31 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
   // Quick Inspection Modal State
   const [inspectingDept, setInspectingDept] = useState<DepartmentMaster | null>(null);
 
+  // Delete Confirmation Modal State (Accidental Deletion Prevention)
+  const [deptToDelete, setDeptToDelete] = useState<DepartmentMaster | null>(null);
+  const [reassignDeptCode, setReassignDeptCode] = useState<string>('');
+  const [cannotDeleteNotice, setCannotDeleteNotice] = useState<string | null>(null);
+
   const refreshList = () => {
     setDepartmentsList(hrStorage.getDepartmentsMaster());
+    setStaffList(hrStorage.getStaff());
   };
+
+  React.useEffect(() => {
+    const handleUpdate = () => {
+      refreshList();
+    };
+    window.addEventListener('mysar_departments_updated', handleUpdate);
+    window.addEventListener('mysar_department_permissions_changed', handleUpdate);
+    window.addEventListener('mysar_hr_data_updated', handleUpdate);
+    window.addEventListener('mysar_staff_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('mysar_departments_updated', handleUpdate);
+      window.removeEventListener('mysar_department_permissions_changed', handleUpdate);
+      window.removeEventListener('mysar_hr_data_updated', handleUpdate);
+      window.removeEventListener('mysar_staff_updated', handleUpdate);
+    };
+  }, []);
 
   const triggerFeedback = (msg: string) => {
     setFeedbackNotice(msg);
@@ -398,21 +421,44 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
     }
   };
 
-  // Delete Department Handler
-  const handleDeleteDepartment = (id: string, name: string) => {
+  // Delete Department Handler - In-App Confirmation Modal to Prevent Accidental Deletions
+  const handleRequestDelete = (dept: DepartmentMaster) => {
     if (departmentsList.length <= 1) {
-      alert('At least one department must remain in the Department Master Table.');
+      setCannotDeleteNotice(
+        'At least one department must remain in the Department Master Table to ensure organization operations and staff continuity.'
+      );
       return;
     }
-    if (window.confirm(`Are you sure you want to remove department "${name}" from Master Table?`)) {
-      const deleted = hrStorage.deleteDepartment(id);
-      refreshList();
-      if (deleted) {
-        triggerFeedback(`Department "${name}" deleted from master table.`);
-      } else {
-        triggerFeedback(`Department "${name}" deactivated (staff members are currently assigned).`);
-      }
+    const otherDepts = departmentsList.filter((d) => d.id !== dept.id);
+    setReassignDeptCode(otherDepts[0]?.departmentCode || '');
+    setDeptToDelete(dept);
+  };
+
+  const handleConfirmDeleteDepartment = () => {
+    if (!deptToDelete) return;
+    const deleted = hrStorage.deleteDepartment(deptToDelete.id, 'HR Admin', {
+      forceDelete: true,
+      reassignToDeptCode: reassignDeptCode || undefined,
+    });
+    refreshList();
+    if (deleted) {
+      triggerFeedback(`Department "${deptToDelete.departmentName}" (${deptToDelete.departmentCode}) was successfully removed from the master table.`);
+    } else {
+      triggerFeedback(`Department "${deptToDelete.departmentName}" status was updated.`);
     }
+    setDeptToDelete(null);
+  };
+
+  // Check if duplicate department codes or duplicate names exist in the master list
+  const hasDuplicateCodes = useMemo(() => {
+    const codes = departmentsList.map((d) => d.departmentCode.toUpperCase());
+    return new Set(codes).size < codes.length;
+  }, [departmentsList]);
+
+  const handleDeduplicate = () => {
+    const removed = hrStorage.deduplicateDepartments('HR Admin');
+    refreshList();
+    triggerFeedback(`Successfully cleaned ${removed} duplicate department records from Master Table.`);
   };
 
   return (
@@ -851,16 +897,30 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
             </p>
           </div>
 
-          {onNavigateToStaff && (
-            <button
-              type="button"
-              onClick={onNavigateToStaff}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center space-x-1 cursor-pointer"
-            >
-              <span>View Staff Directory</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {hasDuplicateCodes && (
+              <button
+                type="button"
+                onClick={handleDeduplicate}
+                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                title="Automatically clean and remove duplicate department rows"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                <span>Clean Duplicates</span>
+              </button>
+            )}
+
+            {onNavigateToStaff && (
+              <button
+                type="button"
+                onClick={onNavigateToStaff}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center space-x-1 cursor-pointer"
+              >
+                <span>View Staff Directory</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
@@ -878,13 +938,39 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {departmentsList.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-12 px-4 text-slate-500">
+                      <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-slate-700">No departments configured</p>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                        Use the form above to create your organization's departments and configure accessible menus.
+                      </p>
+                    </td>
+                  </tr>
+                )}
                 {departmentsList.map((dept) => {
-                  const staffCount = staff.filter(
-                    (s) =>
-                      s.department.toLowerCase() === dept.departmentName.toLowerCase() ||
-                      s.departmentCode?.toUpperCase() === dept.departmentCode.toUpperCase()
-                  ).length;
+                  const activeStaffForDept = staffList.filter((s) => {
+                    const isActive = s.employmentStatus === 'Active' || !s.employmentStatus;
+                    if (!isActive) return false;
+                    const sCode = (s.departmentCode || '').toUpperCase().trim();
+                    const sName = (s.department || '').toLowerCase().trim();
+                    const dCode = (dept.departmentCode || '').toUpperCase().trim();
+                    const dName = (dept.departmentName || '').toLowerCase().trim();
 
+                    if (sCode && sName) {
+                      return sCode === dCode && sName === dName;
+                    }
+                    if (sCode && !sName) {
+                      return sCode === dCode;
+                    }
+                    if (sName) {
+                      return sName === dName;
+                    }
+                    return false;
+                  });
+
+                  const staffCount = activeStaffForDept.length;
                   const allowedCount = dept.allowedMenuIds?.length ?? 0;
 
                   return (
@@ -913,7 +999,9 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
 
                       {/* Staff Count */}
                       <td className="px-3.5 py-3">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          staffCount > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                        }`}>
                           {staffCount} {staffCount === 1 ? 'member' : 'members'}
                         </span>
                       </td>
@@ -954,7 +1042,7 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteDepartment(dept.id, dept.departmentName)}
+                            onClick={() => handleRequestDelete(dept)}
                             title="Delete Department"
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
                           >
@@ -1070,6 +1158,133 @@ export const DepartmentMasterTable: React.FC<DepartmentMasterTableProps> = ({
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: IN-APP CONFIRMATION DIALOG TO PREVENT ACCIDENTAL DEPARTMENT DELETION */}
+      {deptToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-rose-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-rose-600 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-extrabold text-base">Confirm Department Deletion</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeptToDelete(null)}
+                className="text-white hover:bg-white/20 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              <p className="text-sm">
+                Are you sure you want to delete the department{' '}
+                <strong className="text-slate-900 font-bold font-mono">
+                  [{deptToDelete.departmentCode}] {deptToDelete.departmentName}
+                </strong>
+                ?
+              </p>
+
+              {(() => {
+                const assigned = staffList.filter((s) => {
+                  const isActive = s.employmentStatus === 'Active' || !s.employmentStatus;
+                  if (!isActive) return false;
+                  const sCode = (s.departmentCode || '').toUpperCase().trim();
+                  const sName = (s.department || '').toLowerCase().trim();
+                  const dCode = (deptToDelete.departmentCode || '').toUpperCase().trim();
+                  const dName = (deptToDelete.departmentName || '').toLowerCase().trim();
+                  return (sCode && sCode === dCode) || (sName && sName === dName);
+                });
+
+                const otherDepts = departmentsList.filter((d) => d.id !== deptToDelete.id);
+
+                return assigned.length > 0 ? (
+                  <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-2 text-amber-950">
+                    <div className="flex items-center space-x-1.5 font-bold text-amber-900 text-xs">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span>{assigned.length} Active Staff Assigned to this Department</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed">
+                      Staff members currently assigned:{' '}
+                      <b>{assigned.map((s) => s.fullName).join(', ')}</b>.
+                    </p>
+                    {otherDepts.length > 0 && (
+                      <div className="pt-1 space-y-1">
+                        <label className="text-[11px] font-bold text-slate-800 block">
+                          Reassign assigned staff to:
+                        </label>
+                        <select
+                          value={reassignDeptCode}
+                          onChange={(e) => setReassignDeptCode(e.target.value)}
+                          className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white font-medium text-slate-800"
+                        >
+                          {otherDepts.map((d) => (
+                            <option key={d.id} value={d.departmentCode}>
+                              [{d.departmentCode}] {d.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-xs">
+                    <span>No active staff are currently assigned to this department. It can be safely removed.</span>
+                  </div>
+                );
+              })()}
+
+              <p className="text-[11px] text-slate-500">
+                This action will permanently remove the department entry from the Master Table and update cloud sync.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setDeptToDelete(null)}
+                className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteDepartment}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-xs flex items-center space-x-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Confirm & Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CANNOT DELETE LAST REMAINING DEPARTMENT */}
+      {cannotDeleteNotice && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col p-5 space-y-4">
+            <div className="flex items-center space-x-2.5 text-amber-700">
+              <div className="p-2 bg-amber-100 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-amber-700" />
+              </div>
+              <h4 className="font-extrabold text-sm text-slate-900">Cannot Delete Department</h4>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">{cannotDeleteNotice}</p>
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setCannotDeleteNotice(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Understood
               </button>
             </div>
           </div>

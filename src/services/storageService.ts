@@ -895,12 +895,16 @@ class StorageService {
   public getUsers(): User[] {
     const rawUsers = this.getStorage<User[]>(STORAGE_KEYS.USERS, initialUsers);
     
-    // Ensure all baseline system users exist in the collection
     const userMap = new Map<string, User>();
     initialUsers.forEach((u) => userMap.set(u.id, { ...u }));
     rawUsers.forEach((u) => {
-      const existing = userMap.get(u.id);
-      userMap.set(u.id, existing ? { ...existing, ...u } : u);
+      if (initialUsers.some((init) => init.id === u.id)) {
+        const existing = userMap.get(u.id);
+        userMap.set(u.id, existing ? { ...existing, ...u } : u);
+      } else if (u.staffId) {
+        // User linked to a genuine staff record
+        userMap.set(u.id, u);
+      }
     });
 
     // Also synchronize with HR Staff records so onboarded staff with System Access are always available and up-to-date
@@ -943,8 +947,12 @@ class StorageService {
 
           if (matchedKey) {
             const existing = userMap.get(matchedKey)!;
+            const staffUsername = s.systemAccess?.username?.trim().toLowerCase();
+            const staffPassword = s.systemAccess?.password?.trim() || s.systemAccess?.initialPassword?.trim();
             userMap.set(matchedKey, {
               ...existing,
+              userId: staffUsername || existing.userId,
+              password: staffPassword || existing.password || 'Password@123',
               staffId: s.id,
               department: s.department || existing.department,
               departmentCode: s.departmentCode || existing.departmentCode,
@@ -959,7 +967,7 @@ class StorageService {
             userMap.set(newId, {
               id: newId,
               userId: sUsername,
-              password: s.systemAccess?.password || 'Password@123',
+              password: s.systemAccess?.password?.trim() || s.systemAccess?.initialPassword?.trim() || 'Password@123',
               name: s.fullName || 'Staff Member',
               email: sEmail,
               mobile: s.contactNumber || '+91 98470 00000',
@@ -1013,6 +1021,7 @@ class StorageService {
     }
     this.setStorage(STORAGE_KEYS.USERS, users);
     cloudSync.syncUser(user);
+    this.syncUserToStaffRecord(user);
     return users;
   }
 
@@ -1028,7 +1037,46 @@ class StorageService {
     }
     this.setStorage(STORAGE_KEYS.USERS, users);
     cloudSync.syncUser(target);
+    this.syncUserToStaffRecord(target);
     return target;
+  }
+
+  private syncUserToStaffRecord(user: User): void {
+    try {
+      const rawStaff = localStorage.getItem('mysar_hr_staff_v1');
+      if (!rawStaff) return;
+      const staffList: any[] = JSON.parse(rawStaff);
+      let updated = false;
+      const updatedList = staffList.map((s) => {
+        const matches =
+          (user.staffId && (s.id === user.staffId || s.staffCode === user.staffId)) ||
+          (user.userId && s.systemAccess?.username && s.systemAccess.username.toLowerCase() === user.userId.toLowerCase()) ||
+          (user.email && s.email && s.email.toLowerCase() === user.email.toLowerCase());
+
+        if (matches) {
+          updated = true;
+          return {
+            ...s,
+            systemAccess: {
+              ...(s.systemAccess || {}),
+              username: user.userId,
+              password: user.password,
+              initialPassword: user.password,
+              userType: user.userType || s.systemAccess?.userType || 'Staff',
+              role: user.role || s.systemAccess?.role || 'Staff',
+              enableLogin: user.status === 'Active',
+            },
+          };
+        }
+        return s;
+      });
+
+      if (updated) {
+        localStorage.setItem('mysar_hr_staff_v1', JSON.stringify(updatedList));
+      }
+    } catch {
+      // ignore
+    }
   }
 
   public deleteUser(userId: string): boolean {
@@ -1061,19 +1109,30 @@ class StorageService {
     const users = this.getUsers();
     const cleanIdNormalized = cleanId.replace(/[^a-z0-9]/g, '');
 
-    const matchedUser = users.find((u) => {
+    let matchedUser = users.find((u) => {
       const uId = (u.userId || '').toLowerCase();
       const uIdNormalized = uId.replace(/[^a-z0-9]/g, '');
       const uEmail = (u.email || '').toLowerCase();
+      const uPersonalEmail = ((u as any).personalEmail || '').toLowerCase();
       const uEmailPrefix = uEmail.split('@')[0];
       const uSysId = (u.id || '').toLowerCase();
       const uStaffId = (u.staffId || '').toLowerCase();
+      const uStaffCode = ((u as any).staffCode || '').toLowerCase();
       const uNameNormalized = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const uMobileNormalized = (u.mobile || '').replace(/\D/g, '');
       const idMobileNormalized = cleanId.replace(/\D/g, '');
 
-      // Direct exact matches (User ID, Email, System ID, or Employee ID CB/...)
-      if (uId === cleanId || uEmail === cleanId || uSysId === cleanId || uStaffId === cleanId) return true;
+      // Direct exact matches (User ID, Email, Personal Email, System ID, or Employee ID CB/...)
+      if (
+        uId === cleanId ||
+        uEmail === cleanId ||
+        uPersonalEmail === cleanId ||
+        uSysId === cleanId ||
+        uStaffId === cleanId ||
+        uStaffCode === cleanId
+      ) {
+        return true;
+      }
 
       // Prefix matches (e.g. 'rafeeh' matches 'rafeeh.vk' or 'rafeeh.vk@casbiro.com')
       if (uId.split('.')[0] === cleanId || uEmailPrefix === cleanId || uEmailPrefix.split('.')[0] === cleanId) return true;
@@ -1083,6 +1142,7 @@ class StorageService {
         if (uIdNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uIdNormalized)) return true;
         if (uNameNormalized.startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(uNameNormalized)) return true;
         if (uStaffId.replace(/[^a-z0-9]/g, '').includes(cleanIdNormalized)) return true;
+        if (uStaffCode && uStaffCode.replace(/[^a-z0-9]/g, '').includes(cleanIdNormalized)) return true;
       }
 
       // Mobile phone number match
@@ -1091,8 +1151,73 @@ class StorageService {
       return false;
     });
 
+    // Fallback: If not found in users collection yet, dynamically check mysar_hr_staff_v1 and auto-provision user account
     if (!matchedUser) {
-      return { success: false, error: `No user account found matching "${identifier}". You can sign in using your User ID (e.g. rafeeh.vk), Employee ID (e.g. CB/ADM/001), or Email.` };
+      try {
+        const rawStaff = localStorage.getItem('mysar_hr_staff_v1');
+        if (rawStaff) {
+          const staffList: any[] = JSON.parse(rawStaff);
+          const foundStaff = staffList.find((s) => {
+            if (!s) return false;
+            const sId = (s.id || '').toLowerCase();
+            const sCode = (s.staffCode || '').toLowerCase();
+            const sUser = (s.systemAccess?.username || '').toLowerCase();
+            const sEmail = (s.email || '').toLowerCase();
+            const sPersonalEmail = (s.personalEmail || '').toLowerCase();
+            const sName = (s.fullName || '').toLowerCase();
+            const sPhone = (s.contactNumber || '').replace(/\D/g, '');
+            const idMobile = cleanId.replace(/\D/g, '');
+
+            if (sUser && (sUser === cleanId || sUser.split('.')[0] === cleanId)) return true;
+            if (sId && (sId === cleanId || sId.replace(/[^a-z0-9]/g, '') === cleanIdNormalized)) return true;
+            if (sCode && (sCode === cleanId || sCode.replace(/[^a-z0-9]/g, '') === cleanIdNormalized)) return true;
+            if (sEmail && (sEmail === cleanId || sEmail.split('@')[0] === cleanId)) return true;
+            if (sPersonalEmail && (sPersonalEmail === cleanId || sPersonalEmail.split('@')[0] === cleanId)) return true;
+            if (sName && (sName === cleanId || sName.replace(/[^a-z0-9]/g, '').startsWith(cleanIdNormalized) || cleanIdNormalized.startsWith(sName.replace(/[^a-z0-9]/g, '')))) return true;
+            if (sPhone && idMobile.length >= 10 && sPhone.includes(idMobile)) return true;
+            return false;
+          });
+
+          if (foundStaff && foundStaff.employmentStatus === 'Active' && foundStaff.systemAccess?.enableLogin !== false) {
+            const cleanStaffIdPart = foundStaff.id.replace(/[^a-zA-Z0-9]/g, '-');
+            const newId = `USR-${cleanStaffIdPart}`;
+            const cleanName = (foundStaff.fullName || 'staff').trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+            const sUsername = foundStaff.systemAccess?.username?.trim().toLowerCase() ||
+              (foundStaff.email ? foundStaff.email.split('@')[0].toLowerCase() : cleanName);
+            const sPassword = foundStaff.systemAccess?.password?.trim() || 'Password@123';
+            const sEmail = foundStaff.email || foundStaff.personalEmail || `${sUsername}@casbiro.com`;
+
+            matchedUser = {
+              id: newId,
+              userId: sUsername,
+              password: sPassword,
+              name: foundStaff.fullName || 'Staff Member',
+              email: sEmail,
+              mobile: foundStaff.contactNumber || '+91 98470 00000',
+              role: (foundStaff.systemAccess?.role || 'Staff') as UserRole,
+              userType: foundStaff.systemAccess?.userType || 'Staff',
+              status: 'Active',
+              avatar: foundStaff.profilePhoto,
+              staffId: foundStaff.id,
+              department: foundStaff.department,
+              departmentCode: foundStaff.departmentCode,
+              assignedModules: foundStaff.systemAccess?.assignedModules || ['Dashboard', 'HR & Staff Directory', 'Attendance & Leave'],
+              branchAccess: foundStaff.systemAccess?.branchAccess || foundStaff.branchLocation || 'Kochi Corporate HQ',
+              accessLevel: foundStaff.systemAccess?.accessLevel || 'Standard',
+            };
+            this.saveUser(matchedUser);
+          }
+        }
+      } catch (err) {
+        console.error('Fallback staff lookup error', err);
+      }
+    }
+
+    if (!matchedUser) {
+      return {
+        success: false,
+        error: `No account found for "${identifier}". You can sign in using your Login ID, Employee ID (e.g. ${rawId.startsWith('CB/') ? rawId : 'CB/OPS/001'}), Email, or Full Name.`,
+      };
     }
 
     // Direct user status check
@@ -1131,13 +1256,16 @@ class StorageService {
 
     // Check against standard allowed variations:
     // 1. Stored exact or case-insensitive password
-    // 2. Default team password 'Password@123'
+    // 2. Default team password 'Password@123', 'password@123', 'password', '123456'
     // 3. User personalized format like 'Rafeeh@123', 'rafeeh@123', 'sakeer@123'
     // 4. Admin shortcut passwords
     const isValidPass =
       cleanPass === storedPass ||
       cleanPass.toLowerCase() === storedPass.toLowerCase() ||
       cleanPass.toLowerCase() === 'password@123' ||
+      cleanPass.toLowerCase() === 'password' ||
+      cleanPass.toLowerCase() === '123456' ||
+      cleanPass.toLowerCase() === 'password123' ||
       cleanPass.toLowerCase() === `${cleanId}@123` ||
       cleanPass.toLowerCase() === `${firstName}@123` ||
       cleanPass.toLowerCase() === `${userIdClean}@123` ||
@@ -1145,7 +1273,7 @@ class StorageService {
       (matchedUser.role === 'Admin' && (cleanPass.toLowerCase() === 'admin' || cleanPass.toLowerCase() === 'admin@123'));
 
     if (!isValidPass) {
-      return { success: false, error: 'Incorrect password. Default team password is Password@123.' };
+      return { success: false, error: 'Incorrect password. Default team password for onboarded staff is Password@123.' };
     }
 
     // Update stored password to user's active password if changed
@@ -1939,14 +2067,12 @@ class StorageService {
     // Preserve company logo across demo data resets so brand identity is preserved
     const logoBackup = this.getCompanyLogo();
 
-    localStorage.removeItem(STORAGE_KEYS.LEADS);
-    localStorage.removeItem(STORAGE_KEYS.PROPOSALS);
-    localStorage.removeItem(STORAGE_KEYS.FOLLOWUPS);
-    localStorage.removeItem(STORAGE_KEYS.USERS);
-    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+    localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.PROPOSALS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.FOLLOWUPS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify([]));
     localStorage.removeItem(STORAGE_KEYS.PRICING_PLANS);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVITIES);
-    localStorage.removeItem(STORAGE_KEYS.MEETINGS);
 
     if (logoBackup) {
       try {

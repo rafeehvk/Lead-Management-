@@ -1,20 +1,18 @@
 // ============================================================================
 // MYSAR ERP - Production Live & Data Management Service
-// Clears all test/dummy data across all modules while preserving vital configs:
-// - Company Profile, Address & Branding
-// - Authorized Users & Login Credentials (rafeeh.vk, sakeer)
-// - Master Department Hierarchy & Granular RBAC Permissions
-// - Standard Chart of Accounts (reset to 0 balance)
-// - Tax Rates (GST) & Statutory TDS Sections
-// - Units of Measurement (UOM)
-// - Master ID Card Design Template
-// - Master Proposal Content & Pricing Plans
+// Clears all departments, branches, mock users, and transactional entities
+// Sets up a completely clean slate fresh app for Master Admin.
 // ============================================================================
+
+import { cloudSync } from './cloudSyncService';
+import { initialUsers } from '../mockData';
 
 export interface SystemDataStats {
   leads: number;
   proposals: number;
   staff: number;
+  departments: number;
+  branches: number;
   recruitment: number;
   attendance: number;
   payroll: number;
@@ -31,6 +29,7 @@ export interface SystemDataStats {
 
 const PRODUCTION_FLAG_KEY = 'mysar_production_live_v2';
 const PRODUCTION_DATE_KEY = 'mysar_production_live_date_v2';
+const CLEAN_SLATE_FLAG_KEY = 'mysar_clean_slate_fresh_app_v12';
 
 export class DataPurgeService {
   /**
@@ -46,24 +45,22 @@ export class DataPurgeService {
 
   public getLiveActivationDate(): string {
     try {
-      return localStorage.getItem(PRODUCTION_DATE_KEY) || '2026-09-30';
+      return localStorage.getItem(PRODUCTION_DATE_KEY) || new Date().toISOString().split('T')[0];
     } catch {
-      return '2026-09-30';
+      return new Date().toISOString().split('T')[0];
     }
   }
 
   /**
-   * Automatically executes on application startup if production flag is not yet marked active.
-   * Ensures that any stale dummy data from development sessions in localStorage is purged.
+   * Automatically executes on application startup.
+   * If clean slate flag is not marked done, completely purges local and cloud dummy data.
    */
   public ensureLiveProductionState(): void {
     try {
-      if (!this.isProductionLiveActive()) {
-        // Mark production live active for this browser/device session
-        // Note: Do NOT call purgeAllDummyData here, as doing so wipes data when opening the app on a second device/laptop
-        localStorage.setItem(PRODUCTION_FLAG_KEY, 'active');
-        localStorage.setItem(PRODUCTION_DATE_KEY, new Date().toISOString().split('T')[0]);
-        console.log('[MYSAR Live Engine] Production live environment verified for this device session.');
+      if (localStorage.getItem(CLEAN_SLATE_FLAG_KEY) !== 'done') {
+        localStorage.setItem(CLEAN_SLATE_FLAG_KEY, 'done');
+        this.purgeAllDummyData({ actorName: 'Master Admin', wipeCloud: true });
+        console.log('[MYSAR Live Engine] Initial clean slate fresh app executed successfully.');
       }
     } catch (e) {
       console.error('[MYSAR Live Engine] Error during initial live state verification:', e);
@@ -89,6 +86,8 @@ export class DataPurgeService {
       leads: parseCount('mysar_leads_data_v1'),
       proposals: parseCount('mysar_proposals_data_v1'),
       staff: parseCount('mysar_hr_staff_v1'),
+      departments: parseCount('mysar_hr_departments_master_v1'),
+      branches: parseCount('mysar_hr_branches_master_v1'),
       recruitment:
         parseCount('mysar_hr_positions_v1') +
         parseCount('mysar_hr_applicants_v1') +
@@ -112,6 +111,8 @@ export class DataPurgeService {
       stats.leads +
       stats.proposals +
       stats.staff +
+      stats.departments +
+      stats.branches +
       stats.recruitment +
       stats.attendance +
       stats.payroll +
@@ -128,27 +129,53 @@ export class DataPurgeService {
   }
 
   /**
-   * Full data purge and Go-Live activation.
-   * Completely resets transactional entities to clean arrays.
+   * Full data purge and Clean Slate App reset.
+   * Clears departments, branches, dummy users, staff, leads, transactions, and wipes Firestore.
    */
-  public purgeAllDummyData(options?: { silent?: boolean; actorName?: string }): void {
+  public purgeAllDummyData(options?: { silent?: boolean; actorName?: string; wipeCloud?: boolean }): void {
     const actor = options?.actorName || 'Admin';
 
     try {
-      // 1. CRM & Leads
+      // 1. Departments & Branches Master
+      localStorage.setItem('mysar_hr_departments_master_v1', JSON.stringify([]));
+      localStorage.setItem('mysar_hr_departments_v1', JSON.stringify([]));
+      localStorage.removeItem('mysar_deleted_dept_ids_v1');
+      localStorage.setItem('mysar_hr_branches_master_v1', JSON.stringify([]));
+      localStorage.setItem('mysar_hr_branches_v1', JSON.stringify([]));
+      localStorage.setItem('mysar_department_roles_matrix_v1', JSON.stringify([]));
+      localStorage.setItem('mysar_user_menu_permissions', JSON.stringify({}));
+
+      // 2. Users (Keep only the primary Master Admin account)
+      const cleanUsers = initialUsers.filter((u) => u.role === 'Admin');
+      const finalUsers = cleanUsers.length > 0 ? cleanUsers : [
+        {
+          id: 'USR-001',
+          userId: 'rafeeh.vk',
+          password: 'Password@123',
+          name: 'Rafeeh V K',
+          email: 'rafeeh.vk@gmail.com',
+          mobile: '+91 7994 807 907',
+          role: 'Admin' as const,
+          status: 'Active' as const,
+        },
+      ];
+      localStorage.setItem('mysar_users_data_v1', JSON.stringify(finalUsers));
+
+      // 3. CRM & Leads
       localStorage.setItem('mysar_leads_data_v1', JSON.stringify([]));
       localStorage.setItem('mysar_proposals_data_v1', JSON.stringify([]));
       localStorage.setItem('mysar_followups_data_v1', JSON.stringify([]));
       localStorage.setItem('mysar_lead_activities_data_v1', JSON.stringify([]));
       localStorage.setItem('mysar_scheduled_meetings_data_v1', JSON.stringify([]));
 
-      // 2. HR Management
+      // 4. HR Management & Staff
       localStorage.setItem('mysar_hr_positions_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_applicants_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_interviews_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_offer_letters_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_appointment_letters_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_staff_v1', JSON.stringify([]));
+      localStorage.removeItem('mysar_deleted_staff_ids_v1');
       localStorage.setItem('mysar_hr_attendance_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_leave_requests_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_leave_balances_v1', JSON.stringify([]));
@@ -157,23 +184,11 @@ export class DataPurgeService {
       localStorage.setItem('mysar_hr_performance_v1', JSON.stringify([]));
       localStorage.setItem('mysar_hr_activity_logs_v1', JSON.stringify([]));
 
-      // Reset Department Roles headcount to 0
-      try {
-        const rawRoles = localStorage.getItem('mysar_department_roles_matrix_v1');
-        if (rawRoles) {
-          const roles = JSON.parse(rawRoles);
-          if (Array.isArray(roles)) {
-            const zeroHeadcount = roles.map((r: any) => ({ ...r, headcount: 0 }));
-            localStorage.setItem('mysar_department_roles_matrix_v1', JSON.stringify(zeroHeadcount));
-          }
-        }
-      } catch {}
-
-      // 3. Document & Expiry Management
+      // 5. Document & Expiry Management
       localStorage.setItem('mysar_expiry_documents', JSON.stringify([]));
       localStorage.setItem('mysar_reminder_logs', JSON.stringify([]));
 
-      // 4. Asset Management
+      // 6. Asset Management
       localStorage.setItem('mysar_assets_list_v1', JSON.stringify([]));
       localStorage.setItem('mysar_asset_movements_v1', JSON.stringify([]));
       localStorage.setItem('mysar_asset_pos_v1', JSON.stringify([]));
@@ -183,37 +198,17 @@ export class DataPurgeService {
       localStorage.setItem('mysar_asset_retirements_v1', JSON.stringify([]));
       localStorage.setItem('mysar_asset_vendors_v1', JSON.stringify([]));
 
-      // 5. Finance & Budgeting Module (Legacy & Module view)
+      // 7. Tasks
+      localStorage.setItem('mysar_allocated_tasks_v1', JSON.stringify([]));
+      localStorage.setItem('mysar_task_allocations_v1', JSON.stringify([]));
+
+      // 8. Finance & Budgeting
       localStorage.setItem('mysar_finance_transactions_v1', JSON.stringify([]));
       localStorage.setItem('mysar_finance_vendors_v1', JSON.stringify([]));
       localStorage.setItem('mysar_finance_vendor_invoices_v1', JSON.stringify([]));
       localStorage.setItem('mysar_finance_vendor_payments_v1', JSON.stringify([]));
 
-      // Reset category actual spend to 0
-      try {
-        const rawCats = localStorage.getItem('mysar_finance_categories_v1');
-        if (rawCats) {
-          const cats = JSON.parse(rawCats);
-          if (Array.isArray(cats)) {
-            const zeroCats = cats.map((c: any) => ({ ...c, actualSpend: 0 }));
-            localStorage.setItem('mysar_finance_categories_v1', JSON.stringify(zeroCats));
-          }
-        }
-      } catch {}
-
-      // Reset monthly budget actual spend to 0
-      try {
-        const rawMonthly = localStorage.getItem('mysar_finance_monthly_budget_expenditure_v1');
-        if (rawMonthly) {
-          const monthly = JSON.parse(rawMonthly);
-          if (Array.isArray(monthly)) {
-            const zeroMonthly = monthly.map((m: any) => ({ ...m, actualExpenditure: 0 }));
-            localStorage.setItem('mysar_finance_monthly_budget_expenditure_v1', JSON.stringify(zeroMonthly));
-          }
-        }
-      } catch {}
-
-      // 6. ERP Core Ledger & Transactions
+      // 9. ERP Core Ledger & Transactions
       localStorage.setItem('mysar_erp_items_v2', JSON.stringify([]));
       localStorage.setItem('mysar_erp_parties_v2', JSON.stringify([]));
       localStorage.setItem('mysar_erp_stock_movements_v2', JSON.stringify([]));
@@ -249,6 +244,7 @@ export class DataPurgeService {
       localStorage.setItem('mysar_erp_expenses_v2', JSON.stringify([]));
       localStorage.setItem('mysar_erp_recurring_templates_v2', JSON.stringify([]));
       localStorage.setItem('mysar_erp_bank_reconciliations_v2', JSON.stringify([]));
+      localStorage.setItem('mysar_finance_journal_entries_v2', JSON.stringify([]));
 
       // Reset Bank and Cash account balances to 0
       try {
@@ -273,8 +269,6 @@ export class DataPurgeService {
         }
       } catch {}
 
-      // 7. General Ledger & Chart of Accounts
-      localStorage.setItem('mysar_finance_journal_entries_v2', JSON.stringify([]));
       try {
         const rawCoa = localStorage.getItem('mysar_finance_chart_of_accounts_v2');
         if (rawCoa) {
@@ -292,17 +286,39 @@ export class DataPurgeService {
       localStorage.setItem(PRODUCTION_FLAG_KEY, 'active');
       localStorage.setItem(PRODUCTION_DATE_KEY, today);
 
-      // Notify entire applet via CustomEvents
+      // Wipe Firestore Cloud collections asynchronously
+      if (options?.wipeCloud !== false) {
+        cloudSync.wipeAllCloudData().then(() => {
+          // Push primary admin user to cloud
+          if (finalUsers[0]) {
+            cloudSync.syncUser(finalUsers[0]);
+          }
+        }).catch((err) => {
+          console.warn('[DataPurgeService] Cloud wipe background error:', err);
+        });
+      }
+
+      // Notify entire application via CustomEvents
       if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mysar_departments_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
+        window.dispatchEvent(new CustomEvent('mysar_branches_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_staff_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_hr_data_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_hr_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_users_changed'));
+        window.dispatchEvent(new CustomEvent('mysar_leads_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_proposals_updated'));
+        window.dispatchEvent(new CustomEvent('mysar_doc_expiry_changed'));
+        window.dispatchEvent(new CustomEvent('mysar_tasks_updated'));
         window.dispatchEvent(new CustomEvent('mysar_finance_data_changed'));
         window.dispatchEvent(new CustomEvent('mysar_erp_data_changed'));
         window.dispatchEvent(new CustomEvent('mysar_asset_changed'));
-        window.dispatchEvent(new CustomEvent('mysar_department_permissions_changed'));
         window.dispatchEvent(new CustomEvent('mysar_production_live_activated', { detail: { actor, timestamp: nowIso } }));
       }
 
       if (!options?.silent) {
-        console.log(`[MYSAR Live Engine] Go-Live data purge executed successfully by ${actor}. All dummy records cleared.`);
+        console.log(`[MYSAR Live Engine] Clean Slate App purge executed successfully by ${actor}. All departments, branches, dummy users, and records cleared.`);
       }
     } catch (err) {
       console.error('[MYSAR Live Engine] Error executing dummy data purge:', err);

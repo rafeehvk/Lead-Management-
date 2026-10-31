@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Lock,
   Eye,
@@ -10,6 +10,11 @@ import {
   X,
   KeyRound,
   ArrowRight,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  Users,
 } from 'lucide-react';
 import { User, Settings } from '../types';
 import { storage } from '../services/storageService';
@@ -24,6 +29,7 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   settings,
+  availableUsers,
 }) => {
   // Use passed settings or fallback to current persistent settings
   const [effectiveSettings, setEffectiveSettings] = useState<Settings>(() => {
@@ -75,6 +81,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [showQuickSelect, setShowQuickSelect] = useState(false);
+
+  const activeAccounts = useMemo(() => {
+    const list = availableUsers && availableUsers.length > 0 ? availableUsers : storage.getUsers();
+    const seen = new Set<string>();
+    const unique: User[] = [];
+    list.forEach((u) => {
+      const key = (u.userId || u.staffId || u.email || u.id).toLowerCase();
+      if (!seen.has(key) && u.status === 'Active') {
+        seen.add(key);
+        unique.push(u);
+      }
+    });
+    return unique;
+  }, [availableUsers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +301,98 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </>
                   )}
                 </button>
+
+                {/* Onboarded Staff Helper Note */}
+                <div className="mt-3 p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/70 text-[11px] text-emerald-950 flex items-start space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-[#235E3F] shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-bold text-[#235E3F] block">Onboarded Staff Sign In:</span>
+                    <span className="text-slate-600 block mt-0.5">
+                      Sign in using your <b>User ID</b>, <b>Employee ID (e.g. CB/...)</b>, <b>Email</b>, or <b>Full Name</b>.
+                      Initial password: <strong className="font-mono text-[#235E3F] bg-white px-1.5 py-0.5 rounded border border-emerald-300">Password@123</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Account Switcher for Team & Onboarded Staff */}
+                {activeAccounts.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickSelect(!showQuickSelect)}
+                      className="w-full flex items-center justify-between text-[11px] font-bold text-slate-600 hover:text-[#235E3F] py-2 px-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <Users className="w-3.5 h-3.5 text-[#235E3F]" />
+                        <span>Available Accounts ({activeAccounts.length}) &bull; Click to Sign In</span>
+                      </div>
+                      {showQuickSelect ? (
+                        <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </button>
+
+                    {showQuickSelect && (
+                      <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {activeAccounts.map((account) => {
+                          const displayId = account.userId || account.staffId || account.email;
+                          const defaultPass = account.password || 'Password@123';
+                          const isSelected = identifier.toLowerCase() === displayId.toLowerCase();
+                          return (
+                            <button
+                              key={account.id}
+                              type="button"
+                              onClick={() => {
+                                setIdentifier(account.userId || account.staffId || account.email);
+                                setPassword(defaultPass);
+                                setErrorMessage(null);
+                              }}
+                              className={`w-full text-left p-2 rounded-xl border text-xs flex items-center justify-between transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-400'
+                                  : 'bg-white border-gray-200 hover:bg-slate-50 hover:border-emerald-200'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2 truncate">
+                                {account.avatar ? (
+                                  <img
+                                    src={account.avatar}
+                                    alt={account.name}
+                                    className="w-6 h-6 rounded-full object-cover shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full bg-[#EAF7EF] text-[#235E3F] font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    {account.name.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="truncate">
+                                  <div className="font-bold text-slate-900 leading-tight truncate">
+                                    {account.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono truncate">
+                                    {account.userId} {account.staffId ? `• ${account.staffId}` : ''}
+                                  </div>
+                                </div>
+                              </div>
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                  account.role === 'Admin'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : account.role === 'Manager'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}
+                              >
+                                {account.role || 'Staff'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </form>
             </div>
           </div>
